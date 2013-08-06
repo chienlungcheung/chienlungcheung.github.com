@@ -1,0 +1,719 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: CrackingtheCodingInterview,FourthEdition | Programath]]></title>
+  <link href="http://Chienlung.github.com/blog/categories/crackingthecodinginterview-fourthedition/atom.xml" rel="self"/>
+  <link href="http://Chienlung.github.com/"/>
+  <updated>2013-08-06T22:03:37+08:00</updated>
+  <id>http://Chienlung.github.com/</id>
+  <author>
+    <name><![CDATA[Chienlung]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.5]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/"/>
+    <updated>2013-08-04T13:49:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5</id>
+    <content type="html"><![CDATA[<p>Interview Question 2.5</p>
+
+<p>题目：<br/>
+ven a circular linked list, implement an algorithm which returns node at the begin-
+ning of the loop.<br/>
+DEFINITION<br/>
+Circular linked list: A (corrupt) linked list in which a node’s next pointer points to an
+earlier node, so as to make a loop in the linked list.<br/>
+EXAMPLE<br/>
+Input: A -> B -> C -> D -> E -> C [the same C as earlier]<br/>
+Output: C<br/>
+解题思路与代码：<br/>
+```c
+/<em>
+ * 2.5  Given a circular linked list, implement an algorithm
+ * which returns node at the beginning of the loop.
+ * DEFINITION
+ * Circular linked list: A (corrupt) linked list in which
+ * a node’s next pointer points to an earlier node, so as
+ * to make a loop in the linked list.
+ * EXAMPLE
+ * Input: A -> B -> C -> D -> E -> C [the same C as earlier]
+ * Output: C
+ * 中文：给一个循环链表 ，找出循环的开始节点。比如，给你个链表
+ * A -> B -> C -> D -> E -> C ，循环的开始位置即为C。
+ </em>/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;malloc.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>/<em>
+ * 过去见过一个题目让判断一个链表是否有环，解决办法是设置一个快指针一个慢指针，
+ * 一起从头节点开始遍历，慢指针每次前进一步，快指针每次前进两步，如果在这个过程
+ * 中快指针和慢指针相遇，则说明有环儿。这个过程就像类似俩人在操场跑圈儿，一个人跑得
+ * 快，一个人跑得慢，那个跑得快的肯定能追上跑得慢的即相遇。
+ * 再来看这个题目，告诉你有环儿了，让你判断环开始的位置在哪。
+ *
+ * 首先说，这又是一个计数问题，就像前面遇到到问题，给谁计数呢？
+ * 当然是每个节点的地址了！从头开始遍历链表，第一个重复
+ * 的地址即为环的开始位置！！由于地址可能都比较大，所以可以开大数组，但是数组太大估计
+ * 开不了。只好自己实现一个hash表了，开链式的解决冲突。前面2.1题目自己实现过hash表了，
+ * 这里这个不重复了。这里用bitmap来实现一下。（C++好歹还有个用红黑树实现的map。哼哼。。
+ *
+ * 然后说，前面有个2.2题用相距n的俩指针寻找倒数第n个节点，这个其实跟那个2.2类似，
+ * 快慢指针求出环的长度，接着再从头开始，用相距环长的俩指针遍历这个带环的链表，
+ * 当俩指针相遇时，相遇的节点就是环的开始节点。求环的长度这样来做，快慢指针第一次相遇后，
+ * 固定快指针，用慢指针继续遍历同时计数，等俩指针再次相遇时，就求出了环的长度。
+ </em>/
+typedef struct link_node {</p>
+
+<pre><code>char c;
+struct link_node *next;
+</code></pre>
+
+<p>} link_node;</p>
+
+<p>static link_node<em>
+process1(link_node </em>head)
+{</p>
+
+<pre><code>int bm[100000];/* bitmap要开很大，地址大的把小伙伴们都吓尿了！ */
+int i, j;
+memset(bm, 0, sizeof(bm));
+
+while (1) {
+    i = (int)head / 32;
+    j = (int)head % 32;
+    if (bm[i] &amp; (1 &lt;&lt; j))
+        break;
+    bm[i] |= 1 &lt;&lt; j;
+    head = head-&gt;next;
+}
+
+printf("process1: The beginning is %c (%d)\n", head-&gt;c, (int)head);
+return head;
+</code></pre>
+
+<p>}</p>
+
+<p>static link_node<em>
+process2(link_node </em>head)
+{</p>
+
+<pre><code>link_node *fast, *slow;
+int cnt = 0;
+fast = slow = head;
+
+do {
+    slow = slow-&gt;next;
+    fast = fast-&gt;next-&gt;next;
+} while(fast != slow);
+
+/* 固定fast，用slow继续遍历，求环长度 */
+do {
+    cnt++;
+    slow = slow-&gt;next;
+} while(slow != fast);
+
+fast = slow = head;
+while (cnt--)
+    fast = fast-&gt;next;
+
+while (slow != fast) {
+    slow = slow-&gt;next;
+    fast = fast-&gt;next;
+}
+
+printf("process2: The beginning is %c (%d)\n", slow-&gt;c, (int)slow);
+return slow;
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>/* A -&gt; B -&gt; C -&gt; D -&gt; E -&gt; C [the same C as earlier] */
+link_node *p1 = (link_node*)calloc(1, sizeof(link_node));
+p1-&gt;c = 'A';
+link_node *p2 = (link_node*)calloc(1, sizeof(link_node));
+p2-&gt;c = 'B';
+link_node *p3 = (link_node*)calloc(1, sizeof(link_node));
+p3-&gt;c = 'C';
+link_node *p4 = (link_node*)calloc(1, sizeof(link_node));
+p4-&gt;c = 'D';
+link_node *p5 = (link_node*)calloc(1, sizeof(link_node));
+p5-&gt;c = 'E';
+
+p1-&gt;next = p2, p2-&gt;next = p3, p3-&gt;next = p4, p4-&gt;next = p5, p5-&gt;next = p3;
+//process1(p1);
+process2(p1);
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.4]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-4/"/>
+    <updated>2013-08-04T13:49:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-4</id>
+    <content type="html"><![CDATA[<p>Interview Question 2.4<br/>
+题目：<br/>
+You have two numbers represented by a linked list, where each node contains a sin-
+gle digit. The digits are stored in reverse order, such that the 1’s digit is at the head of
+the list. Write a function that adds the two numbers and returns the sum as a linked
+list.<br/>
+EXAMPLE<br/>
+Input: (3 -> 1 -> 5), (5 -> 9 -> 2)<br/>
+Output: 8 -> 0 -> 8</p>
+
+<p>解题思路与代码：
+```c
+/<em>
+ * 2.4  You have two numbers represented by a linked list,
+ * where each node contains a sin-gle digit. The digits
+ * are stored in reverse order, such that the 1’s digit is
+ *  at the head of the list. Write a function that adds
+ *  the two numbers and returns the sum as a linked list.
+ *  EXAMPLE
+ *  Input: (3 -> 1 -> 5), (5 -> 9 -> 2)
+ *  Output: 8 -> 0 -> 8
+ *  中文：两个单链表相加，每个node里面存一位，逆序存储，即个位存在头节点了，
+ *  依次十位，百位，。。。。
+ *  就是大整数加法，不过这里用的不是数组，是单链表。
+ </em>/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;malloc.h></h1>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;time.h></h1>
+
+<p>typedef struct link_node {</p>
+
+<pre><code>int data;
+struct link_node *next;
+</code></pre>
+
+<p>} link_node;
+/<em>
+ * 思路很简单，因为是单链表，这里用递归实现。注意边界判别。
+ * 原书代码出现了俩错误，真不应该。
+ </em>/
+static link_node *
+addlist(link_node <em>a, link_node </em>b, int carry)
+{</p>
+
+<pre><code>link_node *result = (link_node*)calloc(1, sizeof(link_node));
+if (!carry &amp;&amp; !a &amp;&amp; !b)
+    return NULL;
+
+if (a)
+    carry += a-&gt;data;
+if (b)
+    carry += b-&gt;data;
+
+
+result-&gt;data = carry % 10;
+
+result-&gt;next = addlist(a?a-&gt;next:NULL,
+                       b?b-&gt;next:NULL,
+                       carry &gt;= 10?1:0
+                       );
+return result;
+</code></pre>
+
+<p>}</p>
+
+<p>static link_node*
+init_link()
+{</p>
+
+<pre><code>int i;
+link_node *head = (link_node*)calloc(1, sizeof(link_node));
+link_node *p = head;
+link_node *tmp;
+int n;
+srand((unsigned int)time(NULL));
+p-&gt;data = rand() % 10;
+n = rand() % 30;/* 链表长度也是随机出来的 */
+for (i = 0; i &lt; n; i++) {
+    tmp = (link_node*)calloc(1, sizeof(link_node));
+    tmp-&gt;data = rand() % 10;
+    p-&gt;next = tmp;
+    p = tmp;
+}
+return head;
+</code></pre>
+
+<p>}</p>
+
+<p>/<em>
+ * 按正确顺序输出单链表。
+ </em>/
+static void
+print_link(link_node *head)
+{</p>
+
+<pre><code>if (!head)
+    return;
+print_link(head-&gt;next);
+
+printf("%d ", head-&gt;data);
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>link_node *a, *b, *c;
+a = init_link();
+b = init_link();
+printf("    ");
+print_link(a);
+printf("\n+\n");
+printf("    ");
+print_link(b);
+printf("\n------------------------------------------------\n");
+
+c = addlist(a, b, 0);
+print_link(c);
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.3]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-3/"/>
+    <updated>2013-08-04T13:49:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-3</id>
+    <content type="html"><![CDATA[<p>Interview Question 2.3</p>
+
+<p>题目：<br/>
+Implement an algorithm to delete a node in the middle of a single linked list, given
+only access to that node.<br/>
+EXAMPLE<br/>
+Input: the node ‘c’ from the linked list a->b->c->d->e<br/>
+Result: nothing is returned, but the new linked list looks like a->b->d->e<br/>
+解题思路与代码：<br/>
+```c
+/<em>
+ * 2.3  Implement an algorithm to delete a node in the middle of a
+ * single linked list, given only access to that node.
+ * EXAMPLE
+ * Input: the node ‘c’ from the linked list a->b->c->d->e
+ * Result: nothing is returned, but the new linked list looks like a->b->d->e
+ * 中文：实现一个算法删除单链表中的一个节点，你只能访问这个被删除的节点（就是
+ * 头节点都不告诉你）。
+ * 例子:
+ * 输入： 要被删除的节点C，它来自单链表a->b->c->d->e
+ * 输出： 什么也不返回，但是新的链表要看起来像这样：a->b->d->e
+ </em>/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>/<em>
+ * 给你一个节点，你把它删除。因为没给头节点，也没给这个节点前一个节点，
+ * 所以不能直接删除它，否则链表就会从中间断掉。怎么办呢？既然它前面的无法
+ * 访问，但是通过next可以访问它后面的所有节点，那就把它后面节点中的数据
+ * 依次拷贝到这个节点，修改下next指针，删除后面这个节点就好啦！每个节点就是
+ * 个箱子，不同是因为里面装得东西不同，数据拷贝过来，删哪个都一样。
+ * 当然这里面有边界条件需要考虑，
+ * 就是如果要删除的是最后一个节点的话，就没法弄了，不能直接删了它，因为无法修改它
+ * 前趋的next所以删了它也没用，无解。无解但是也要考虑到，
+ * crackint the coding interview书里面让大家跟面试官讨论这个地方。
+ * 这是一个很重要的考点。
+ </em>/
+typedef struct link_node {</p>
+
+<pre><code>int data;
+struct link_node *next;
+</code></pre>
+
+<p>} link_node;</p>
+
+<p>static void
+del_node(link_node *n)
+{</p>
+
+<pre><code>link_node *t;
+if (n == NULL || n-&gt;next == NULL)
+    return;
+t = n-&gt;next;
+n-&gt;data = t-&gt;data;
+n-&gt;next = t-&gt;next;
+free(t);
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.2]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-2/"/>
+    <updated>2013-08-04T13:49:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-2</id>
+    <content type="html"><![CDATA[<p>Interview Question 2.2</p>
+
+<p>题目： <br/>
+Implement an algorithm to find the nth to last element of a singly linked list.</p>
+
+<p>解题思路与代码：<br/>
+```c
+/<em>
+ * 2.2  Implement an algorithm to find the nth to last element of a singly linked list.
+ * 中文：实现一个算法，找出单链表中的倒数第n个元素。
+ </em>/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>typedef struct link_node {</p>
+
+<pre><code>int data;
+struct link_node *next;
+</code></pre>
+
+<p>} link_node;</p>
+
+<p>static int n, cnt;</p>
+
+<p>/<em>
+ * 单链表不能倒着遍历，怎么办呢？用栈！从头开始挨个入栈，
+ * 然后再挨个出栈，第n个出栈的就是我们要找的元素。其实也不一定非要用显示栈，
+ * 可以用递归这个隐式栈来实现。
+ </em>/
+static void
+process1(link_node *head)
+{</p>
+
+<pre><code>if (!head) return;
+
+process1(head-&gt;next);
+cnt++;
+if (cnt == n)
+    printf("process1: The nth to last element is %d\n", head-&gt;data);
+</code></pre>
+
+<p>}</p>
+
+<p>/<em>
+ * 还有一个比较巧的办法是用俩距离为n的指针，从头开始向后移动，
+ * 当走在前面到指针t恰好指向NULL的时候，走在后面的指针f所指即为所求。
+ </em>/
+static void
+process2(link_node *head)
+{</p>
+
+<pre><code>link_node *f, *t;
+int i = 0;
+t = f = head;
+
+while (i &lt; n)
+    i++, t = t-&gt;next;
+while (t) {
+    f = f-&gt;next;
+    t = t-&gt;next;
+}
+printf("process2: The nth to last element is %d\n", f-&gt;data);
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+init_link(link_node **head)
+{</p>
+
+<pre><code>int i;
+*head = (link_node*)calloc(1, sizeof(link_node));
+link_node *p = *head;
+link_node *tmp;
+int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+p-&gt;data = 0;
+for (i = 0; i &lt; 10; i++) {
+    tmp = (link_node*)calloc(1, sizeof(link_node));
+    tmp-&gt;data = a[i];
+    p-&gt;next = tmp;
+    p = tmp;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+print_link(link_node *head)
+{</p>
+
+<pre><code>while (head) {
+    printf("%d ", head-&gt;data);
+    head = head-&gt;next;
+}
+printf("\n");
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char argv[])
+{</p>
+
+<pre><code>link_node *head;
+init_link(&amp;head);
+print_link(head);
+
+while (scanf("%d", &amp;n) == 1) {
+    cnt = 0;
+    process1(head);
+    process2(head);
+}
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.1]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-1/"/>
+    <updated>2013-08-04T13:49:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-1</id>
+    <content type="html"><![CDATA[<p>Interview Question 2.1</p>
+
+<p>题目：</p>
+
+<p>Write code to remove duplicates from an unsorted linked list.<br/>
+FOLLOW UP<br/>
+How would you solve this problem if a temporary buffer is not allowed?</p>
+
+<p>解题思路与代码：</p>
+
+<p>```c
+/<em>
+ * 2.1  Write code to remove duplicates from an unsorted linked list.
+ * FOLLOW UP
+ * How would you solve this problem if a temporary buffer is not allowed?
+ * 中文：删除未排序链表中的重复节点。
+ * 还有，
+ * 不允许临时缓冲区你该怎么办？
+ </em>/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;malloc.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>typedef struct link_node {</p>
+
+<pre><code>int data;
+struct link_node *next;
+</code></pre>
+
+<p>} link_node;</p>
+
+<p>/<em>
+ * 这题本质还是计数问题，去重嘛！如果允许开一个缓冲区可以用hash，遍历一个判断一下是否在
+ * hash里面，如果没有则加入，如果在里面则删除。稍微费劲的是需要自己实现一个hashmap，
+ * 不能直接用以链表存储的数值为索引的数组，因为数值可能为负数。多占了空间，时间复杂度
+ * 相应就可以降低，为O（n）。
+ </em>/</p>
+
+<p>/<em>
+ * 表长为素数
+ </em>/</p>
+
+<h1>define M 4093</h1>
+
+<p>/<em>
+ * 开链法实现
+ </em>/
+typedef struct hash_node {</p>
+
+<pre><code>int hash_value;
+struct hash_node *next;
+</code></pre>
+
+<p>} hash_node;</p>
+
+<p>static hash_node st[M];</p>
+
+<p>static int
+hash(int data)
+{</p>
+
+<pre><code>return data &lt; 0?((-1) * data) % M:data % M;
+</code></pre>
+
+<p>}</p>
+
+<p>static int
+st_contain(int data)
+{</p>
+
+<pre><code>int h = hash(data);
+hash_node *tmp = st[h].next;
+while (tmp) {
+    if (tmp-&gt;hash_value == data) {
+        return 1;
+    }
+    tmp = tmp-&gt;next;
+}
+return 0;
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+st_add(data)
+{</p>
+
+<pre><code>int h = hash(data);
+hash_node *new_node = (hash_node*)calloc(1, sizeof(hash_node));
+new_node-&gt;hash_value = data;
+new_node-&gt;next = st[h].next;
+st[h].next = new_node;
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+del_dup1(link_node *head)
+{</p>
+
+<pre><code>link_node *pre = head;
+link_node *cur = head;
+while (cur) {
+    if (st_contain(cur-&gt;data)) {
+        pre-&gt;next = cur-&gt;next;
+        free(cur);
+        cur = pre-&gt;next;
+    } else {
+        st_add(cur-&gt;data);
+        pre = cur;
+        cur = cur-&gt;next;
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/<em>
+ * 如果不让用缓冲区的话，那就用俩指针，一个p指针从头开始慢慢悠悠，
+ * 一个q指针快速遍历去找是否有跟p指向重复的数据。时间复杂度为O(n</em>n)。
+ <em>/
+static void
+del_dup2(link_node </em>head)
+{</p>
+
+<pre><code>link_node *p, *q, *pre;
+p = head;
+while (p) {
+    pre = p;
+    q = p-&gt;next;
+    while (q) {
+        if (q-&gt;data == p-&gt;data) {
+            pre-&gt;next = q-&gt;next;
+            free(q);
+            q = pre-&gt;next;
+        } else {
+            pre = q;
+            q = q-&gt;next;
+        }
+    }
+    p = p-&gt;next;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+init_link(link_node **head)
+{</p>
+
+<pre><code>int i;
+*head = (link_node*)calloc(1, sizeof(link_node));
+link_node *p = *head;
+link_node *tmp;
+int a[10] = {1, 2, 3, 3, 2, 1, 5, 9, 4, 5};
+p-&gt;data = 0;
+for (i = 0; i &lt; 10; i++) {
+    tmp = (link_node*)calloc(1, sizeof(link_node));
+    tmp-&gt;data = a[i];
+    p-&gt;next = tmp;
+    p = tmp;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>static void
+print_link(link_node *head)
+{</p>
+
+<pre><code>while (head) {
+    printf("%d ", head-&gt;data);
+    head = head-&gt;next;
+}
+printf("\n");
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>link_node *head = NULL;
+
+init_link(&amp;head);
+print_link(head);
+memset(st, 0, sizeof(st));
+del_dup1(head);
+printf("del_dup1: ");
+print_link(head);
+
+init_link(&amp;head);
+print_link(head);
+memset(st, 0, sizeof(st));
+printf("del_dup2: ");
+del_dup2(head);
+print_link(head);
+
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+</feed>

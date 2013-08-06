@@ -1,0 +1,333 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LevelDB实现说明 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="本文档根据Implementation notes翻译，为了更加严谨，有些地方会保留对应的英文用法。如果有不妥的地方，恳请大家斧正，不吝感激！抱拳。 文件（Files） leveldb的实现本质上与单一的Bigtable tablet(section 5.3)的表现形式（ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/05/18/leveldbshi-xian-shuo-ming/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LevelDB实现说明</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-18T16:09:00+08:00" pubdate data-updated="true">May 18<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><em>本文档根据<a href="http://leveldb.googlecode.com/svn/trunk/doc/impl.html">Implementation notes</a>翻译，为了更加严谨，有些地方会保留对应的英文用法。如果有不妥的地方，恳请大家斧正，不吝感激！抱拳。</em></p>
+
+<h1>文件（Files）</h1>
+
+<p>leveldb的实现本质上与单一的<a href="http://labs.google.com/papers/bigtable.html">Bigtable tablet(section 5.3)</a>的表现形式（representation）相似。但是构成这种表现形式（representation）的文件的组织结构有点不同，下面会解释。
+每个数据库通过存储在一个目录下的一组文件来表示。正如下面列出来的，存在多种不同文件类型：</p>
+
+<p><em>日志文件（Log files）</em></p>
+
+<p>日志文件(<code>*.log</code>)存储了一系列最近的更新。每一个更新都被追加到当前日志文件中。当日志文件达到一个预定义的大小时（默认大约4MB），它就会被转换成一个有序表（sorted table，下面会谈到），同时一个新的日志文件会为将来的更新而被创建。</p>
+
+<p>当前日志文件的一个副本会被保存在一个内存结构（in-memory structure，即<code>memtable</code>）中。每一次执行读取操作的时候，这个副本都会被查询，这样读取操作就能反映所有被记录的更新。</p>
+
+<p><em>有序表（Sorted tables）</em></p>
+
+<p>一个有序表（<code>*.sst</code>）存储了一系列按键（key）序排列的项。每个项要么是对应该键（key）的值（value），要么是该键（key）的删除标记（deletion marker)。（删除标记被保存用来隐藏存在于老版本的有序表中的过时的值（values）。）</p>
+
+<p>有序表的集合被组织成一系列层级（levels）。有序表由一个日志文件生成，被放在一个特殊的<code>young</code>层级（也被叫做level-0）上。当young文件（young files）的数目超过一个特定的阈值（目前是4），所有的young文件跟所有与自己重叠的level-1层级的文件被合并在一起，来产生一系列新的level-1文件（合并后的数据每2MB生成一个新的level-1文件。）。</p>
+
+<p>young level上的文件可能包含相互重叠的键，但是其它level各自内部的文件相互之间没有重叠的键范围（key ranges）。考虑L>=1的level-L。当level-L上文件的组合大小超过10的L次方MB（即level-1为10MB，level-2为100MB，&#8230;），level-L上的一个文件就会和level-(L+1)上的与自己重叠的文件合并起来为level-(L+1)组成一组新文件。这些合并有一个渐进迁移的效果，即通过大块读写操作（bulk reads and writes）逐渐把来自young level的新的更新迁移到最高level上（这样就可以最小化昂贵的搜索操作(seeks)）。</p>
+
+<p><em>配置文件（Manifest）</em></p>
+
+<p>一个MANIFEST文件列出了构成每个层级的有序表的集合，相应的键范围，以及其它重要元数据。每次数据库被重新打开的时候，都会有一个新的MANIFEST文件（在文件名上带有一个嵌入的号码）被创建。MANIFEST文件会被格式化为一个日志（log），对服务状态（serving state，比如文件被添加或者被移除）作出的改变会被追加到这个日志里。</p>
+
+<p><em>Current文件</em></p>
+
+<p>CURRENT是一个简单的文本文件，包含了最新的MANIFEST文件的名字。</p>
+
+<p><em>信息日志(Info logs)</em></p>
+
+<p>指示性信息（Informatioal messages）被打印到名为LOG和LOG.old的文件中。</p>
+
+<p><em>其它（Others）</em></p>
+
+<p>被用于各种五花八门目的的其它文件也可能会出现（比如LOCK，*.dbtmp)。</p>
+
+<h1>Level 0</h1>
+
+<p>当日志文件增长到一个特定大小（默认是1MB，它上面还说默认是4MB，这里又来了个1MB，莫名其妙的）：</p>
+
+<p>》》创建一个全新的memtable（文档开头说了，这个内存结构用来保存日志文件的副本）和日志文件，并把将来的更新写到它俩这里（我觉得log file在磁盘上，而memtable是log file在内存里的一个映像，每次查询时查询的是memtable，因为它在内存里所以速度很快。所以每次写既要写memtable，又要写log file。）</p>
+
+<p>》》在后台做下面的事情：</p>
+
+<p>》》》》把前一个memtable的内容写到一个sstable(这个在这没有明说，我觉得就是前面提到的那个排序表即sorted table)</p>
+
+<p>》》》》丢弃前一个memtable</p>
+
+<p>》》》》删除老的日志文件和老的memtable</p>
+
+<p>》》》》把这个新的sstable增加到young（level-0）level上</p>
+
+<h1>压缩（Compactions）</h1>
+
+<p>当level L的大小超过它的限制的时候，我们在后台线程压缩它。压缩时会从level L取一个文件，并从level L+1 取出与这个文件重叠的所有文件。注意，如果一个level-L文件只与一个level-(L+1)文件部分重叠，level-(L+1)上的这个文件仍然会整个被作为这个压缩过程的输入并且会在压缩完毕后被丢弃。另外，因为level-0很特殊（level-0上的文件可能互相之间交叠），所以我们要特殊对待从level-0到level-1的压缩：一个level-0压缩可能会取出多个level-0文件以防这些文件互相之间重叠。</p>
+
+<p>一个压缩过程会合并选取的文件内容来产生一系列level-(L+1)文件。当前输出文件达到目标文件大小以后，我们切换到一个新level-(L+1)文件的产生过程。当前输出文件的键范围已经增长到足够重叠多于10个level-(L+2)文件以后，我们就切换到一个新的输出文件。前面最后的规则确保稍后的一个level-(L+1)文件的压缩不会从level-(L+2)选取太多的数据。(这一段基本没看懂。。。）</p>
+
+<p>老的文件被丢弃，并且新文件会被添加到服务状态（serving state）。</p>
+
+<p>对于某个特定level的压缩会在键范围内循环。再说的细一点儿，对于每个level L，我们记住level L上一次压缩的结束键（ending key），对于level L的下一次压缩，我们将会选取从那个结束键之后开始的第一个文件（如果不存在这样的文件，我们就绕回到键空间的开始位置）。</p>
+
+<p>压缩会丢弃被复写（overwritten）过的值（values）。如果没有更高的level包含范围与当前键重叠的文件，压缩过程也会丢弃删除标记。</p>
+
+<h1>计时（Timing）</h1>
+
+<p>level-0的压缩将会从level-0读取多达4个长度为1MB的文件，并且从level-1在最差情况下会读取全部文件（10MB）。即，我们将会读14MB的文件，写14MB的文件。</p>
+
+<p>除了这个特殊的level-0压缩之外，我们再看看其它层的压缩，我们需要从level L 选取一个2MB的文件，在最坏的情况下，这个文件会与level L+1 层的至少12个（原文这里用的是～12，查了半天不知道～在这里是什么意思，但是根据后面推断应该是最少的意思）文件重叠（其中的10个文件是因为level-(L+1) 的大小是level-L的十倍，另外最少两个文件是因为level-L被选取的文件的范围通常不会与level-L+1的文件的范围对齐)。因此，压缩将会读26MB，写26MB。假设磁盘IO的速度为100MB/s（对于现代驱动，大体上就在这个速度范围内），最坏情况下的压缩花费大约为0.5秒（（26MB + 26MB）/ 100MB/s = 0.5s）。</p>
+
+<p>如果我们限制后台对一些小东西（something small）的写操作，比如只用全速100MB/s的10%，一个压缩将会消耗高达5秒的时间（（26MB + 26MB） / （100MB * 10%） = 5s）。如果用户正以10MB/s的速度在写，我们可以建立大量的level-0文件（～50 to hold the 5<em>10MB，前面这句我不知道该怎么翻才好，我是下，至少能建立50个文件，因为5s</em>10MB/s = 50MB，一次压缩时间为5s，速度为10MB/s，而本节开头提到level-0每个文件是1MB）。这可能会大幅增加读操作的代价，因为在每次读的时候需要合并更多的文件。</p>
+
+<p>解决方案1：为了减轻这个问题，我们可能想要在level-0文件很大的时候增加日志文件切换的阈值(文档开头说默认是4MB）。尽管这么做有副作用，即这个阈值越大，我们将要需要更多的内存来保存相应的memtable。</p>
+
+<p>解决方案2：我们可能希望在level-0的文件数目增长的时候人工降低写操作的速度。</p>
+
+<p>解决方案3：我们设法减小大范围合并的代价。可能大多数level-0文件将会使它们的块在内存中处于不可压缩状态，那样的话我们就只需要担心合并迭代中的O（N）复杂度。</p>
+
+<h1>文件数目（Number of files）</h1>
+
+<p>并非总是创建2MB大小的文件，我们可以为更高的level创建更大的文件来减小文件数目，尽管是以更多的突发性压缩（bursty compations）为代价。还有另外一个选择，就是我们可以在多个目录中共享文件集合。</p>
+
+<p>下面的计时显示的是2011年2月4号在<code>ext3</code>文件系统上做的实验，即在包含不同的文件数目的目录中做了100，000个打开文件的操作：</p>
+
+<pre><code>    目录中的文件数目      打开一个文件的毫秒数
+
+        1000                        9
+
+       10000                       10
+
+      100000                       16
+</code></pre>
+
+<p>所以，在现代文件系统上，甚至分片（sharding）都不是必须的？（道行太浅，表示没有看懂这句话。囧rz）</p>
+
+<h1>恢复（Recovery）</h1>
+
+<p>读取CURRENTWEN文件来找到最近提交的MANIFEST文件的名字</p>
+
+<p>读取上面找到的MANIFEST文件（因为MANIFEST保存着每一个level的有序表的集合）</p>
+
+<p>清空stable files（这个第一次出现在文档中，表示木有看懂。难道应该是sorted table的缩写？囧rz）</p>
+
+<p>我们可以在这里打开全部的sstables，但是可能晚点打开更好。。。、</p>
+
+<p>把日志块（log chunk）转换为一个新的level-0 sstable</p>
+
+<p>开始按被恢复序列号（recovered sequencei#）把新的写操作引入到一个新的日志文件</p>
+
+<h1>文件的垃圾收集（Garbage collection of files）</h1>
+
+<p><code>DeleteObsoleteFiles()</code>在每次压缩的最后和每次恢复的最后被调用。它会找到数据库中所有文件的名字。它会删除所有的非当前日志文件。它会删除非引用自某个level的并且也不作为一个正在运行的压缩的输出文件的所有的表文件。</p>
+
+<p>（全文完）</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-18T16:09:00+08:00" pubdate data-updated="true">May 18<span>th</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/05/18/leveldbshi-xian-shuo-ming/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/05/18/leveldbshi-xian-shuo-ming/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/05/17/leveldbxiang-xi-wen-dang/" title="Previous Post: LevelDB详细文档">&laquo; LevelDB详细文档</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/06/04/yong-que-ding-xing-you-xian-zi-dong-ji-dfashi-xian-kmpsuan-fa/" title="Next Post: 用确定性有限自动机DFA实现KMP算法">用确定性有限自动机DFA实现KMP算法 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/05/18/leveldbshi-xian-shuo-ming/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/05/18/leveldbshi-xian-shuo-ming/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,762 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LevelDB详细文档 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="本文档翻译自LevelDB的官方文档Detailed documentation。为了保证严谨和可读性，有些地方在翻译的同时仍然在后面追加了对应的英文名称。有些部分也添加了我的个人理解。不妥的地方恳请大家留言斧正，不吝感激！ LevelDB Jeff Dean, Sanjay Ghemawat &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/05/17/leveldbxiang-xi-wen-dang/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LevelDB详细文档</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-17T15:18:00+08:00" pubdate data-updated="true">May 17<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><em>本文档翻译自LevelDB的官方文档<a href="http://leveldb.googlecode.com/svn/trunk/doc/index.html">Detailed documentation</a>。为了保证严谨和可读性，有些地方在翻译的同时仍然在后面追加了对应的英文名称。有些部分也添加了我的个人理解。不妥的地方恳请大家留言斧正，不吝感激！</em></p>
+
+<h1>LevelDB</h1>
+
+<p><em>Jeff Dean, Sanjay Ghemawat</em></p>
+
+<p>leveldb库提供了一个持久化的键-值存储（key value storage）。Keys和values可以是任意的字节数组。在键-值存储库中，keys按用户指定的比较函数（comparator fonction）进行排序。</p>
+
+<h1>打开一个数据库（Opening A Database）</h1>
+
+<p>每一个<code>leveldb</code>数据库都有一个名字，这个名字对应文件系统的一个目录。数据库所有个内容都被存放在这个目录下。紧接下来的例子说明了如何打开一个数据库（如果有必要的话就创建它）：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;assert&gt;</span>
+</span><span class='line'><span class="cp">#include &quot;leveldb/db.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">create_if_missing</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">());</span>
+</span><span class='line'><span class="p">...</span>    
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果你想在这个数据库已经存在的前提下触发一个错误，把下面这行代码添加在<code>leveldb::DB::Open</code>调用之前：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">error_if_exists</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>状态类型（Status）</h1>
+
+<p>你可能已经注意到了上面代码中提到的<code>leveledb:Status</code>类型。leveldb库中绝大多数函数在运行中发生错误时都会返回这个类型的值。你可以通过检测结果是否为ok来打印相关的错误信息:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="p">...;</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">.</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>关闭一个数据库(Closing A Database）</h1>
+
+<p>当你完成了跟一个数据库相关的所有操作时，可以仅仅通过delete这个数据库对象来关闭这个数据库。比如：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="p">...</span> <span class="n">open</span> <span class="n">the</span> <span class="n">db</span> <span class="n">as</span> <span class="n">described</span> <span class="n">above</span> <span class="p">...</span>
+</span><span class='line'><span class="p">...</span> <span class="k">do</span> <span class="n">something</span> <span class="n">with</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>读和写（Reads And Writes）</h1>
+
+<p>leveldb数据库提供了Put,Delete,和Get方法来修改/查询数据库。举个例子，接下来的代码就把跟key1对应的value挪到了跟key2对应的value中：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="n">key2</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Delete</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>原子式更新（Atomic Updates）</h1>
+
+<p>注意，(请看一眼上面的代码)如果在Put完key2但在删除key1之前进程死掉了，同样的value就会被存储在多个key下面。这个问题其实可以避免，就是使用<code>WriteBatch</code>类来自动对数据库施加一组更新操作：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &quot;leveldb/write_batch.h&quot;</span>
+</span><span class='line'><span class="p">...</span>
+</span><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">leveldb</span><span class="o">::</span><span class="n">WriteBatch</span> <span class="n">batch</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">batch</span><span class="p">.</span><span class="n">Delete</span><span class="p">(</span><span class="n">key1</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">batch</span><span class="p">.</span><span class="n">Put</span><span class="p">(</span><span class="n">key2</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">batch</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面这个<code>WriteBatch</code>类的对象<code>batch</code>包含一系列将会被施加到数据库上的编辑操作，这些编辑操作会按顺序被施加到数据库上。请注意，我们要在调用<code>Put</code>之前调用<code>Delete</code>，这么做的目的是如果key1跟key2的值（这里的值是指key1和key2本身的值，不是跟key1和key2对应的value的值）相同的话，我们最后也不会因为彻底删掉跟key1和key2对应的value而导致错误。（这里多补充两句，比如key1本身的值为name，它对应的value的值为Michael，假设新Put进来的key2的值也写成了name（这就是前面说的key1和key2的值相同，都是name），那么如果先put后delete的话，在Put之后Delete之前，数据库中就存在俩同样的键-值对(key:value)，即<code>name:Michael</code>，这时执行Delete操作的话，就会把key1:value和key2:value都给删掉，数据库中就彻底不存在name:Michael了，而这不是我们所希望的，所以要先Delete掉key1:value,然后Put进key2:value，这样即使key1和key2相同也不怕了）。
+除了具备原子性之外，通过把大量的单个变更操作放到同一个<code>batch</code>对象中，<code>WriteBatch</code>类还能被用于批量更新（bulk updates）。</p>
+
+<h1>同步写（Synchronus Writes)</h1>
+
+<p>默认地，对leveldb数据库的每一次写操作都是异步的：write操作把要写的数据从进程push进操作系统就立马返回。从操作系统内存到底层持久化存储的转换是异步进行的。当然，同步(<code>sync</code>)标识也可以为某个特别的写操作打开，从而让这个写操作在数据被真正持久化存储以后再返回。（在遵循Posix标准的系统上，这个可以通过在写操作返回前调用<code>fsync(...)</code>或者<code>fdatasync(...)</code>或者<code>msync(..., MS_SYNC)</code> 来实现。）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span> <span class="n">write_options</span><span class="p">;</span>
+</span><span class='line'><span class="n">write_options</span><span class="p">.</span><span class="n">sync</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">db</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="n">write_options</span><span class="p">,</span> <span class="p">...);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>异步写操作通常比同步写操作快一千多倍。异步写操作的负面作用是，机器一旦宕掉可能会导致最后的少数更新被丢失。请注意，如果仅仅是写进程的一次挂掉（不是系统重新启动）则不会导致任何损失，因为即使当<code>sync</code>标识被设置为<code>false</code>时，一个更新操作在被认为完成之前就已经从进程内存被push到了操作系统内核。
+异步写操作通常可以被安全地使用。举个栗子，当加载大量数据到数据库的时候，你可以在机器宕掉后，通过重启一次块加载（bulk load）操作来处理因为宕机而丢失的更新。在连续N次同步写操作的地方混合方案也是可行的，即，一次宕机事件中，被前一个运行（run）过程执行的最后一次同步写操作完成之后，块加载（bulk load）被重启一次。（同步写操作能够更新一个用来描述跟某次宕机相关的重启地点的标识。）
+<code>WriteBatch</code>提供了异步写操作的一个替代选择。多个更新操作可能被置于同一个<code>WriteBatch</code>，并且通过一个同步写操作被一起执行（即，<code>write_option.sync</code>被设置为true）。通过这种方式，这次同步写操作的额外代价将会在它执行的这个批处理的全部写操作中被分期偿还。(对于最后一句话的理解，可以看看上一小节中的代码，db->Write()有俩参数，第一个参数决定这个Write是同步写操作还是异步写操作，第二个参数是个WriteBatch对象，它可以包含多个写入动作即Put操作，而且这个对象里包含的所有动作的执行是原子性的。)</p>
+
+<h1>并发（Concurrency）</h1>
+
+<p>一个数据库一次只能被一个进程打开。<code>leveldb</code>的实现要求使用来自操作系统的锁来阻止对数据库的滥用。在单进程中，同一个<code>leveldb::DB</code>对象可以被多个并发线程安全地共享。即，针对同一个数据库，在没有任何外部同步措施的前提下（leveldb实现本身将会自动去做所需要的同步过程），不同的线程可以写入迭代器或者获取迭代器或者调用<code>Get</code>方法。但是，其它的对象（比如Iterator和WriteBatch）可能需要外部的同步过程。如果两个线程共享一个这样的对象，这俩线程必须通过它们各自的加锁协议（locking protocol）来保护对这个对象的访问。更多的细节可以在公开的头文件中获得。</p>
+
+<h1>迭代（Iteration）</h1>
+
+<p>接下来的例子显示了如何打印数据库中所有的键-值对（key,value pair）：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">it</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">());</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToFirst</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;: &quot;</span>  <span class="o">&lt;&lt;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">().</span><span class="n">ok</span><span class="p">());</span>  <span class="c1">// Check for any errors found during the scan</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">it</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来的变形显示了如何只处理[start,limit)范围内的键：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">Seek</span><span class="p">(</span><span class="n">start</span><span class="p">);</span>
+</span><span class='line'>       <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">;</span>
+</span><span class='line'>       <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>你也能够按倒序来处理各个项。（附加说明：倒序迭代可能比正序迭代有点慢。）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToLast</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Prev</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>快照（Snapshots）</h1>
+
+<p>快照提供了键-值存储（key-value store）的全部状态的一致性的只读视图（read-only veews）。<code>ReadOptions::snapshot</code>（这是个指针）可能为非空（non-NULL），这表明一个读动作应该操作DB状态的某个版本。如果<code>ReadOptions::snapshot</code>为NULL，这个读操作将会操作当前状态的一个默认的（implicit）快照。
+快照被<code>DB::GetSnapshot()</code>方法创建：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">GetSnapshot</span><span class="p">();</span>
+</span><span class='line'><span class="p">...</span> <span class="n">apply</span> <span class="n">some</span> <span class="n">updates</span> <span class="n">to</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">iter</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">options</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">read</span> <span class="k">using</span> <span class="n">iter</span> <span class="n">to</span> <span class="n">view</span> <span class="n">the</span> <span class="n">state</span> <span class="n">when</span> <span class="n">the</span> <span class="n">snapshot</span> <span class="n">was</span> <span class="n">created</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">iter</span><span class="p">;</span>
+</span><span class='line'><span class="n">db</span><span class="o">-&gt;</span><span class="n">ReleaseSnapshot</span><span class="p">(</span><span class="n">options</span><span class="p">.</span><span class="n">snapshot</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>请注意，当一个快照不再被需要的时候，应该通过<code>DB::ReleaseSnapshot</code>接口释放它。通过这种方式，实现可以丢弃被维护用来支持自那次快照以来的读操作的DB状态。</p>
+
+<h1>切片（Slice）</h1>
+
+<p>上面提到的<code>it-&gt;key()</code>和<code>it-&gt;value()</code>调用（参见 “迭代” 小节代码）的返回值是<code>leveldb::Slice</code>类型的实例。<code>Slice</code>是一个简单的结构体，这个结构体包含了一个长度（即<code>Slice::size_</code>)和一个指向外部字节数组的指针（即<code>Slice::data_</code>)。相对于返回一个<code>std::string</code>，返回一个<code>Slice</code>是一个更加省事儿（cheaper）的做法，因为这样我们就不需要拷贝潜在的巨大的键（keys）和值（values）了。另外，<code>leveldb</code>的方法不返回以空字符（&#8217;\0&#8217;）结尾的C风格的字符串，因为<code>leveldb</code>的键（keys）和值（values）中被允许包含&#8217;\0&#8217;（也就是<code>leveldb</code>中表示key和value的字符串的开头中间结尾都可以包含&#8217;\0&#8217;）。</p>
+
+<p>C++ <code>string</code>和以空字符结尾的C风格的字符串可以很容易的被转换为一个<code>Slice</code>：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span><span class="p">(</span><span class="s">&quot;world&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一个<code>Slice</code>也很容易被转换回一个C++ <code>string</code>：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="nl">std:</span><span class="n">string</span> <span class="n">str</span> <span class="o">=</span> <span class="n">s1</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">str</span> <span class="o">==</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用<code>Slice</code>的时候要小心，因为当一个<code>Slice</code>被使用的时候，将依赖调用者（caller）来确保<code>Slice</code>指向的外部字节数组保持存在状态（remains live）。举个栗子，下面的代码有bug:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">slice</span><span class="p">;</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(...)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span> <span class="o">=</span> <span class="p">...;</span>
+</span><span class='line'>  <span class="n">slice</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">Use</span><span class="p">(</span><span class="n">slice</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当上面的<code>if</code>语句执行完毕（goes out of scope)的时候，<code>str</code>将被破坏（因为str是if语句块的局部变量），<code>slice</code>的备份存储（backing storage）也会消失。(多说两句，上面说了Slice里面有个指向外部字节数组的<code>Slice::data_</code>指针，也就是说Slice并不真正存储实际的数据，而是用一个指针指向它，这也是上面说的为什么返回一个Slice比返回一个std::string更加cheaper的做法，因为避免了数据拷贝，同时也是为什么在使用Slice的时候必须要careful的原因，因为如果不谨慎的话，很容易导致<code>Slice::data_</code>变成一个野指针。)</p>
+
+<h1>比较器（Comparators）</h1>
+
+<p>前面的例子用的都是针对key的默认的排序函数，这个默认的排序函数按字典序对字节进行排序。但是，你可以自己提供一个定制的比较器来打开一个数据库。举个栗子，假设每个数据库键（key）由两个数字构成，并且我们应该按照第一个数字来排序，当第一个数字相同的时候再按第二个数字排序。首先，定义一个继承自<code>leveldb::Comparator</code>的子类来表达下面的规则：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">TwoPartComparator</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Comparator</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">public</span><span class="o">:</span>
+</span><span class='line'>    <span class="c1">// Three-way comparison function:</span>
+</span><span class='line'>    <span class="c1">//   if a &lt; b: negative result</span>
+</span><span class='line'>    <span class="c1">//   if a &gt; b: positive result</span>
+</span><span class='line'>    <span class="c1">//   else: zero result</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">Compare</span><span class="p">(</span><span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">ParseKey</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a2</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">ParseKey</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b2</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a1</span> <span class="o">&lt;</span> <span class="n">b1</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a1</span> <span class="o">&gt;</span> <span class="n">b1</span><span class="p">)</span> <span class="k">return</span> <span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a2</span> <span class="o">&lt;</span> <span class="n">b2</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a2</span> <span class="o">&gt;</span> <span class="n">b2</span><span class="p">)</span> <span class="k">return</span> <span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Ignore the following methods for now:</span>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">Name</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&quot;TwoPartComparator&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">FindShortestSeparator</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">FindShortSuccessor</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>现在创建一个使用上面这个定制比较器的数据库：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">TwoPartComparator</span> <span class="n">cmp</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">create_if_missing</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">comparator</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cmp</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>向后兼容性（Backwards compatibility）</em></p>
+
+<p>在数据库被创建的时候,比较器中的<code>Name</code>方法的返回值会被附加到数据库上，并且这个数据库在后续每次被打开的时候，这个返回值还会被检查。如果这个name改变了，<code>leveldb::DB::Open</code>调用将会失败。因此，当且仅当新的键格式（key format）和比较函数与现存数据库不兼容的时候，才能改变这个name，并且也可以丢弃所有现存数据库的内容。</p>
+
+<p>但是，你仍然可以按已经制定的计划一点点地渐进演进你的键格式（key format）。举个栗子，你可以在每个键（key）的末尾存储一个版本号（对于大多数应用会牺牲一个字节）。当你希望转换到一个新的键格式(key format)的时候（比如，添加一个可选的第三部分到通过<code>TwoPartComparator</code>处理的keys上），（a)保持同样的比较器name（b)为新的keys递增版本号（c)改变比较器函数以让它使用在keys中发现的版本号来决定如何解释它们。</p>
+
+<h1>性能（Performance）</h1>
+
+<p>性能可以通过改变定义在<code>include/leveldb/options.h</code>中的各个类型的默认值来进行调整。</p>
+
+<p><em>块大小（Block size）</em></p>
+
+<p><code>leveldb</code>把相邻的键（keys）组织到同一个块（block）中，并且这样的一个块（block）是转移进/转移出（transfer to and from）持久化存储（persistent storage）的基本单元。默认的块大小大约为4096个非压缩字节。大多数针对整个数据库的内容做大量扫描（bulk scan）的应用程序可能希望增大这个值。而针对一些小数据（small values）进行大量“点读”（原文是point reads，我觉得应该是每次只访问这些小数据的一小部分）的应用程序可能希望切换到一个更小的块（如果切换到更小的块后性能测试能够表明性能改善的话）。块大小小于1K字节或者大于几M字节都不会得到更多的好处。也请注意，使用更大的块大小的时候，压缩（compression）将会变得更加有效果。</p>
+
+<p><em>压缩（Compression）</em></p>
+
+<p>每一个块在被写入持久化存储（persistent storage）的时候，都会被单独进行压缩。压缩功能默认是开启的，因为默认的压缩方法非常的快，而且，针对不可进行压缩的数据，压缩功能会自动失效。极少数情况下，应用程序可能想要完全关闭压缩功能，但是仅当基准测试(benchmark)能够表明这样做能改善性能的时候才应该这么做：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">compression</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">kNoCompression</span><span class="p">;</span>
+</span><span class='line'><span class="p">...</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="p">...)</span> <span class="p">....</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>缓存（Cache）</em></p>
+
+<p>数据库的内容被存储在文件系统的一组文件中，并且每个文件存储一系列被压缩过的块。如果<code>options.cache</code>不为空（non-NULL），它被用来缓存那些频繁被用到的不能进行压缩的块内容。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &quot;leveldb/cache.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">NewLRUCache</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="mi">1048576</span><span class="p">);</span>  <span class="c1">// 100MB cache</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">use</span> <span class="n">the</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">options</span><span class="p">.</span><span class="n">cache</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>请注意，缓存包含不能被压缩的数据，因此它应该根据应用层的数据量来调整大小，不能因为压缩而缩减自己的大小。（对于压缩块的缓存被留给了操作系统的缓冲器高速缓冲存储器（buffer cache），或者任何由客户端提供的定制的<code>Env</code>实现。）</p>
+
+<p>当执行一个大块读操作（a bulk read）的时候，应用程序可能希望取消缓存，这样被该读操作处理的数据就不会在最后取代绝大部分的缓存内容。可以使用一个per-iterator操作(这个地方我找不到一个恰当的词来翻译，结合下面的程序可以很容易神会，就是创建一个迭代器来遍历要操作的数据，关键是创建这个迭代器的时候把相关的options的fill_cache属性设置为false）达到这个目的：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">fill_cache</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">it</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">options</span><span class="p">);</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToFirst</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>键布局（Key Layout）</em></p>
+
+<p>请注意，磁盘迁移（transfer）和缓存数据的基本单位是一个块（block）。按数据库排序算法排序后，相邻的键（keys）将通常被安置在同一个块中。因此，应用程序能够通过把那些被访问的键放在一起或者把那些频繁被用到的键放到键空间（key space）的一个单独的区域来改善性能。</p>
+
+<p>举个栗子，假设我们正在<code>leveldb</code>基础上来实现一个简单的文件系统（file system）。我们可能希望存储的每个项（entries）的类型是下面的样子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">filename</span> <span class="o">-&gt;</span> <span class="n">permission</span><span class="o">-</span><span class="n">bits</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">list</span> <span class="n">of</span> <span class="n">file_block_ids</span>
+</span><span class='line'><span class="n">file_block_id</span> <span class="o">-&gt;</span> <span class="n">data</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们可能想要给<code>filename</code>键设置一个单字母长度的前缀（比如&#8217;/&#8217;），给<code>file_block_id</code>键设置一个不同的同样是单字母长度的前缀（比如&#8217;0&#8217;），这样的话，仅仅对元数据（metadata）进行的全面扫描就不用强迫我们去获取和缓存大块的文件内容了。</p>
+
+<p><em>过滤器（Filters）</em></p>
+
+<p>鉴于<code>leveldb</code>数据在磁盘上的组织方式，一个单独的<code>Get()</code>调用可能会涉及多次磁盘读取。可选的<code>FilterPolicy</code>机制能够被用来显著地减少磁盘读取次数。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">filter_policy</span> <span class="o">=</span> <span class="n">NewBloomFilterPolicy</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">use</span> <span class="n">the</span> <span class="n">database</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">options</span><span class="p">.</span><span class="n">filter_policy</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>前面的代码把基于布隆过滤器（<a href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>）的过滤策略与数据库db关联起来了。基于布隆过滤器的过滤操作依靠的是在内存中为每个键（key）保持的一定数目的数据位（在上面这个例子中每个键用了10个比特，因为我们传给<code>NewBloomFilterPolicy</code>的参数就是10）。这个过滤器将会把<code>Get()</code>调用所涉及的不必要的磁盘读取次数减小一个大约100左右的因子。增加为每个键在内存中保持的数据位的个数将会进一步大幅减小不必要的磁盘读取次数，当然这要以更多的内存使用为代价。我们推荐那些工作集（working set）不能完全放进内存并且要做大量随机读取操作的应用程序都设置一个过滤策略。</p>
+
+<p>如果你在使用一个定制的比较器，你应该确保你正在使用的过滤策略跟你的比较器是兼容的。举个栗子，考虑这样的一个比较器，当比较键（keys）的时候它会忽略尾随的空格（trailing space）。<code>NewBloomFilterPolicy</code>一定不能跟这样的一个比较器一块使用。那该怎么做呢？应用程序应该也提供一个定制的过滤器策略，这个过滤器策略也要忽略尾随空格（trailing space）。比如：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">CustomFilterPolicy</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">FilterPolicy</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">private</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">FilterPolicy</span><span class="o">*</span> <span class="n">builtin_policy_</span><span class="p">;</span>
+</span><span class='line'>   <span class="k">public</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">CustomFilterPolicy</span><span class="p">()</span> <span class="o">:</span> <span class="n">builtin_policy_</span><span class="p">(</span><span class="n">NewBloomFilterPolicy</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="o">~</span><span class="n">CustomFilterPolicy</span><span class="p">()</span> <span class="p">{</span> <span class="k">delete</span> <span class="n">builtin_policy_</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">Name</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&quot;IgnoreTrailingSpacesFilter&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">CreateFilter</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">*</span> <span class="n">keys</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">dst</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Use builtin bloom filter code after removing trailing spaces</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Slice</span><span class="o">&gt;</span> <span class="n">trimmed</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">trimmed</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoveTrailingSpaces</span><span class="p">(</span><span class="n">keys</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">builtin_policy_</span><span class="o">-&gt;</span><span class="n">CreateFilter</span><span class="p">(</span><span class="o">&amp;</span><span class="n">trimmed</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">n</span><span class="p">,</span> <span class="n">dst</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">bool</span> <span class="n">KeyMayMatch</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">filter</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Use builtin bloom filter code after removing trailing spaces</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">builtin_policy_</span><span class="o">-&gt;</span><span class="n">KeyMayMatch</span><span class="p">(</span><span class="n">RemoveTrailingSpaces</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">filter</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>更高级的应用程序可能会提供一个不使用布隆过滤器而是一些其它的过滤策略来对一组键进行摘要（summarizing）。详见<code>leveldb/filter_policy.h</code>。</p>
+
+<h1>校验和（Checksums）</h1>
+
+<p><code>leveldb</code>把checksums与它存储在文件系统中的所有数据关联了起来。有两个独立的控制手段表明了在进行checksum验证的时候可以多么激进：</p>
+
+<p>1.<code>ReadOptions::verify_checksums</code>可能被设置为true来对从文件系统中读取的所有数据强制进行checksum验证，而不是针对某一次读动作进行checksum验证。默认地，这种验证不会发生。</p>
+
+<p>2.<code>Options::paranoid_checks</code>可能会在打开一个数据库之前被设置为true，这样可以让数据库实现（database implementation）一旦检测到内部错误就立即引发一个错误。错误可能会在数据库被打开的时候被引发，或者以后被另外的数据库操作引发，这取决于数据库的哪个部分发生了错误。paranoid checking默认是关闭的，这么做是为了当数据库的一部分持久化存储被损坏的时候，数据库仍然可以继续被使用。</p>
+
+<p>如果一个数据库损坏了（当paranoid checking被打开的时候它可能就不能被打开了），<code>leveldb::RepairDB</code>函数可以被用来恢复尽可能多的数据。</p>
+
+<h1>近似大小（Approximate Size）</h1>
+
+<p><code>GetApproximateSizes</code>方法能被用来获取被一个或多个键范围（key ranges）使用的文件系统空间的近似字节数目。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'><span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;c&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="s">&quot;z&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">uint64_t</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">GetApproximateSizes</span><span class="p">(</span><span class="n">ranges</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sizes</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>前面的调用将会把<code>size[0]</code>设置为被键范围<code>[a..c)</code>使用的文件系统的近似字节数目，把&#8217;size[1]<code>设置为被键范围</code>[x..z)`使用的近似字节数目。</p>
+
+<h1>环境（Environment）</h1>
+
+<p>被<code>leveldb</code>实现发布的所有的文件操作（还有其它的操作系统调用）通过一个<code>level::Env</code>对象被路由。复杂精致的客户端可能希望提供它们自己的<code>Env</code>实现来获得更好的控制。比如，一个应用程序可能会在文件IO路径上引入人工延迟来限制<code>leveldb</code>对系统上其它活动(activities)的影响。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">SlowEnv</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Env</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">..</span> <span class="n">implementation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Env</span> <span class="n">interface</span> <span class="p">...</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">SlowEnv</span> <span class="n">env</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">env</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">env</span><span class="p">;</span>
+</span><span class='line'><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="p">...);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>移植（Porting）</h1>
+
+<p><code>leveldb</code>可以通过提供由<code>leveldb/port/port.h</code>导出的types/methods/functions的相关平台详细实现而被移植到一个新的平台上。详见<code>leveldb/port/port_example.h</code>。
+另外，新平台可能需要一个新的默认的<code>leveldb::Env</code>实现。详见<code>leveldb/util/env_posix.h</code>里面的例子。</p>
+
+<h1>其它信息（Other Information）</h1>
+
+<p>有关<code>leveldb</code>实现的细节请见下面的文档(后续会全部翻译)：</p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/impl.html">Implementation notes</a></p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/table_format.txt">Formait of an immutable Table file</a></p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/log_format.txt">Format of a log file</a></p>
+
+<p>（全文完）</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-17T15:18:00+08:00" pubdate data-updated="true">May 17<span>th</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/05/17/leveldbxiang-xi-wen-dang/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/05/17/leveldbxiang-xi-wen-dang/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/" title="Previous Post: 海量数据存储系列之哈希">&laquo; 海量数据存储系列之哈希</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/05/18/leveldbshi-xian-shuo-ming/" title="Next Post: LevelDB实现说明">LevelDB实现说明 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/05/17/leveldbxiang-xi-wen-dang/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/05/17/leveldbxiang-xi-wen-dang/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

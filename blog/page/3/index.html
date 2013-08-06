@@ -1,0 +1,2072 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="题目要把一个电话本里面的所有重复的电话号码转成标准格式，即形如102-1129的格式，并且输出其重复次数，号码输出时按字典序输出。如果没有重复的就输出No duplicates.。 这个题目我首先就想用STL，但是一想算了没什么锻炼。然后就想用bitmap，bitmap节省空间， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/page/3/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/07/11/poj-1002-487-3279-acdai-ma/">Poj 1002 487-3279 AC代码</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-11T21:07:00+08:00" pubdate data-updated="true">Jul 11<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/07/11/poj-1002-487-3279-acdai-ma/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>题目要把一个电话本里面的所有重复的电话号码转成标准格式，即形如102-1129的格式，并且输出其重复次数，号码输出时按字典序输出。如果没有重复的就输出No duplicates.。</p>
+
+<p>这个题目我首先就想用STL，但是一想算了没什么锻炼。然后就想用bitmap，bitmap节省空间，并且还有顺序符合那个字典序要求，但是算了下所有的号码是从000-0000到999-9999，一共1000万个数，用bitmap得耗费125MB，还是算了。所以就用了trie，这个数据结构相当节省空间，而且从上向下从左向右遍历符合字典序要求。我还想用trie的变形就是TST（ternary search trie,即三路搜索线索），TST更加节省空间。标准trie虽然可以复用某些分支，但是在输入不够随机的时候，可能会产生许多空桶。但是在写标准trie的时候因为该死的calloc害我浪费大量时间，后来就没写。</p>
+
+<p>唉，真的，如果因为不熟练造成的无谓的错误真的会让自己淹没在细节中。calloc会初始化分配好的内存，但素，第一个参数不要写成0啊魂淡！！！！开始不知道这里，不停的设置断点进行debug，查看内存的时候我都要怀疑自己对递归的理解了啊魂淡！呵呵:-)，不过，因为这个错误，对eclipse环境也更加熟悉了，而且为了规避递归出错（因为我实在不明白内存为什么是那个样子 TAT）所以还写了个非递归版本的插入操作。</p>
+
+<p>下面是代码，里面关键地方都有注释。题目请戳<a href="http://poj.org/problem?id=1002">487-3279</a>。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">dic</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span><span class="c1">//这个数组相当于一个map，把输入的电话号码中到大写字母映射为相应的数字，赋值见main函数。</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 一共十个数字（0-9），所以trie树每个节点最多十个儿子。</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="cp">#define CHILD_NUM 10</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">trie_node</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kt">size_t</span> <span class="n">count</span><span class="p">;</span><span class="c1">//记录号码出现次数</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">phone_num</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span><span class="c1">//存放出现次数超过一次的电话号码，共七位，不包含‘-’。</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">trie_node</span> <span class="o">*</span><span class="n">child</span><span class="p">[</span><span class="n">CHILD_NUM</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span> <span class="n">trie_node</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">duplicates_flag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 把输入中的字母转换为数字，把数字字符转换为数字。忽略无效的‘-’。</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">letter_to_digit</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">result</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">&#39;-&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="sc">&#39;A&#39;</span> <span class="o">&amp;&amp;</span> <span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">&lt;</span> <span class="sc">&#39;Z&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">result</span><span class="p">[</span><span class="n">j</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]];</span>
+</span><span class='line'>          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">result</span><span class="p">[</span><span class="n">j</span><span class="o">++</span><span class="p">]</span> <span class="o">=</span> <span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="sc">&#39;0&#39;</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 插入每个电话号码到trie树中</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">insert_trie</span><span class="p">(</span><span class="n">trie_node</span> <span class="o">*</span><span class="n">node</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">result</span><span class="p">,</span> <span class="kt">int</span> <span class="n">index</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">i</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">index</span><span class="p">];</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">trie_node</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">trie_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">trie_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">index</span> <span class="o">==</span> <span class="mi">6</span><span class="p">)</span> <span class="p">{</span><span class="c1">//到第七个数字的时候这个电话号码中每个数字就都要插入完成了。要记录该号码出现次数。</span>
+</span><span class='line'>      <span class="n">tmp</span> <span class="o">=</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>      <span class="n">tmp</span><span class="o">-&gt;</span><span class="n">count</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">tmp</span><span class="o">-&gt;</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span><span class="c1">//仅仅把出现次数超过1的电话号码进行存储，其它就不浪费时间存了。</span>
+</span><span class='line'>          <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">7</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">tmp</span><span class="o">-&gt;</span><span class="n">phone_num</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="n">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">insert_trie</span><span class="p">(</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">result</span><span class="p">,</span> <span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 查询重复号码串，若有出现超过一次的就输出该号码。</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">query_trie</span><span class="p">(</span><span class="n">trie_node</span> <span class="o">*</span><span class="n">node</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">trie_node</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">CHILD_NUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">tmp</span> <span class="o">=</span> <span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">tmp</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">tmp</span><span class="o">-&gt;</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">duplicates_flag</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span><span class="c1">//执行到这里说明电话簿里出现了重复号码。标志置为1。</span>
+</span><span class='line'>              <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="mi">7</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                  <span class="k">if</span><span class="p">(</span><span class="n">j</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span> <span class="n">printf</span><span class="p">(</span><span class="s">&quot;-&quot;</span><span class="p">);</span><span class="c1">//记得输出‘-’</span>
+</span><span class='line'>                  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="n">tmp</span><span class="o">-&gt;</span><span class="n">phone_num</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>              <span class="n">printf</span><span class="p">(</span><span class="s">&quot; %d</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="n">tmp</span><span class="o">-&gt;</span><span class="n">count</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">query_trie</span><span class="p">(</span><span class="n">tmp</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">destroy_trie</span><span class="p">(</span><span class="n">trie_node</span> <span class="o">*</span><span class="n">node</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">CHILD_NUM</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">destroy_trie</span><span class="p">(</span><span class="n">node</span><span class="o">-&gt;</span><span class="n">child</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">process</span><span class="p">(</span><span class="n">trie_node</span> <span class="o">*</span><span class="n">trie_root</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">result</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">letter_to_digit</span><span class="p">(</span><span class="n">str</span><span class="p">,</span> <span class="n">result</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">insert_trie</span><span class="p">(</span><span class="n">trie_root</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span>
+</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">size_t</span> <span class="n">n</span><span class="p">;</span>
+</span><span class='line'>  <span class="cm">/*</span>
+</span><span class='line'><span class="cm">  * 好坑爹！！！我开始设置的数组长度是20，老是WA，题目看了好几遍也没说输入字符串到底多大。</span>
+</span><span class='line'><span class="cm">  * 特么的最后没招了，把这个设置成2000，立马过了！！！！</span>
+</span><span class='line'><span class="cm">  */</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="mi">2000</span><span class="p">];</span>
+</span><span class='line'>  <span class="n">trie_node</span> <span class="o">*</span><span class="n">trie_root</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;A&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;B&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;C&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;D&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;E&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;F&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;G&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;H&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;I&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;J&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;K&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;L&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;M&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;N&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;O&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">6</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;P&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;R&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;S&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;T&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;U&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;V&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;W&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;X&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dic</span><span class="p">[</span><span class="sc">&#39;Y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">9</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">n</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">trie_root</span> <span class="o">=</span> <span class="p">(</span><span class="n">trie_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">trie_node</span><span class="p">));</span><span class="c1">//每次都要destroy这棵trie树，所以每次都要新建根节点</span>
+</span><span class='line'>      <span class="k">while</span> <span class="p">(</span><span class="n">n</span><span class="o">--</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">process</span><span class="p">(</span><span class="n">trie_root</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">duplicates_flag</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span><span class="c1">//判断是否有重复电话号码的标志</span>
+</span><span class='line'>      <span class="n">query_trie</span><span class="p">(</span><span class="n">trie_root</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">destroy_trie</span><span class="p">(</span><span class="n">trie_root</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">duplicates_flag</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">printf</span><span class="p">(</span><span class="s">&quot;No duplicates.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/07/10/poj-1001-expnentiation-acdai-ma/">Poj 1001 Expnentiation AC代码</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-07-10T23:56:00+08:00" pubdate data-updated="true">Jul 10<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/07/10/poj-1001-expnentiation-acdai-ma/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>自己过去都没正儿八经写过高精度算法，看<a href="http://poj.org/problem?id=1001">poj 1001 Exponentiation</a>通过率不太高，写个试试，没想到一次AC。思路很简单，细节有点小繁杂。数组a始终保存求幂的那个原数;数组b开始跟a内容一样，但是后面累成了几次以后b保存的就是中间结果;数组c保存数组a与数组b的乘积，每次计算完毕把数组c中内容后拷贝到数组b中。最后结果保存在数组c中。关键地方代码做了注释。（再不写博客，就快把markdown语法忘光了。。。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">a</span><span class="p">[</span><span class="mi">100</span><span class="p">],</span> <span class="n">b</span><span class="p">[</span><span class="mi">100</span><span class="p">],</span> <span class="n">c</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span>
+</span><span class='line'><span class="nf">exponentiation</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">r</span><span class="p">,</span> <span class="kt">int</span>  <span class="n">n</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">r</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">dot</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">temp</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">digit_num_a</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">digit_num_b</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">a</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">b</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">c</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">p</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;0&#39;</span><span class="p">)</span> <span class="n">p</span><span class="o">++</span><span class="p">;</span><span class="c1">//记录最高位有效数字位置，以去掉输入中前缀0</span>
+</span><span class='line'>  <span class="k">while</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;0&#39;</span><span class="p">)</span> <span class="n">len</span><span class="o">--</span><span class="p">;</span><span class="c1">//去掉后缀无效0</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">len</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="sc">&#39;.&#39;</span><span class="p">)</span> <span class="n">len</span><span class="o">--</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span><span class="c1">//若幂为1，则直接输出有效数字</span>
+</span><span class='line'>      <span class="k">while</span> <span class="p">(</span><span class="n">p</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%c&quot;</span><span class="p">,</span><span class="n">r</span><span class="p">[</span><span class="n">p</span><span class="p">]);</span>
+</span><span class='line'>          <span class="n">p</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">return</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">p</span><span class="p">;</span> <span class="n">i</span><span class="o">--</span><span class="p">,</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="sc">&#39;.&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">b</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="sc">&#39;0&#39;</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">digit_num_a</span><span class="o">++</span><span class="p">;</span><span class="c1">//记录有多少个数字</span>
+</span><span class='line'>          <span class="n">digit_num_b</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">dot</span> <span class="o">=</span> <span class="n">j</span><span class="p">;</span><span class="c1">// 记录小数点位置</span>
+</span><span class='line'>          <span class="n">j</span><span class="o">--</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">dot</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="n">dot</span> <span class="o">*=</span> <span class="n">n</span><span class="p">;</span><span class="c1">//求幂完毕后小数点应在的位置</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">memset</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">c</span><span class="p">));</span>
+</span><span class='line'>      <span class="n">temp</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">digit_num_a</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">for</span> <span class="p">(</span><span class="n">k</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="n">digit_num_b</span><span class="p">;</span> <span class="n">k</span><span class="o">++</span><span class="p">,</span> <span class="n">h</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">temp</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">+</span> <span class="n">c1</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c1</span> <span class="o">=</span> <span class="n">temp</span> <span class="o">/</span> <span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">temp</span> <span class="o">=</span>  <span class="n">temp</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">+=</span> <span class="n">temp</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">+=</span> <span class="n">c2</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c2</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">/</span> <span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">%</span> <span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">c1</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">c1</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c1</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">c2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">+=</span> <span class="n">c2</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">c2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">//把第j轮结果拷贝到b[]中</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="n">h</span><span class="o">--</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">h</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">b</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">digit_num_b</span> <span class="o">=</span> <span class="n">h</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span> <span class="n">c</span><span class="p">[</span><span class="n">h</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="n">h</span><span class="o">--</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">h</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span><span class="c1">//记录尾部第一个有效数字的位置</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span> <span class="n">j</span> <span class="o">&gt;=</span> <span class="n">dot</span><span class="p">;</span> <span class="n">j</span><span class="o">--</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">dot</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">dot</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&gt;=</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="n">dot</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="n">j</span> <span class="o">&gt;=</span> <span class="n">i</span><span class="p">;</span> <span class="n">j</span><span class="o">--</span><span class="p">)</span>
+</span><span class='line'>          <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">[</span><span class="n">j</span><span class="p">]);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span>
+</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">r</span><span class="p">[</span><span class="mi">10</span><span class="p">];</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">n</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s%d&quot;</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">n</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="n">exponentiation</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">n</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/06/04/yong-que-ding-xing-you-xian-zi-dong-ji-dfashi-xian-kmpsuan-fa/">用确定性有限自动机DFA实现KMP算法</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-06-04T14:43:00+08:00" pubdate data-updated="true">Jun 4<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/06/04/yong-que-ding-xing-you-xian-zi-dong-ji-dfashi-xian-kmpsuan-fa/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>字符串搜索或者字符串匹配这个应用很普遍，比如我们日常用的编辑器中按下Ctrl+F都能调出搜索对话框来查找某个字符串。在KMP出现之前最常用的办法是暴力搜索，就是一一比对文本和子串直到找到该子串或者文本结束，虽然简单粗暴，但是如果被搜索的子串如果没有太多的重复字符，这个方法还是非常高效，最坏情况的时间复杂度为O（nm），n为文本长度，m为要查找的子串长度。后面我把搜索子串所用的文本叫做text，把被搜索的子串叫做pattern。</p>
+
+<p>暴力搜索算法比较简单，先上个代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">static</span> <span class="kt">int</span> <span class="nf">search</span><span class="o">(</span><span class="n">String</span> <span class="n">pat</span><span class="o">,</span> <span class="n">String</span> <span class="n">txt</span><span class="o">)</span>
+</span><span class='line'><span class="o">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">M</span> <span class="o">=</span> <span class="n">pat</span><span class="o">.</span><span class="na">length</span><span class="o">();</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">N</span> <span class="o">=</span> <span class="n">txt</span><span class="o">.</span><span class="na">length</span><span class="o">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">N</span><span class="o">-</span><span class="n">M</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">j</span><span class="o">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="o">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">M</span><span class="o">;</span> <span class="n">j</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="o">(</span><span class="n">txt</span><span class="o">.</span><span class="na">charAt</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="o">!=</span> <span class="n">pat</span><span class="o">.</span><span class="na">charAt</span><span class="o">(</span><span class="n">j</span><span class="o">))</span>
+</span><span class='line'>              <span class="k">break</span><span class="o">;</span>
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>      <span class="k">if</span> <span class="o">(</span><span class="n">j</span> <span class="o">==</span> <span class="n">M</span><span class="o">)</span>
+</span><span class='line'>          <span class="k">return</span> <span class="n">i</span><span class="o">;</span><span class="c1">//found, return the beginning position of the substring</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">N</span><span class="o">;</span><span class="c1">//not found</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>详细搜索过程见下图：
+<img src="../_images_posted/Brute-force_substring_search.jpg" alt="Brute-force substring search" /></p>
+
+<p>暴力搜索一个很不好的地方就是指向文本的指针i老是需要回退，没有好好利用已经检测过的字符，老是重复检测。所以Knuth等大神发明了KMP算法，这个算法的精要就是文本指针不需要回退，而是回退指向子串的指针，从而避免重复检测。但是如何回退指向子串的指针呢，这就用到了确定性自动机。(未完。上传图片出现问题，不开心。。。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/05/18/leveldbshi-xian-shuo-ming/">LevelDB实现说明</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-18T16:09:00+08:00" pubdate data-updated="true">May 18<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/05/18/leveldbshi-xian-shuo-ming/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><em>本文档根据<a href="http://leveldb.googlecode.com/svn/trunk/doc/impl.html">Implementation notes</a>翻译，为了更加严谨，有些地方会保留对应的英文用法。如果有不妥的地方，恳请大家斧正，不吝感激！抱拳。</em></p>
+
+<h1>文件（Files）</h1>
+
+<p>leveldb的实现本质上与单一的<a href="http://labs.google.com/papers/bigtable.html">Bigtable tablet(section 5.3)</a>的表现形式（representation）相似。但是构成这种表现形式（representation）的文件的组织结构有点不同，下面会解释。
+每个数据库通过存储在一个目录下的一组文件来表示。正如下面列出来的，存在多种不同文件类型：</p>
+
+<p><em>日志文件（Log files）</em></p>
+
+<p>日志文件(<code>*.log</code>)存储了一系列最近的更新。每一个更新都被追加到当前日志文件中。当日志文件达到一个预定义的大小时（默认大约4MB），它就会被转换成一个有序表（sorted table，下面会谈到），同时一个新的日志文件会为将来的更新而被创建。</p>
+
+<p>当前日志文件的一个副本会被保存在一个内存结构（in-memory structure，即<code>memtable</code>）中。每一次执行读取操作的时候，这个副本都会被查询，这样读取操作就能反映所有被记录的更新。</p>
+
+<p><em>有序表（Sorted tables）</em></p>
+
+<p>一个有序表（<code>*.sst</code>）存储了一系列按键（key）序排列的项。每个项要么是对应该键（key）的值（value），要么是该键（key）的删除标记（deletion marker)。（删除标记被保存用来隐藏存在于老版本的有序表中的过时的值（values）。）</p>
+
+<p>有序表的集合被组织成一系列层级（levels）。有序表由一个日志文件生成，被放在一个特殊的<code>young</code>层级（也被叫做level-0）上。当young文件（young files）的数目超过一个特定的阈值（目前是4），所有的young文件跟所有与自己重叠的level-1层级的文件被合并在一起，来产生一系列新的level-1文件（合并后的数据每2MB生成一个新的level-1文件。）。</p>
+
+<p>young level上的文件可能包含相互重叠的键，但是其它level各自内部的文件相互之间没有重叠的键范围（key ranges）。考虑L>=1的level-L。当level-L上文件的组合大小超过10的L次方MB（即level-1为10MB，level-2为100MB，&#8230;），level-L上的一个文件就会和level-(L+1)上的与自己重叠的文件合并起来为level-(L+1)组成一组新文件。这些合并有一个渐进迁移的效果，即通过大块读写操作（bulk reads and writes）逐渐把来自young level的新的更新迁移到最高level上（这样就可以最小化昂贵的搜索操作(seeks)）。</p>
+
+<p><em>配置文件（Manifest）</em></p>
+
+<p>一个MANIFEST文件列出了构成每个层级的有序表的集合，相应的键范围，以及其它重要元数据。每次数据库被重新打开的时候，都会有一个新的MANIFEST文件（在文件名上带有一个嵌入的号码）被创建。MANIFEST文件会被格式化为一个日志（log），对服务状态（serving state，比如文件被添加或者被移除）作出的改变会被追加到这个日志里。</p>
+
+<p><em>Current文件</em></p>
+
+<p>CURRENT是一个简单的文本文件，包含了最新的MANIFEST文件的名字。</p>
+
+<p><em>信息日志(Info logs)</em></p>
+
+<p>指示性信息（Informatioal messages）被打印到名为LOG和LOG.old的文件中。</p>
+
+<p><em>其它（Others）</em></p>
+
+<p>被用于各种五花八门目的的其它文件也可能会出现（比如LOCK，*.dbtmp)。</p>
+
+<h1>Level 0</h1>
+
+<p>当日志文件增长到一个特定大小（默认是1MB，它上面还说默认是4MB，这里又来了个1MB，莫名其妙的）：</p>
+
+<p>》》创建一个全新的memtable（文档开头说了，这个内存结构用来保存日志文件的副本）和日志文件，并把将来的更新写到它俩这里（我觉得log file在磁盘上，而memtable是log file在内存里的一个映像，每次查询时查询的是memtable，因为它在内存里所以速度很快。所以每次写既要写memtable，又要写log file。）</p>
+
+<p>》》在后台做下面的事情：</p>
+
+<p>》》》》把前一个memtable的内容写到一个sstable(这个在这没有明说，我觉得就是前面提到的那个排序表即sorted table)</p>
+
+<p>》》》》丢弃前一个memtable</p>
+
+<p>》》》》删除老的日志文件和老的memtable</p>
+
+<p>》》》》把这个新的sstable增加到young（level-0）level上</p>
+
+<h1>压缩（Compactions）</h1>
+
+<p>当level L的大小超过它的限制的时候，我们在后台线程压缩它。压缩时会从level L取一个文件，并从level L+1 取出与这个文件重叠的所有文件。注意，如果一个level-L文件只与一个level-(L+1)文件部分重叠，level-(L+1)上的这个文件仍然会整个被作为这个压缩过程的输入并且会在压缩完毕后被丢弃。另外，因为level-0很特殊（level-0上的文件可能互相之间交叠），所以我们要特殊对待从level-0到level-1的压缩：一个level-0压缩可能会取出多个level-0文件以防这些文件互相之间重叠。</p>
+
+<p>一个压缩过程会合并选取的文件内容来产生一系列level-(L+1)文件。当前输出文件达到目标文件大小以后，我们切换到一个新level-(L+1)文件的产生过程。当前输出文件的键范围已经增长到足够重叠多于10个level-(L+2)文件以后，我们就切换到一个新的输出文件。前面最后的规则确保稍后的一个level-(L+1)文件的压缩不会从level-(L+2)选取太多的数据。(这一段基本没看懂。。。）</p>
+
+<p>老的文件被丢弃，并且新文件会被添加到服务状态（serving state）。</p>
+
+<p>对于某个特定level的压缩会在键范围内循环。再说的细一点儿，对于每个level L，我们记住level L上一次压缩的结束键（ending key），对于level L的下一次压缩，我们将会选取从那个结束键之后开始的第一个文件（如果不存在这样的文件，我们就绕回到键空间的开始位置）。</p>
+
+<p>压缩会丢弃被复写（overwritten）过的值（values）。如果没有更高的level包含范围与当前键重叠的文件，压缩过程也会丢弃删除标记。</p>
+
+<h1>计时（Timing）</h1>
+
+<p>level-0的压缩将会从level-0读取多达4个长度为1MB的文件，并且从level-1在最差情况下会读取全部文件（10MB）。即，我们将会读14MB的文件，写14MB的文件。</p>
+
+<p>除了这个特殊的level-0压缩之外，我们再看看其它层的压缩，我们需要从level L 选取一个2MB的文件，在最坏的情况下，这个文件会与level L+1 层的至少12个（原文这里用的是～12，查了半天不知道～在这里是什么意思，但是根据后面推断应该是最少的意思）文件重叠（其中的10个文件是因为level-(L+1) 的大小是level-L的十倍，另外最少两个文件是因为level-L被选取的文件的范围通常不会与level-L+1的文件的范围对齐)。因此，压缩将会读26MB，写26MB。假设磁盘IO的速度为100MB/s（对于现代驱动，大体上就在这个速度范围内），最坏情况下的压缩花费大约为0.5秒（（26MB + 26MB）/ 100MB/s = 0.5s）。</p>
+
+<p>如果我们限制后台对一些小东西（something small）的写操作，比如只用全速100MB/s的10%，一个压缩将会消耗高达5秒的时间（（26MB + 26MB） / （100MB * 10%） = 5s）。如果用户正以10MB/s的速度在写，我们可以建立大量的level-0文件（～50 to hold the 5<em>10MB，前面这句我不知道该怎么翻才好，我是下，至少能建立50个文件，因为5s</em>10MB/s = 50MB，一次压缩时间为5s，速度为10MB/s，而本节开头提到level-0每个文件是1MB）。这可能会大幅增加读操作的代价，因为在每次读的时候需要合并更多的文件。</p>
+
+<p>解决方案1：为了减轻这个问题，我们可能想要在level-0文件很大的时候增加日志文件切换的阈值(文档开头说默认是4MB）。尽管这么做有副作用，即这个阈值越大，我们将要需要更多的内存来保存相应的memtable。</p>
+
+<p>解决方案2：我们可能希望在level-0的文件数目增长的时候人工降低写操作的速度。</p>
+
+<p>解决方案3：我们设法减小大范围合并的代价。可能大多数level-0文件将会使它们的块在内存中处于不可压缩状态，那样的话我们就只需要担心合并迭代中的O（N）复杂度。</p>
+
+<h1>文件数目（Number of files）</h1>
+
+<p>并非总是创建2MB大小的文件，我们可以为更高的level创建更大的文件来减小文件数目，尽管是以更多的突发性压缩（bursty compations）为代价。还有另外一个选择，就是我们可以在多个目录中共享文件集合。</p>
+
+<p>下面的计时显示的是2011年2月4号在<code>ext3</code>文件系统上做的实验，即在包含不同的文件数目的目录中做了100，000个打开文件的操作：</p>
+
+<pre><code>    目录中的文件数目      打开一个文件的毫秒数
+
+        1000                        9
+
+       10000                       10
+
+      100000                       16
+</code></pre>
+
+<p>所以，在现代文件系统上，甚至分片（sharding）都不是必须的？（道行太浅，表示没有看懂这句话。囧rz）</p>
+
+<h1>恢复（Recovery）</h1>
+
+<p>读取CURRENTWEN文件来找到最近提交的MANIFEST文件的名字</p>
+
+<p>读取上面找到的MANIFEST文件（因为MANIFEST保存着每一个level的有序表的集合）</p>
+
+<p>清空stable files（这个第一次出现在文档中，表示木有看懂。难道应该是sorted table的缩写？囧rz）</p>
+
+<p>我们可以在这里打开全部的sstables，但是可能晚点打开更好。。。、</p>
+
+<p>把日志块（log chunk）转换为一个新的level-0 sstable</p>
+
+<p>开始按被恢复序列号（recovered sequencei#）把新的写操作引入到一个新的日志文件</p>
+
+<h1>文件的垃圾收集（Garbage collection of files）</h1>
+
+<p><code>DeleteObsoleteFiles()</code>在每次压缩的最后和每次恢复的最后被调用。它会找到数据库中所有文件的名字。它会删除所有的非当前日志文件。它会删除非引用自某个level的并且也不作为一个正在运行的压缩的输出文件的所有的表文件。</p>
+
+<p>（全文完）</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/05/17/leveldbxiang-xi-wen-dang/">LevelDB详细文档</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-05-17T15:18:00+08:00" pubdate data-updated="true">May 17<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/05/17/leveldbxiang-xi-wen-dang/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><em>本文档翻译自LevelDB的官方文档<a href="http://leveldb.googlecode.com/svn/trunk/doc/index.html">Detailed documentation</a>。为了保证严谨和可读性，有些地方在翻译的同时仍然在后面追加了对应的英文名称。有些部分也添加了我的个人理解。不妥的地方恳请大家留言斧正，不吝感激！</em></p>
+
+<h1>LevelDB</h1>
+
+<p><em>Jeff Dean, Sanjay Ghemawat</em></p>
+
+<p>leveldb库提供了一个持久化的键-值存储（key value storage）。Keys和values可以是任意的字节数组。在键-值存储库中，keys按用户指定的比较函数（comparator fonction）进行排序。</p>
+
+<h1>打开一个数据库（Opening A Database）</h1>
+
+<p>每一个<code>leveldb</code>数据库都有一个名字，这个名字对应文件系统的一个目录。数据库所有个内容都被存放在这个目录下。紧接下来的例子说明了如何打开一个数据库（如果有必要的话就创建它）：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;assert&gt;</span>
+</span><span class='line'><span class="cp">#include &quot;leveldb/db.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">create_if_missing</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">());</span>
+</span><span class='line'><span class="p">...</span>    
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果你想在这个数据库已经存在的前提下触发一个错误，把下面这行代码添加在<code>leveldb::DB::Open</code>调用之前：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">error_if_exists</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>状态类型（Status）</h1>
+
+<p>你可能已经注意到了上面代码中提到的<code>leveledb:Status</code>类型。leveldb库中绝大多数函数在运行中发生错误时都会返回这个类型的值。你可以通过检测结果是否为ok来打印相关的错误信息:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="p">...;</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">s</span><span class="p">.</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>关闭一个数据库(Closing A Database）</h1>
+
+<p>当你完成了跟一个数据库相关的所有操作时，可以仅仅通过delete这个数据库对象来关闭这个数据库。比如：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="p">...</span> <span class="n">open</span> <span class="n">the</span> <span class="n">db</span> <span class="n">as</span> <span class="n">described</span> <span class="n">above</span> <span class="p">...</span>
+</span><span class='line'><span class="p">...</span> <span class="k">do</span> <span class="n">something</span> <span class="n">with</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>读和写（Reads And Writes）</h1>
+
+<p>leveldb数据库提供了Put,Delete,和Get方法来修改/查询数据库。举个例子，接下来的代码就把跟key1对应的value挪到了跟key2对应的value中：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="n">key2</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Delete</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>原子式更新（Atomic Updates）</h1>
+
+<p>注意，(请看一眼上面的代码)如果在Put完key2但在删除key1之前进程死掉了，同样的value就会被存储在多个key下面。这个问题其实可以避免，就是使用<code>WriteBatch</code>类来自动对数据库施加一组更新操作：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &quot;leveldb/write_batch.h&quot;</span>
+</span><span class='line'><span class="p">...</span>
+</span><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Get</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">(),</span> <span class="n">key1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">value</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">leveldb</span><span class="o">::</span><span class="n">WriteBatch</span> <span class="n">batch</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">batch</span><span class="p">.</span><span class="n">Delete</span><span class="p">(</span><span class="n">key1</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">batch</span><span class="p">.</span><span class="n">Put</span><span class="p">(</span><span class="n">key2</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span><span class="p">(),</span> <span class="o">&amp;</span><span class="n">batch</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>上面这个<code>WriteBatch</code>类的对象<code>batch</code>包含一系列将会被施加到数据库上的编辑操作，这些编辑操作会按顺序被施加到数据库上。请注意，我们要在调用<code>Put</code>之前调用<code>Delete</code>，这么做的目的是如果key1跟key2的值（这里的值是指key1和key2本身的值，不是跟key1和key2对应的value的值）相同的话，我们最后也不会因为彻底删掉跟key1和key2对应的value而导致错误。（这里多补充两句，比如key1本身的值为name，它对应的value的值为Michael，假设新Put进来的key2的值也写成了name（这就是前面说的key1和key2的值相同，都是name），那么如果先put后delete的话，在Put之后Delete之前，数据库中就存在俩同样的键-值对(key:value)，即<code>name:Michael</code>，这时执行Delete操作的话，就会把key1:value和key2:value都给删掉，数据库中就彻底不存在name:Michael了，而这不是我们所希望的，所以要先Delete掉key1:value,然后Put进key2:value，这样即使key1和key2相同也不怕了）。
+除了具备原子性之外，通过把大量的单个变更操作放到同一个<code>batch</code>对象中，<code>WriteBatch</code>类还能被用于批量更新（bulk updates）。</p>
+
+<h1>同步写（Synchronus Writes)</h1>
+
+<p>默认地，对leveldb数据库的每一次写操作都是异步的：write操作把要写的数据从进程push进操作系统就立马返回。从操作系统内存到底层持久化存储的转换是异步进行的。当然，同步(<code>sync</code>)标识也可以为某个特别的写操作打开，从而让这个写操作在数据被真正持久化存储以后再返回。（在遵循Posix标准的系统上，这个可以通过在写操作返回前调用<code>fsync(...)</code>或者<code>fdatasync(...)</code>或者<code>msync(..., MS_SYNC)</code> 来实现。）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">WriteOptions</span> <span class="n">write_options</span><span class="p">;</span>
+</span><span class='line'><span class="n">write_options</span><span class="p">.</span><span class="n">sync</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">db</span><span class="o">-&gt;</span><span class="n">Put</span><span class="p">(</span><span class="n">write_options</span><span class="p">,</span> <span class="p">...);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>异步写操作通常比同步写操作快一千多倍。异步写操作的负面作用是，机器一旦宕掉可能会导致最后的少数更新被丢失。请注意，如果仅仅是写进程的一次挂掉（不是系统重新启动）则不会导致任何损失，因为即使当<code>sync</code>标识被设置为<code>false</code>时，一个更新操作在被认为完成之前就已经从进程内存被push到了操作系统内核。
+异步写操作通常可以被安全地使用。举个栗子，当加载大量数据到数据库的时候，你可以在机器宕掉后，通过重启一次块加载（bulk load）操作来处理因为宕机而丢失的更新。在连续N次同步写操作的地方混合方案也是可行的，即，一次宕机事件中，被前一个运行（run）过程执行的最后一次同步写操作完成之后，块加载（bulk load）被重启一次。（同步写操作能够更新一个用来描述跟某次宕机相关的重启地点的标识。）
+<code>WriteBatch</code>提供了异步写操作的一个替代选择。多个更新操作可能被置于同一个<code>WriteBatch</code>，并且通过一个同步写操作被一起执行（即，<code>write_option.sync</code>被设置为true）。通过这种方式，这次同步写操作的额外代价将会在它执行的这个批处理的全部写操作中被分期偿还。(对于最后一句话的理解，可以看看上一小节中的代码，db->Write()有俩参数，第一个参数决定这个Write是同步写操作还是异步写操作，第二个参数是个WriteBatch对象，它可以包含多个写入动作即Put操作，而且这个对象里包含的所有动作的执行是原子性的。)</p>
+
+<h1>并发（Concurrency）</h1>
+
+<p>一个数据库一次只能被一个进程打开。<code>leveldb</code>的实现要求使用来自操作系统的锁来阻止对数据库的滥用。在单进程中，同一个<code>leveldb::DB</code>对象可以被多个并发线程安全地共享。即，针对同一个数据库，在没有任何外部同步措施的前提下（leveldb实现本身将会自动去做所需要的同步过程），不同的线程可以写入迭代器或者获取迭代器或者调用<code>Get</code>方法。但是，其它的对象（比如Iterator和WriteBatch）可能需要外部的同步过程。如果两个线程共享一个这样的对象，这俩线程必须通过它们各自的加锁协议（locking protocol）来保护对这个对象的访问。更多的细节可以在公开的头文件中获得。</p>
+
+<h1>迭代（Iteration）</h1>
+
+<p>接下来的例子显示了如何打印数据库中所有的键-值对（key,value pair）：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">it</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span><span class="p">());</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToFirst</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;: &quot;</span>  <span class="o">&lt;&lt;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">().</span><span class="n">ok</span><span class="p">());</span>  <span class="c1">// Check for any errors found during the scan</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">it</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>接下来的变形显示了如何只处理[start,limit)范围内的键：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">Seek</span><span class="p">(</span><span class="n">start</span><span class="p">);</span>
+</span><span class='line'>       <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">().</span><span class="n">ToString</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">;</span>
+</span><span class='line'>       <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>你也能够按倒序来处理各个项。（附加说明：倒序迭代可能比正序迭代有点慢。）</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToLast</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Prev</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>快照（Snapshots）</h1>
+
+<p>快照提供了键-值存储（key-value store）的全部状态的一致性的只读视图（read-only veews）。<code>ReadOptions::snapshot</code>（这是个指针）可能为非空（non-NULL），这表明一个读动作应该操作DB状态的某个版本。如果<code>ReadOptions::snapshot</code>为NULL，这个读操作将会操作当前状态的一个默认的（implicit）快照。
+快照被<code>DB::GetSnapshot()</code>方法创建：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">GetSnapshot</span><span class="p">();</span>
+</span><span class='line'><span class="p">...</span> <span class="n">apply</span> <span class="n">some</span> <span class="n">updates</span> <span class="n">to</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">iter</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">options</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">read</span> <span class="k">using</span> <span class="n">iter</span> <span class="n">to</span> <span class="n">view</span> <span class="n">the</span> <span class="n">state</span> <span class="n">when</span> <span class="n">the</span> <span class="n">snapshot</span> <span class="n">was</span> <span class="n">created</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">iter</span><span class="p">;</span>
+</span><span class='line'><span class="n">db</span><span class="o">-&gt;</span><span class="n">ReleaseSnapshot</span><span class="p">(</span><span class="n">options</span><span class="p">.</span><span class="n">snapshot</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>请注意，当一个快照不再被需要的时候，应该通过<code>DB::ReleaseSnapshot</code>接口释放它。通过这种方式，实现可以丢弃被维护用来支持自那次快照以来的读操作的DB状态。</p>
+
+<h1>切片（Slice）</h1>
+
+<p>上面提到的<code>it-&gt;key()</code>和<code>it-&gt;value()</code>调用（参见 “迭代” 小节代码）的返回值是<code>leveldb::Slice</code>类型的实例。<code>Slice</code>是一个简单的结构体，这个结构体包含了一个长度（即<code>Slice::size_</code>)和一个指向外部字节数组的指针（即<code>Slice::data_</code>)。相对于返回一个<code>std::string</code>，返回一个<code>Slice</code>是一个更加省事儿（cheaper）的做法，因为这样我们就不需要拷贝潜在的巨大的键（keys）和值（values）了。另外，<code>leveldb</code>的方法不返回以空字符（&#8217;\0&#8217;）结尾的C风格的字符串，因为<code>leveldb</code>的键（keys）和值（values）中被允许包含&#8217;\0&#8217;（也就是<code>leveldb</code>中表示key和value的字符串的开头中间结尾都可以包含&#8217;\0&#8217;）。</p>
+
+<p>C++ <code>string</code>和以空字符结尾的C风格的字符串可以很容易的被转换为一个<code>Slice</code>：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">s1</span> <span class="o">=</span> <span class="s">&quot;hello&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span><span class="p">(</span><span class="s">&quot;world&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>一个<code>Slice</code>也很容易被转换回一个C++ <code>string</code>：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="nl">std:</span><span class="n">string</span> <span class="n">str</span> <span class="o">=</span> <span class="n">s1</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span>
+</span><span class='line'><span class="n">assert</span><span class="p">(</span><span class="n">str</span> <span class="o">==</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>使用<code>Slice</code>的时候要小心，因为当一个<code>Slice</code>被使用的时候，将依赖调用者（caller）来确保<code>Slice</code>指向的外部字节数组保持存在状态（remains live）。举个栗子，下面的代码有bug:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span> <span class="n">slice</span><span class="p">;</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(...)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span> <span class="o">=</span> <span class="p">...;</span>
+</span><span class='line'>  <span class="n">slice</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="n">Use</span><span class="p">(</span><span class="n">slice</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当上面的<code>if</code>语句执行完毕（goes out of scope)的时候，<code>str</code>将被破坏（因为str是if语句块的局部变量），<code>slice</code>的备份存储（backing storage）也会消失。(多说两句，上面说了Slice里面有个指向外部字节数组的<code>Slice::data_</code>指针，也就是说Slice并不真正存储实际的数据，而是用一个指针指向它，这也是上面说的为什么返回一个Slice比返回一个std::string更加cheaper的做法，因为避免了数据拷贝，同时也是为什么在使用Slice的时候必须要careful的原因，因为如果不谨慎的话，很容易导致<code>Slice::data_</code>变成一个野指针。)</p>
+
+<h1>比较器（Comparators）</h1>
+
+<p>前面的例子用的都是针对key的默认的排序函数，这个默认的排序函数按字典序对字节进行排序。但是，你可以自己提供一个定制的比较器来打开一个数据库。举个栗子，假设每个数据库键（key）由两个数字构成，并且我们应该按照第一个数字来排序，当第一个数字相同的时候再按第二个数字排序。首先，定义一个继承自<code>leveldb::Comparator</code>的子类来表达下面的规则：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">TwoPartComparator</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Comparator</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">public</span><span class="o">:</span>
+</span><span class='line'>    <span class="c1">// Three-way comparison function:</span>
+</span><span class='line'>    <span class="c1">//   if a &lt; b: negative result</span>
+</span><span class='line'>    <span class="c1">//   if a &gt; b: positive result</span>
+</span><span class='line'>    <span class="c1">//   else: zero result</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">Compare</span><span class="p">(</span><span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">ParseKey</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">a2</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">ParseKey</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">b2</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a1</span> <span class="o">&lt;</span> <span class="n">b1</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a1</span> <span class="o">&gt;</span> <span class="n">b1</span><span class="p">)</span> <span class="k">return</span> <span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a2</span> <span class="o">&lt;</span> <span class="n">b2</span><span class="p">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a2</span> <span class="o">&gt;</span> <span class="n">b2</span><span class="p">)</span> <span class="k">return</span> <span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Ignore the following methods for now:</span>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">Name</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&quot;TwoPartComparator&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">FindShortestSeparator</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Slice</span><span class="o">&amp;</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">FindShortSuccessor</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>现在创建一个使用上面这个定制比较器的数据库：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">TwoPartComparator</span> <span class="n">cmp</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">create_if_missing</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">comparator</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">cmp</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>向后兼容性（Backwards compatibility）</em></p>
+
+<p>在数据库被创建的时候,比较器中的<code>Name</code>方法的返回值会被附加到数据库上，并且这个数据库在后续每次被打开的时候，这个返回值还会被检查。如果这个name改变了，<code>leveldb::DB::Open</code>调用将会失败。因此，当且仅当新的键格式（key format）和比较函数与现存数据库不兼容的时候，才能改变这个name，并且也可以丢弃所有现存数据库的内容。</p>
+
+<p>但是，你仍然可以按已经制定的计划一点点地渐进演进你的键格式（key format）。举个栗子，你可以在每个键（key）的末尾存储一个版本号（对于大多数应用会牺牲一个字节）。当你希望转换到一个新的键格式(key format)的时候（比如，添加一个可选的第三部分到通过<code>TwoPartComparator</code>处理的keys上），（a)保持同样的比较器name（b)为新的keys递增版本号（c)改变比较器函数以让它使用在keys中发现的版本号来决定如何解释它们。</p>
+
+<h1>性能（Performance）</h1>
+
+<p>性能可以通过改变定义在<code>include/leveldb/options.h</code>中的各个类型的默认值来进行调整。</p>
+
+<p><em>块大小（Block size）</em></p>
+
+<p><code>leveldb</code>把相邻的键（keys）组织到同一个块（block）中，并且这样的一个块（block）是转移进/转移出（transfer to and from）持久化存储（persistent storage）的基本单元。默认的块大小大约为4096个非压缩字节。大多数针对整个数据库的内容做大量扫描（bulk scan）的应用程序可能希望增大这个值。而针对一些小数据（small values）进行大量“点读”（原文是point reads，我觉得应该是每次只访问这些小数据的一小部分）的应用程序可能希望切换到一个更小的块（如果切换到更小的块后性能测试能够表明性能改善的话）。块大小小于1K字节或者大于几M字节都不会得到更多的好处。也请注意，使用更大的块大小的时候，压缩（compression）将会变得更加有效果。</p>
+
+<p><em>压缩（Compression）</em></p>
+
+<p>每一个块在被写入持久化存储（persistent storage）的时候，都会被单独进行压缩。压缩功能默认是开启的，因为默认的压缩方法非常的快，而且，针对不可进行压缩的数据，压缩功能会自动失效。极少数情况下，应用程序可能想要完全关闭压缩功能，但是仅当基准测试(benchmark)能够表明这样做能改善性能的时候才应该这么做：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">compression</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">kNoCompression</span><span class="p">;</span>
+</span><span class='line'><span class="p">...</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="p">...)</span> <span class="p">....</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>缓存（Cache）</em></p>
+
+<p>数据库的内容被存储在文件系统的一组文件中，并且每个文件存储一系列被压缩过的块。如果<code>options.cache</code>不为空（non-NULL），它被用来缓存那些频繁被用到的不能进行压缩的块内容。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &quot;leveldb/cache.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">NewLRUCache</span><span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="mi">1048576</span><span class="p">);</span>  <span class="c1">// 100MB cache</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">use</span> <span class="n">the</span> <span class="n">db</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">options</span><span class="p">.</span><span class="n">cache</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>请注意，缓存包含不能被压缩的数据，因此它应该根据应用层的数据量来调整大小，不能因为压缩而缩减自己的大小。（对于压缩块的缓存被留给了操作系统的缓冲器高速缓冲存储器（buffer cache），或者任何由客户端提供的定制的<code>Env</code>实现。）</p>
+
+<p>当执行一个大块读操作（a bulk read）的时候，应用程序可能希望取消缓存，这样被该读操作处理的数据就不会在最后取代绝大部分的缓存内容。可以使用一个per-iterator操作(这个地方我找不到一个恰当的词来翻译，结合下面的程序可以很容易神会，就是创建一个迭代器来遍历要操作的数据，关键是创建这个迭代器的时候把相关的options的fill_cache属性设置为false）达到这个目的：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">ReadOptions</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">fill_cache</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Iterator</span><span class="o">*</span> <span class="n">it</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">NewIterator</span><span class="p">(</span><span class="n">options</span><span class="p">);</span>
+</span><span class='line'><span class="k">for</span> <span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">SeekToFirst</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Valid</span><span class="p">();</span> <span class="n">it</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em>键布局（Key Layout）</em></p>
+
+<p>请注意，磁盘迁移（transfer）和缓存数据的基本单位是一个块（block）。按数据库排序算法排序后，相邻的键（keys）将通常被安置在同一个块中。因此，应用程序能够通过把那些被访问的键放在一起或者把那些频繁被用到的键放到键空间（key space）的一个单独的区域来改善性能。</p>
+
+<p>举个栗子，假设我们正在<code>leveldb</code>基础上来实现一个简单的文件系统（file system）。我们可能希望存储的每个项（entries）的类型是下面的样子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">filename</span> <span class="o">-&gt;</span> <span class="n">permission</span><span class="o">-</span><span class="n">bits</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">list</span> <span class="n">of</span> <span class="n">file_block_ids</span>
+</span><span class='line'><span class="n">file_block_id</span> <span class="o">-&gt;</span> <span class="n">data</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>我们可能想要给<code>filename</code>键设置一个单字母长度的前缀（比如&#8217;/&#8217;），给<code>file_block_id</code>键设置一个不同的同样是单字母长度的前缀（比如&#8217;0&#8217;），这样的话，仅仅对元数据（metadata）进行的全面扫描就不用强迫我们去获取和缓存大块的文件内容了。</p>
+
+<p><em>过滤器（Filters）</em></p>
+
+<p>鉴于<code>leveldb</code>数据在磁盘上的组织方式，一个单独的<code>Get()</code>调用可能会涉及多次磁盘读取。可选的<code>FilterPolicy</code>机制能够被用来显著地减少磁盘读取次数。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">filter_policy</span> <span class="o">=</span> <span class="n">NewBloomFilterPolicy</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">*</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="s">&quot;/tmp/testdb&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">db</span><span class="p">);</span>
+</span><span class='line'><span class="p">...</span> <span class="n">use</span> <span class="n">the</span> <span class="n">database</span> <span class="p">...</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">db</span><span class="p">;</span>
+</span><span class='line'><span class="k">delete</span> <span class="n">options</span><span class="p">.</span><span class="n">filter_policy</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>前面的代码把基于布隆过滤器（<a href="http://en.wikipedia.org/wiki/Bloom_filter">Bloom filter</a>）的过滤策略与数据库db关联起来了。基于布隆过滤器的过滤操作依靠的是在内存中为每个键（key）保持的一定数目的数据位（在上面这个例子中每个键用了10个比特，因为我们传给<code>NewBloomFilterPolicy</code>的参数就是10）。这个过滤器将会把<code>Get()</code>调用所涉及的不必要的磁盘读取次数减小一个大约100左右的因子。增加为每个键在内存中保持的数据位的个数将会进一步大幅减小不必要的磁盘读取次数，当然这要以更多的内存使用为代价。我们推荐那些工作集（working set）不能完全放进内存并且要做大量随机读取操作的应用程序都设置一个过滤策略。</p>
+
+<p>如果你在使用一个定制的比较器，你应该确保你正在使用的过滤策略跟你的比较器是兼容的。举个栗子，考虑这样的一个比较器，当比较键（keys）的时候它会忽略尾随的空格（trailing space）。<code>NewBloomFilterPolicy</code>一定不能跟这样的一个比较器一块使用。那该怎么做呢？应用程序应该也提供一个定制的过滤器策略，这个过滤器策略也要忽略尾随空格（trailing space）。比如：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">CustomFilterPolicy</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">FilterPolicy</span> <span class="p">{</span>
+</span><span class='line'>   <span class="k">private</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">FilterPolicy</span><span class="o">*</span> <span class="n">builtin_policy_</span><span class="p">;</span>
+</span><span class='line'>   <span class="k">public</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">CustomFilterPolicy</span><span class="p">()</span> <span class="o">:</span> <span class="n">builtin_policy_</span><span class="p">(</span><span class="n">NewBloomFilterPolicy</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="o">~</span><span class="n">CustomFilterPolicy</span><span class="p">()</span> <span class="p">{</span> <span class="k">delete</span> <span class="n">builtin_policy_</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">Name</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&quot;IgnoreTrailingSpacesFilter&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">CreateFilter</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">*</span> <span class="n">keys</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">dst</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Use builtin bloom filter code after removing trailing spaces</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Slice</span><span class="o">&gt;</span> <span class="n">trimmed</span><span class="p">(</span><span class="n">n</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">trimmed</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoveTrailingSpaces</span><span class="p">(</span><span class="n">keys</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">builtin_policy_</span><span class="o">-&gt;</span><span class="n">CreateFilter</span><span class="p">(</span><span class="o">&amp;</span><span class="n">trimmed</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">n</span><span class="p">,</span> <span class="n">dst</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">bool</span> <span class="n">KeyMayMatch</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">filter</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">// Use builtin bloom filter code after removing trailing spaces</span>
+</span><span class='line'>      <span class="k">return</span> <span class="n">builtin_policy_</span><span class="o">-&gt;</span><span class="n">KeyMayMatch</span><span class="p">(</span><span class="n">RemoveTrailingSpaces</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">filter</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>更高级的应用程序可能会提供一个不使用布隆过滤器而是一些其它的过滤策略来对一组键进行摘要（summarizing）。详见<code>leveldb/filter_policy.h</code>。</p>
+
+<h1>校验和（Checksums）</h1>
+
+<p><code>leveldb</code>把checksums与它存储在文件系统中的所有数据关联了起来。有两个独立的控制手段表明了在进行checksum验证的时候可以多么激进：</p>
+
+<p>1.<code>ReadOptions::verify_checksums</code>可能被设置为true来对从文件系统中读取的所有数据强制进行checksum验证，而不是针对某一次读动作进行checksum验证。默认地，这种验证不会发生。</p>
+
+<p>2.<code>Options::paranoid_checks</code>可能会在打开一个数据库之前被设置为true，这样可以让数据库实现（database implementation）一旦检测到内部错误就立即引发一个错误。错误可能会在数据库被打开的时候被引发，或者以后被另外的数据库操作引发，这取决于数据库的哪个部分发生了错误。paranoid checking默认是关闭的，这么做是为了当数据库的一部分持久化存储被损坏的时候，数据库仍然可以继续被使用。</p>
+
+<p>如果一个数据库损坏了（当paranoid checking被打开的时候它可能就不能被打开了），<code>leveldb::RepairDB</code>函数可以被用来恢复尽可能多的数据。</p>
+
+<h1>近似大小（Approximate Size）</h1>
+
+<p><code>GetApproximateSizes</code>方法能被用来获取被一个或多个键范围（key ranges）使用的文件系统空间的近似字节数目。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span> <span class="n">ranges</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'><span class="n">ranges</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">,</span> <span class="s">&quot;c&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">ranges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Range</span><span class="p">(</span><span class="s">&quot;x&quot;</span><span class="p">,</span> <span class="s">&quot;z&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="n">uint64_t</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">db</span><span class="o">-&gt;</span><span class="n">GetApproximateSizes</span><span class="p">(</span><span class="n">ranges</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">sizes</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>前面的调用将会把<code>size[0]</code>设置为被键范围<code>[a..c)</code>使用的文件系统的近似字节数目，把&#8217;size[1]<code>设置为被键范围</code>[x..z)`使用的近似字节数目。</p>
+
+<h1>环境（Environment）</h1>
+
+<p>被<code>leveldb</code>实现发布的所有的文件操作（还有其它的操作系统调用）通过一个<code>level::Env</code>对象被路由。复杂精致的客户端可能希望提供它们自己的<code>Env</code>实现来获得更好的控制。比如，一个应用程序可能会在文件IO路径上引入人工延迟来限制<code>leveldb</code>对系统上其它活动(activities)的影响。</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">class</span> <span class="nc">SlowEnv</span> <span class="o">:</span> <span class="k">public</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">Env</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">..</span> <span class="n">implementation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">Env</span> <span class="n">interface</span> <span class="p">...</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">SlowEnv</span> <span class="n">env</span><span class="p">;</span>
+</span><span class='line'><span class="n">leveldb</span><span class="o">::</span><span class="n">Options</span> <span class="n">options</span><span class="p">;</span>
+</span><span class='line'><span class="n">options</span><span class="p">.</span><span class="n">env</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">env</span><span class="p">;</span>
+</span><span class='line'><span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">leveldb</span><span class="o">::</span><span class="n">DB</span><span class="o">::</span><span class="n">Open</span><span class="p">(</span><span class="n">options</span><span class="p">,</span> <span class="p">...);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>移植（Porting）</h1>
+
+<p><code>leveldb</code>可以通过提供由<code>leveldb/port/port.h</code>导出的types/methods/functions的相关平台详细实现而被移植到一个新的平台上。详见<code>leveldb/port/port_example.h</code>。
+另外，新平台可能需要一个新的默认的<code>leveldb::Env</code>实现。详见<code>leveldb/util/env_posix.h</code>里面的例子。</p>
+
+<h1>其它信息（Other Information）</h1>
+
+<p>有关<code>leveldb</code>实现的细节请见下面的文档(后续会全部翻译)：</p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/impl.html">Implementation notes</a></p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/table_format.txt">Formait of an immutable Table file</a></p>
+
+<p> <a href="http://leveldb.googlecode.com/svn/trunk/doc/log_format.txt">Format of a log file</a></p>
+
+<p>（全文完）</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/">海量数据存储系列之哈希</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-12T18:23:00+08:00" pubdate data-updated="true">Jan 12<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>数据存储起来，为毛要存储起来，肯定为了以后用来查询，也就是搜索，既然查询，当然希望查询速度越快越好了，时间复杂度是O（1）最理想了，哈希表就能办到。当然天下木有免费的午餐，速度是靠牺牲空间来得到的，也就是常说的“空间换时间”。人们后来感觉哈希也忒浪费空间了，于是布隆过滤器应运而生，查询很快的前提下进一步节省空间，比哈希更加强大，但是要牺牲正确率。（说句题外话，如果留心，会发现这个自然界真的好公平的，不管你想得到什么，肯定要首先作出牺牲，或者以后作出牺牲，这个“牺牲”是必须的。很多人比较在乎得到之前的牺牲，而对延期交付的牺牲不是太在乎。这算自然界其中一种形式的”能量守恒“吧。感觉万事皆顺从道。一个感触。）</p>
+
+<p>我这里只说用“链地址法”实现的哈希表，因为STL的哈希表是用这种方法实现的，JAVA重的hashmap也是用这种方法实现的，Redis里面的哈希表也是用这种方式实现的。待续。。。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-kai-pian-jie-shao/">海量数据存储系列之开篇介绍</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-12T17:46:00+08:00" pubdate data-updated="true">Jan 12<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-kai-pian-jie-shao/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>现在大数据火的一塌糊涂，自称不懂技术的马云退休演讲都提到，移动互联网还没弄明白，大数据时代又来了。给这个系列取名字时我挺犹豫的，要不要用“海量”俩字，想用“大量”但感觉不够准确，“海量”又觉得有点大了，不管了。</p>
+
+<p>这个系列，我打算总结一下跟海量数据存储有关的数据结构，哈希（hash）、位图（bitmap）、布隆过滤器（bloom filter）等。</p>
+
+<p>如果谁觉得我有错误或者不准确的地方，恳请您给我斧正。拜谢ORL</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/12/17/arpqi-pian-de-shi-xian/">ARP欺骗的实现</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-17T22:06:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/12/17/arpqi-pian-de-shi-xian/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>ARP欺骗是用处很大的一个技术，我们的路由器整天在欺骗我们的PC，没有这个欺骗我们就不能上网。</p>
+
+<p>先稍微说下我们每天经历的ARP欺骗，比如早上开路由器开PC，我们上Google，PC在发送IP包之前（假设Google的IP为173.194.72.94，当然事先要先通过DNS服务器获取Google的IP，这个不多谈）要先这个IP包装配为以太网帧，所以PC必须要知道Google服务器端MAC，才能填充好以太网帧。要想知道Google的MAC地址，我们的PC就要发送ARP广播请求，跟你一个局域网里的所有以太网设备都能收到这个请求，你希望有人告诉自己与173.194.72.94匹配的MAC地址是多少，因为我们的PC跟Google的服务器不在一个局域网里，所以Google服务器没法收到你的ARP请求，但是如果这个局域网中有其他PC知道的话，它收到这个请求就会给你发送ARP应答告诉你，如果没人知道怎么办？只能靠骗了！这个骗子就是路由器，这也是它的一个职责。路由器用自己的MAC地址冒充Google服务器的MAC地址，给你发ARP应答糊弄你，你收到应答后喜得不行，然后把所有帧都发给了路由器。下面我们就看路由器时怎么欺骗你的。</p>
+
+<p>路由器能捕捉到这个局域网里广播帧，假设路由器捕捉到的PC的ARP广播帧写成十六进制为：</p>
+
+<pre><code>    FFFFFFFFFFFFCE1A8206DA0708060001080006040001CE1A820C6B07C0A8127A000000000000C0A8127B00000B00482A00000D00000060FB5EFB61FB
+</code></pre>
+
+<p>按以太网帧结构把这个帧分解后为：</p>
+
+<pre><code>    FFFFFFFFFFFF---目的MAC，因为是广播帧，所以MAC地址全为1
+    CE1A8206DA07---源MAC，这里就是你PC的MAC
+    0806—---帧类型（以太网帧都是这个数）
+    0001----硬件类型（以太网帧都是这个数）
+    0800----协议类型（以太网帧都是这个数）
+    06----硬件地址长度（以太网帧都是这个数）
+    04----协议地址长度（以太网帧都是这个数）
+    0001—---操作字段（0001为ARP请求，0002为ARP应答）
+    CE1A820C6B07---源mac，还是你的PC的MAC地址
+    C0A8127A-------源IP地址，就是你的PC的ip
+    000000000000---目的mac，因为不知道，所以把这6个字节胡乱填充一下就好
+    ADC2485E-------目的ip，就是Google的IP
+    00000B00482A00000D00000060FB5EFB61FB---这18个字节都是填充，就是为了凑够以太网帧最小长度60字节
+</code></pre>
+
+<p>然后路由器收到PC的ARP广播请求后就给你发送应答，这个应答帧为：</p>
+
+<pre><code>    CE1A8206DA07000A3501FA1708060001080006040002000A3501FA17ADC2485ECE1A8206DA07C0A8127A00000B00482A00000D00000060FB5EFB61FB
+</code></pre>
+
+<p>按照以太网帧格式拆分后为：</p>
+
+<pre><code>    CE1A8206DA07---目的MAC，ARP应答不是广播帧，它直接把PC的MAC地址当成目的MAC
+    000A3501FA17---源MAC，这个是冒牌的，值本来该是Google服务器的MAC地址，但是这里路由器用自己的MAC来冒充
+    0806—---帧类型（以太网帧都是这个数）
+    0001----硬件类型（以太网帧都是这个数）
+    0800----协议类型（以太网帧都是这个数）
+    06----硬件地址长度（以太网帧都是这个数）
+    04----协议地址长度（以太网帧都是这个数）
+    0002—---操作字段（1为ARP请求，2为ARP应答）
+    000A3501FA17---源MAC
+    ADC2485E-------源IP地址，这个必须是ARP请求中的那个目的IP，也就是Google的IP。这个是重中之重，我的代码在
+            这犯过错误，如果PC收到应答后检查这个IP发现与自己请求的目的IP不一样，心说，莫名其妙，我
+            什么时候请求这个IP的MAC地址了？滚！它就会果断抛弃这个帧，然后继续请求，
+            谁知道Google的MAC地址呀！！！
+    CE1A8206DA07---目的mac也就是PC的MAC地址
+    C0A8127A-------目的ip，就是PC的IP
+    00000B00482A00000D00000060FB5EFB61FB---这18个字节都是填充，为了凑够以太网帧最小长度60字节，这个应答完全
+                        照抄了请求的填充，这些数都无所谓。
+</code></pre>
+
+<p>PC在收到这个帧后，就真以为那个MAC地址是Google的，然后就把帧一股脑全发给路由器了。</p>
+
+<p>然后你就可以上Google了。
+然后大家一起来拍砖！</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/12/17/dui-kosarajusuan-fa-de-li-jie-si-lu/">对kosaraju算法的理解思路</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-17T21:51:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/12/17/dui-kosarajusuan-fa-de-li-jie-si-lu/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这个算法网上很多介绍，但大多都很相似，着重介绍算法实现而没有证明或者容易理解的解释。我说下自己对kosaraju算法的理解思路。这个算法名字我不会读，搜了半天看到本尊，发现他长得像印度人，也就释然了。回正题。kosaraju算法用来求一个有向图的所有强连通分量，算法很简单，但是理解起来有点麻烦，我是这么觉得。但是跟无向图的连通分量求法结合起来，就非常容易理解了。所以理解这个Korasaju算法的前提是你理解无向图所有连通分量的算法，这个算法相当图森破。
+先看无向图的连通分量求法，其实无向图的连通分量就都是强连通分量。无向图的强连通分量就是用DFS算法顺序遍历邻接表时顺道干点小动作，写下代码更直观一些：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#define maxN 1024</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">marked</span><span class="p">[</span><span class="n">maxN</span><span class="p">];</span><span class="c1">//用于记录某个点是否被访问过，0为没有被临幸过，1为被临幸过</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">id</span><span class="p">[</span><span class="n">maxN</span><span class="p">];</span><span class="c1">//记录每个点所属的连通分量</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">count</span><span class="p">;</span><span class="c1">//记录连通分量总数目</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">cc</span><span class="p">(</span><span class="n">graph</span> <span class="o">*</span><span class="n">g</span><span class="p">){</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">memset</span><span class="p">(</span><span class="n">marked</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">marked</span><span class="p">));</span>
+</span><span class='line'>    <span class="n">memset</span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">id</span><span class="p">));</span>
+</span><span class='line'>    <span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">g</span><span class="o">-&gt;</span><span class="n">V</span><span class="p">;</span><span class="n">i</span><span class="o">++</span><span class="p">){</span><span class="c1">//之所以这里用循环就是因为g指向的无向图可能不是一个连通图，而是由多个连同分量组成</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">marked</span><span class="p">[</span><span class="n">i</span><span class="p">]){</span><span class="n">dfs</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">i</span><span class="p">);</span> <span class="n">count</span><span class="o">++</span><span class="p">;}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">dfs</span><span class="p">(</span><span class="n">graph</span> <span class="o">*</span><span class="n">g</span><span class="p">,</span><span class="kt">int</span> <span class="n">v</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">graphNode</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">marked</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">id</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">=</span><span class="n">count</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">t</span><span class="o">=</span><span class="n">g</span><span class="o">-&gt;</span><span class="n">adjlist</span><span class="p">[</span><span class="n">v</span><span class="p">].</span><span class="n">next</span><span class="p">;</span><span class="c1">//t指向v的邻接点</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">t</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">marked</span><span class="p">[</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">]){</span><span class="n">dfs</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">);}</span><span class="c1">//这里是重点，就是你发现v到t-&gt;key有路径就把它算到跟自己在一个</span>
+</span><span class='line'><span class="c1">//连通分量里了，这里有一个隐性前提，就是你提前知道t-&gt;key一定可以到v，所以你发现v可以到t-&gt;key的时候，你毫</span>
+</span><span class='line'><span class="c1">//不犹豫把它算为跟自己一伙儿的了。Korasaju算法不同书上有不同的表述，区别是先遍历图g还是先遍历图g的逆向</span>
+</span><span class='line'><span class="c1">//图，这只是顺序的区别。我把我看得版本完整说一下：（1）先DFS遍历图g的逆向图，记录遍历的逆后序。（什么</span>
+</span><span class='line'><span class="c1">//叫逆后序？逆后序就是DFS时后序的逆序，注意逆后序不一定为DFS的前序。DFS前序为，访问某个顶点前，把它</span>
+</span><span class='line'><span class="c1">//push进队列。DFS后序为访问完某个顶点后才把它push进队列。而DFS逆后序为访问完某个顶点后把它push进一个栈中。</span>
+</span><span class='line'><span class="c1">//当DFS遍历完整个图后，后序队列的输出与逆后序栈的输出正好相反。）（2）然后按着图g逆向图的DFS遍历的逆后</span>
+</span><span class='line'><span class="c1">//序序列遍历图g求所有的强连通分量，这一步的过程跟无向图求所有连通分量的算法一模一样！按着这里说的遍历顺</span>
+</span><span class='line'><span class="c1">//序重复无向图求所有连通分量的步骤求出来的就是有向图的所有强连通分量，为什么呢？因为我们完成第一步后，按</span>
+</span><span class='line'><span class="c1">//着第一步得到的逆后序要对有向图g进行DFS遍历的前一刻，前面这段过程就相当于我们完成了对这幅有向图g一个加工，</span>
+</span><span class='line'><span class="c1">//把它加工成了一个无向图！也就是说，这个加工实现了我注释开头提到的那个隐性前提。所以后面按着无向图求所有</span>
+</span><span class='line'><span class="c1">//连通分量的步骤求出来的就是有向图g的所有强连通分量。举个例子，比如有向图3-&gt;5-&gt;4-&gt;3，它的逆向图</span>
+</span><span class='line'><span class="c1">//为3-&gt;4-&gt;5-&gt;3（你最好在纸上画下，就是个三角循环图），从逆向图的顶点3开始DFS，得到的逆后续为3，4,5 。</span>
+</span><span class='line'><span class="c1">//按着这个顺序对原图进行DFS，DFS(3)时遇到5，则5肯定跟3在一个强连通分量中</span>
+</span><span class='line'><span class="c1">//（为什么？因为我们逆向图DFS(5)时肯定能到达3，这就是隐形前提。所以正向图DFS(3)遇到5时，</span>
+</span><span class='line'><span class="c1">//我们毫不犹豫把它算到自己一个强连通分量中。）</span>
+</span><span class='line'>        <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/12/16/tong-guo-githubhe-octopressda-jian-blogxiang-xi-bu-zou-yi-ji-tong-guo-octopressxie-bo-ke-de-bu-zou/">通过github和octopress搭建Blog详细步骤以及通过Octopress写博客的步骤</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-16T21:39:00+08:00" pubdate data-updated="true">Dec 16<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/12/16/tong-guo-githubhe-octopressda-jian-blogxiang-xi-bu-zou-yi-ji-tong-guo-octopressxie-bo-ke-de-bu-zou/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这篇文章是为像我一样的不懂ruby、不懂git的newbie写的，大牛请绕路。</p>
+
+<p>开始之前先说点题外话，这几天对于我这个newbie来说是痛苦的，上段时间开始对Python极其感兴趣，自己又很喜欢豆瓣，所以想用豆瓣的API做点什么，于是为了获取Python版本的API，所以注册了github，但是我真的对这个网站毫无概念，就觉得跟网盘差不多，因为我相当孤陋寡闻，对于Linus开发的git听都没听过，我觉得自己简直弱爆了。这次通过搭建这个Blog，觉得github真的好酷！</p>
+
+<p>搭建过程最最好的指导莫过于octopress的<a href="http://octopress.org/docs/">官方文档</a>，我开始为了图省劲，不停的搜索相关的搭建步骤，可是很失望，没有一个文档对我这个newbie的胃口。所以我就直接看官方文档，而且官方文档我也没全看，因为我只想快速把Blog搭起来，其它的我不想现在配置，facebook不是有句名言叫做<em>Done is better than perfect</em>吗？先搭起来再说。</p>
+
+<p><a href="http://octopress.org/docs/">官方文档</a>中，我重点看的文档主要是两部分，一部分是<em>Getting Started</em>里面的<a href="http://octopress.org/docs/setup/">Initial setup</a>，另一部分是<em>Using Octopress</em>里面的<a href="http://octopress.org/docs/deploying/">Deploying Octopress</a>。其它的我觉得都是属于Perfect部分，我这里只说Done的部分。</p>
+
+<h1>第一部分<a href="http://octopress.org/docs/setup/">Initial setup</a></h1>
+
+<ol>
+<li><p>安装Git</p>
+
+<p> 在<em>Before You Begin</em>中的第1步<em>Install Git</em>那个链接你就不要按了，在天朝打不开，每次遇到科技网站打不开的时候我就抓狂得很！怎么安装呢，如果你跟我一样用的是Ubuntu 12.04，那么打开你的Terminal，输入：</p>
+
+<pre><code>     sudo apt-get install git-core
+</code></pre>
+
+<p> 其它系统请自行Google。</p></li>
+<li><p>安装Ruby 1.9.3</p>
+
+<p> 我选择的是RVM，因为那几天<a href="http://octopress.org/docs/setup/rbenv/">rbenv</a>这个链接我打不开，所以我用的是<a href="http://octopress.org/docs/setup/rvm/">RVM</a>这个链接。严格按着每一步来执行。先是</p>
+
+<pre><code>     curl -L https://get.rvm.io | bash -s stable --ruby
+</code></pre>
+
+ 这个地方需要非常注意，这个命令执行后的提示非常重要，命令执行一会后会提示你输入
+
+<pre><code>     q
+</code></pre>
+
+ 然后才能继续，这个没有问题，然后命令执行完毕后，会提示你运行
+
+<pre><code>     source /home/chienlung/.rvm/scripts/rvm
+</code></pre>
+
+ 这个真的非常重要，否则后面安装Octopress时会出错，对于我这个Ruby小白来说我不知道为什么这样，但是这个命令很重要，我猜应该是运行rvm，否则后面那个命令会出错。运行完这个命令后。把文档中提示的下面三条命令：
+
+<pre><code>     rvm install 1.9.3 
+     rvm use 1.9.3 
+     rvm rubygems latest
+</code></pre>
+
+ 运行完毕，RVM就算装完了。完事你可以输入
+
+<pre><code>     ruby --version
+</code></pre>
+
+<p> 来查看你用的是否为ruby 1.9.3，这个没什么问题。</p></li>
+<li><p>安装Octopress</p>
+
+<p> <a href="http://octopress.org/docs/setup/">Setup Octopress</a>时，严格执行文档中这三个命令即可：</p>
+
+<pre><code>     git clone git://github.com/imathis/octopress.git octopress
+     cd octopress    # If you use RVM, You'll be asked if you trust the .rvmrc file (say yes).
+     ruby --version  # Should report Ruby 1.9.3
+</code></pre>
+
+ 然后紧接着执行下面命令来安装依赖，也许你现在犹豫刚才<code>cd octopress</code>了，现在要不要退出来，千万别，如果没有提示，这些命令必须在这个文件夹下执行：
+
+<pre><code>     gem install bundler # 这里可能因为墙，或者网速可能会超时，那就重复尝试，实在不行换个时间点再来做
+     rbenv rehash    # If you use rbenv, rehash to be able to run the bundle command，如果前面安的是RVM，这句不用执行
+     bundle install  # 还记得前面装RVM时我那个说点很重要那个命令了吗，如果不执行那句，这里就会失败
+</code></pre>
+
+ 然后安装默认的Octopress theme，执行下面这个命令：
+
+<pre><code>     rake install
+</code></pre>
+
+ 好了，到这里算是安装完Octopresss了。
+
+<h1>第二部分<a href="http://octopress.org/docs/deploying/github/">Deploying to Github Pages</a></h1></li>
+<li><p>创建<a href="https://github.com/new">new Github repository</a></p>
+
+<p> 这里先多说两句，在我们的Blog中为什么涉及到Github呢，因为，Github相当于我们的免费主机，我们把Blog的所有代码和相关内容都存储到了Github上，所以才有了这里的为我们的Blog创建一个Github仓库。<a href="https://github.com/new">戳这</a>进入创建repository，这里又有一个地方容易出错，就是repository name，这个名字的格式为<em>username.github.com</em>，这里的<em>username</em>必须跟你的github网站用户名相同，比如我的github用户名叫Chienlung，然后的repository name必须为<em>chienlung.github.com</em>，而不能是其它。开始我本来打算它<em>ponyo.github.com</em>，可是后面就是不成功，详细原因我还没去细究，先不管它，搭起来再说。后面Description你可也随便写，也可也不写。再后面一般选public，要是选private是要给github交钱的。再后面Initialize this repository with a README 前面的勾可以勾上也可也不勾上，它推荐勾上。好了，点击Create repository就完成了。
+ 这里还要多说几句，就是如果你申请github帐号后需要在本地系统生成SSH KEY，然后贴到你的github账户里，因为octopress命令是通过SSH方式进行Deploy的。如果你已经做过了，那就跳过这里。点击<a href="https://help.github.com/articles/generating-ssh-keys">Generating SSH Keys</a>，这个页面有详细的生成SSH KEY的步骤：
+ 打开一个新的Terminal终端，按如下步骤进行：
+ 第一步输入：</p>
+
+<pre><code>     cd ~/.ssh #这个命令是检查你的用户目录下是否有一个叫.ssh的目录，如果没有的话直接跳到第三步，否则到第二步
+</code></pre>
+
+ 第二步输入：
+
+<pre><code>     ls # 这个命令会列出.ssh目录下的子目录，看里面是否有个叫id_rsa的。反正我这没有，没有的话直接跳到第三步，否则继续
+     mkdir key_backup # 创建一个叫key_backup的目录
+     cp id_rsa* key_backup # 把id_rsa keypair拷贝到key_backup目录下，我对这里id_rsa为什么后面跟个星号，我不清楚，通配符吗？我没用过这个命令
+     rm id_rsa* # 删除这个id_rsa keypair
+</code></pre>
+
+ 第三步输入(执行下面命令的时候，会问你是否输入一个文件来保存生成的key，官网要求什么也别输入，直接按Enter键即可)：
+
+<pre><code>     ssh-keygen -t rsa -C "your_email@youremail.com" # 用你提供的Email生成key，这里的Email没有详细说明，我用的是注册github时用的那个。 
+</code></pre>
+
+ 执行上面这个命令后，会有下面的提示：
+
+<pre><code>     Enter passphrase (empty for no passphrase): # 这里的passphrase就是密码的意思，你随便输入一个密码，自己记住，以后deploy时会用到这个密码，这个密码也可以为空
+     Enter same passphrase again: # 再次输入密码进行确认
+</code></pre>
+
+ 第四步输入：
+
+<pre><code>     sudo apt-get install xclip # 安装xclip，这是一个很碉堡的clipboard
+     xclip -sel clip &lt; ~/.ssh/id_rsa.pub # 把id_rsa.pub文件里的内容拷贝到这个碉堡的clipboard上
+</code></pre>
+
+<p> 然后点击<a href="https://github.com/settings/profile">这里</a>去你的github“账户设置”，在这个页面左边侧条里有个<a href="https://github.com/settings/ssh">SSH Keys</a>链接，戳它转到一个新的页面，点击右上角那个“Add SSH Key”按钮，“Title”栏里你随便写，然后在“Key”栏里按Ctrl+V，就把你的SSH Key粘贴到里面了。然后点击“Add Key”按钮，好了，大功告成！</p></li>
+<li><p>开始Deloy你的Blog
+ 执行下面的命令：</p>
+
+<pre><code>     rake setup_github_pages # 这个命令执行后，会要求你输入你为Blog建立的repository的SSH地址，这个提示是个坑，而且不只有我一个newbie掉进去了，下面详细来说这个坑。
+</code></pre>
+
+ 看<a href="http://stackoverflow.com/questions/12060903/github-error-repository-not-found-when-installing-octopress/13888445#13888445">stackoverflow关于这个坑的问答</a>，如果按照这个提示，我应该输入<code>git@github.com:Chienlung/chienlung.github.com</code>，结果就是说这个repository找不到，因为这个根本不是repository的SSH地址，后面还必须要加上<code>.git</code>，所以正确的输入应该为<code>git@github.com:Chienlung/chienlung.github.com.git</code>。
+ 然后输入下面的命令：
+
+<pre><code>     rake generate # 这个命令就是把按照所有的更新在本地生成网站。注意这个命令的输出，有时候你的更改出错的时候，这个命令不会执行成功，然后你可也根据输出来检查自己到底哪里出错了。
+</code></pre>
+
+ 然后输入下面的命令：
+
+<pre><code>     rake deploy # 这个命令开始部署网站了，它也会更新github我们这个repository的master分支。如果是第一次用这个命令，会要求输入密码，这个密码就是前面生成SSH Key时你设定的那么个密码。   
+</code></pre>
+
+<p> 上面这三个命令以后会频繁使用，只要你修改了Blog的配置，或者写了增删改了文章，就要执行上面三个命令来更新你的Blog。执行<code>rake deploy</code>成功后，github会给你的邮箱发送邮件，告诉你成功了过一会或者立刻你就能看到你Blog的更新，这个的确有延迟，但是延迟不会很久。</p></li>
+<li><p>更新Blog在github的repository的source分支
+ 执行下面的命令：</p>
+
+<pre><code> git add .
+ git commit -m 'your message' # 这个‘your message’你可以随便写，反正我这个小白是这么个干的
+ git push origin source # 这个命令把本地的关于Blog的源代码完全push到了github上存储起来了。
+</code></pre>
+
+<p> 以后你对Blog有所更改后，执行完毕这些命令后，去这个分支下点开文件你就会看到一些改变。这三个命令也经常使用，跟上面那三个一样，你对你的Blog增删改以后要执行这个命令来更新repository。
+到这里，算是完事了，输入你Blog的网址，类似与我这个<code>chienlung.github.com</code>，你就可以看到你的Blog啦。</p></li>
+</ol>
+
+
+<h1>第三部分：本地调试</h1>
+
+<p>我觉得Octopress牛逼的地方，也是吸引我的地方就是写博客跟写程序似的。写完了你可以现在本地“调试”看结果，然后满意了再deploy到远端，下面我用修改Blog配置来举个例子。
+找到Octopress文件夹下有个_config.yml文件，打开它，修改开头的一下内容：</p>
+
+<pre><code>url: http://Chienlung.github.com
+title: My Octopress Blog
+subtitle: A blogging framework for hackers.
+author: Your Name
+simple_search: http://google.com/search
+description:
+</code></pre>
+
+<p>把这些内容修改为下面的样子：</p>
+
+<pre><code>url: http://Chienlung.github.com
+title: 陆彦帑的博客
+subtitle: 宗介波妞手拉手，宗介永远爱波妞。 
+author: 陆彦帑
+simple_search: http://google.com/search
+description: 愿我如星君如月，夜夜流光相皎洁。
+</code></pre>
+
+<p>修改完后保存。然后执行如下命令：</p>
+
+<pre><code>rake generate # 根据最新修改生成Blog，这里对于我等不懂Ruby的newbie来说又有个坑。
+</code></pre>
+
+<p><a href="http://stackoverflow.com/questions/10086806/i-can-not-do-any-modify-after-octopress-installed/13898285#13898285">stackoverflow也有关于这个坑的问答</a>，好吧，这个问答和上面那个都是我掉进去的坑，然后在stackoverflow上没有找到答案，我自己解决后顺便回答的。我掉进去的坑就是在description后面输入文字后rake generate时报错，我仔细看了编译输出然后把url后面的冒号连同空格复制到description后面，重新generate后才成功的，我猜是编码问题。
+然后执行下面的命令：</p>
+
+<pre><code>rake preview # 这个命令很碉堡，下面详细说。
+</code></pre>
+
+<p>在deploy之前执行这个命令，然后打开浏览器输入<code>localhost:4000</code>，就可以在本地查看你的修改后的Blog。而且，还有很重要的一点，这个命令执行过程中，你还可以接着修改你的Blog，修改完就立马显示到<code>localhost:4000</code>Blog内，直到你满意，然后按<code>Ctrl+C</code>退出这个命令。然后你就可以执行上面<code>开始Deloy你的Blog</code>和<code>更新Blog在github的repository的source分支</code>，里面我提到的六个命令来更新github和blog。</p>
+
+<h1>第四步分：如何用Octopress写Blog以及写博客的两个命令</h1>
+
+<p>我也是newbie，所以对这俩命令细节还不太清楚，而且我先在只会用其中一个。
+先说我不会用的：</p>
+
+<pre><code>rake new_page["文件名字"] # 我还没研究这个命令
+</code></pre>
+
+<p>我用过的一个：</p>
+
+<pre><code>rake new_post["文件名字"] # 文件名字应该不能跟文件后缀，你可也试试加上会怎样。octopress内部会处理这个文件名，下面详细说下。
+</code></pre>
+
+<p>比如我这篇文章的文件名字叫<code>通过github和octopress搭建Blog步骤以及容易出错的地方</code>，它在home/octopress/source/posts目录下，而在这里的名字却是<code>2012-12-16-tong-guo-github-he-octopressda-jian-blogbu-zou-yi-ji-rong-yi-chu-cuo-de-di-fang.markdown</code>，看这个名字是不是很碉堡，注意后缀自动设置为了markdown。
+好了，写了好几个小时，octopress真是个很合程序员口味的博客，这篇博客我就是在VIM中用Markdown写的。给你markdown语法的<a href="http://daringfireball.net/projects/markdown/syntax">英文版地址</a>和<a href="http://wowubuntu.com/markdown/">中文简体版地址</a>以及<a href="http://markdown.tw/">中文繁体版地址</a>。
+看语法文档的时候如果能一边看一边练习就好了，当然很好了，所以再提供一个<a href="http://www.ctrlshift.net/project/markdowneditor/">Markdown在线编辑网站</a>。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/2/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

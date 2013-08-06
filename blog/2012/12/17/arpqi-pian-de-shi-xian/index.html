@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>ARP欺骗的实现 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="ARP欺骗是用处很大的一个技术，我们的路由器整天在欺骗我们的PC，没有这个欺骗我们就不能上网。 先稍微说下我们每天经历的ARP欺骗，比如早上开路由器开PC，我们上Google，PC在发送IP包之前（假设Google的IP为173.194.72.94， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2012/12/17/arpqi-pian-de-shi-xian/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">ARP欺骗的实现</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-17T22:06:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>ARP欺骗是用处很大的一个技术，我们的路由器整天在欺骗我们的PC，没有这个欺骗我们就不能上网。</p>
+
+<p>先稍微说下我们每天经历的ARP欺骗，比如早上开路由器开PC，我们上Google，PC在发送IP包之前（假设Google的IP为173.194.72.94，当然事先要先通过DNS服务器获取Google的IP，这个不多谈）要先这个IP包装配为以太网帧，所以PC必须要知道Google服务器端MAC，才能填充好以太网帧。要想知道Google的MAC地址，我们的PC就要发送ARP广播请求，跟你一个局域网里的所有以太网设备都能收到这个请求，你希望有人告诉自己与173.194.72.94匹配的MAC地址是多少，因为我们的PC跟Google的服务器不在一个局域网里，所以Google服务器没法收到你的ARP请求，但是如果这个局域网中有其他PC知道的话，它收到这个请求就会给你发送ARP应答告诉你，如果没人知道怎么办？只能靠骗了！这个骗子就是路由器，这也是它的一个职责。路由器用自己的MAC地址冒充Google服务器的MAC地址，给你发ARP应答糊弄你，你收到应答后喜得不行，然后把所有帧都发给了路由器。下面我们就看路由器时怎么欺骗你的。</p>
+
+<p>路由器能捕捉到这个局域网里广播帧，假设路由器捕捉到的PC的ARP广播帧写成十六进制为：</p>
+
+<pre><code>    FFFFFFFFFFFFCE1A8206DA0708060001080006040001CE1A820C6B07C0A8127A000000000000C0A8127B00000B00482A00000D00000060FB5EFB61FB
+</code></pre>
+
+<p>按以太网帧结构把这个帧分解后为：</p>
+
+<pre><code>    FFFFFFFFFFFF---目的MAC，因为是广播帧，所以MAC地址全为1
+    CE1A8206DA07---源MAC，这里就是你PC的MAC
+    0806—---帧类型（以太网帧都是这个数）
+    0001----硬件类型（以太网帧都是这个数）
+    0800----协议类型（以太网帧都是这个数）
+    06----硬件地址长度（以太网帧都是这个数）
+    04----协议地址长度（以太网帧都是这个数）
+    0001—---操作字段（0001为ARP请求，0002为ARP应答）
+    CE1A820C6B07---源mac，还是你的PC的MAC地址
+    C0A8127A-------源IP地址，就是你的PC的ip
+    000000000000---目的mac，因为不知道，所以把这6个字节胡乱填充一下就好
+    ADC2485E-------目的ip，就是Google的IP
+    00000B00482A00000D00000060FB5EFB61FB---这18个字节都是填充，就是为了凑够以太网帧最小长度60字节
+</code></pre>
+
+<p>然后路由器收到PC的ARP广播请求后就给你发送应答，这个应答帧为：</p>
+
+<pre><code>    CE1A8206DA07000A3501FA1708060001080006040002000A3501FA17ADC2485ECE1A8206DA07C0A8127A00000B00482A00000D00000060FB5EFB61FB
+</code></pre>
+
+<p>按照以太网帧格式拆分后为：</p>
+
+<pre><code>    CE1A8206DA07---目的MAC，ARP应答不是广播帧，它直接把PC的MAC地址当成目的MAC
+    000A3501FA17---源MAC，这个是冒牌的，值本来该是Google服务器的MAC地址，但是这里路由器用自己的MAC来冒充
+    0806—---帧类型（以太网帧都是这个数）
+    0001----硬件类型（以太网帧都是这个数）
+    0800----协议类型（以太网帧都是这个数）
+    06----硬件地址长度（以太网帧都是这个数）
+    04----协议地址长度（以太网帧都是这个数）
+    0002—---操作字段（1为ARP请求，2为ARP应答）
+    000A3501FA17---源MAC
+    ADC2485E-------源IP地址，这个必须是ARP请求中的那个目的IP，也就是Google的IP。这个是重中之重，我的代码在
+            这犯过错误，如果PC收到应答后检查这个IP发现与自己请求的目的IP不一样，心说，莫名其妙，我
+            什么时候请求这个IP的MAC地址了？滚！它就会果断抛弃这个帧，然后继续请求，
+            谁知道Google的MAC地址呀！！！
+    CE1A8206DA07---目的mac也就是PC的MAC地址
+    C0A8127A-------目的ip，就是PC的IP
+    00000B00482A00000D00000060FB5EFB61FB---这18个字节都是填充，为了凑够以太网帧最小长度60字节，这个应答完全
+                        照抄了请求的填充，这些数都无所谓。
+</code></pre>
+
+<p>PC在收到这个帧后，就真以为那个MAC地址是Google的，然后就把帧一股脑全发给路由器了。</p>
+
+<p>然后你就可以上Google了。
+然后大家一起来拍砖！</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-17T22:06:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2012</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2012/12/17/arpqi-pian-de-shi-xian/" data-via="" data-counturl="http://Chienlung.github.com/blog/2012/12/17/arpqi-pian-de-shi-xian/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/12/17/dui-kosarajusuan-fa-de-li-jie-si-lu/" title="Previous Post: 对kosaraju算法的理解思路">&laquo; 对kosaraju算法的理解思路</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-kai-pian-jie-shao/" title="Next Post: 海量数据存储系列之开篇介绍">海量数据存储系列之开篇介绍 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2012/12/17/arpqi-pian-de-shi-xian/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2012/12/17/arpqi-pian-de-shi-xian/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,221 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>海量数据存储系列之哈希 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="数据存储起来，为毛要存储起来，肯定为了以后用来查询，也就是搜索，既然查询，当然希望查询速度越快越好了，时间复杂度是O（1）最理想了，哈希表就能办到。当然天下木有免费的午餐，速度是靠牺牲空间来得到的，也就是常说的“空间换时间”。人们后来感觉哈希也忒浪费空间了，于是布隆过滤器应运而生， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">海量数据存储系列之哈希</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-12T18:23:00+08:00" pubdate data-updated="true">Jan 12<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>数据存储起来，为毛要存储起来，肯定为了以后用来查询，也就是搜索，既然查询，当然希望查询速度越快越好了，时间复杂度是O（1）最理想了，哈希表就能办到。当然天下木有免费的午餐，速度是靠牺牲空间来得到的，也就是常说的“空间换时间”。人们后来感觉哈希也忒浪费空间了，于是布隆过滤器应运而生，查询很快的前提下进一步节省空间，比哈希更加强大，但是要牺牲正确率。（说句题外话，如果留心，会发现这个自然界真的好公平的，不管你想得到什么，肯定要首先作出牺牲，或者以后作出牺牲，这个“牺牲”是必须的。很多人比较在乎得到之前的牺牲，而对延期交付的牺牲不是太在乎。这算自然界其中一种形式的”能量守恒“吧。感觉万事皆顺从道。一个感触。）</p>
+
+<p>我这里只说用“链地址法”实现的哈希表，因为STL的哈希表是用这种方法实现的，JAVA重的hashmap也是用这种方法实现的，Redis里面的哈希表也是用这种方式实现的。待续。。。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-12T18:23:00+08:00" pubdate data-updated="true">Jan 12<span>th</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-kai-pian-jie-shao/" title="Previous Post: 海量数据存储系列之开篇介绍">&laquo; 海量数据存储系列之开篇介绍</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/05/17/leveldbxiang-xi-wen-dang/" title="Next Post: LevelDB详细文档">LevelDB详细文档 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/01/12/hai-liang-shu-ju-cun-chu-xi-lie-zhi-ha-xi/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

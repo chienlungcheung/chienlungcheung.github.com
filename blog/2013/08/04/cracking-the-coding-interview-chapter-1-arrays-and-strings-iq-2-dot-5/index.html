@@ -1,0 +1,465 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.5 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="Interview Question 2.5 题目：
+ven a circular linked list, implement an algorithm which returns node at the begin-
+ning of the loop.
+DEFINITION
+Circular &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.5</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-04T13:49:00+08:00" pubdate data-updated="true">Aug 4<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Interview Question 2.5</p>
+
+<p>题目：<br/>
+ven a circular linked list, implement an algorithm which returns node at the begin-
+ning of the loop.<br/>
+DEFINITION<br/>
+Circular linked list: A (corrupt) linked list in which a node’s next pointer points to an
+earlier node, so as to make a loop in the linked list.<br/>
+EXAMPLE<br/>
+Input: A -> B -> C -> D -> E -> C [the same C as earlier]<br/>
+Output: C<br/>
+解题思路与代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 2.5   Given a circular linked list, implement an algorithm</span>
+</span><span class='line'><span class="cm"> * which returns node at the beginning of the loop.</span>
+</span><span class='line'><span class="cm"> * DEFINITION</span>
+</span><span class='line'><span class="cm"> * Circular linked list: A (corrupt) linked list in which</span>
+</span><span class='line'><span class="cm"> * a node’s next pointer points to an earlier node, so as</span>
+</span><span class='line'><span class="cm"> * to make a loop in the linked list.</span>
+</span><span class='line'><span class="cm"> * EXAMPLE</span>
+</span><span class='line'><span class="cm"> * Input: A -&gt; B -&gt; C -&gt; D -&gt; E -&gt; C [the same C as earlier]</span>
+</span><span class='line'><span class="cm"> * Output: C</span>
+</span><span class='line'><span class="cm"> * 中文：给一个循环链表 ，找出循环的开始节点。比如，给你个链表</span>
+</span><span class='line'><span class="cm"> * A -&gt; B -&gt; C -&gt; D -&gt; E -&gt; C ，循环的开始位置即为C。</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;malloc.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * 过去见过一个题目让判断一个链表是否有环，解决办法是设置一个快指针一个慢指针，</span>
+</span><span class='line'><span class="cm"> * 一起从头节点开始遍历，慢指针每次前进一步，快指针每次前进两步，如果在这个过程</span>
+</span><span class='line'><span class="cm"> * 中快指针和慢指针相遇，则说明有环儿。这个过程就像类似俩人在操场跑圈儿，一个人跑得</span>
+</span><span class='line'><span class="cm"> * 快，一个人跑得慢，那个跑得快的肯定能追上跑得慢的即相遇。</span>
+</span><span class='line'><span class="cm"> * 再来看这个题目，告诉你有环儿了，让你判断环开始的位置在哪。</span>
+</span><span class='line'><span class="cm"> *</span>
+</span><span class='line'><span class="cm"> * 首先说，这又是一个计数问题，就像前面遇到到问题，给谁计数呢？</span>
+</span><span class='line'><span class="cm"> * 当然是每个节点的地址了！从头开始遍历链表，第一个重复</span>
+</span><span class='line'><span class="cm"> * 的地址即为环的开始位置！！由于地址可能都比较大，所以可以开大数组，但是数组太大估计</span>
+</span><span class='line'><span class="cm"> * 开不了。只好自己实现一个hash表了，开链式的解决冲突。前面2.1题目自己实现过hash表了，</span>
+</span><span class='line'><span class="cm"> * 这里这个不重复了。这里用bitmap来实现一下。（C++好歹还有个用红黑树实现的map。哼哼。。</span>
+</span><span class='line'><span class="cm"> *</span>
+</span><span class='line'><span class="cm"> * 然后说，前面有个2.2题用相距n的俩指针寻找倒数第n个节点，这个其实跟那个2.2类似，</span>
+</span><span class='line'><span class="cm"> * 快慢指针求出环的长度，接着再从头开始，用相距环长的俩指针遍历这个带环的链表，</span>
+</span><span class='line'><span class="cm"> * 当俩指针相遇时，相遇的节点就是环的开始节点。求环的长度这样来做，快慢指针第一次相遇后，</span>
+</span><span class='line'><span class="cm"> * 固定快指针，用慢指针继续遍历同时计数，等俩指针再次相遇时，就求出了环的长度。</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">link_node</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">c</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">link_node</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span> <span class="n">link_node</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">link_node</span><span class="o">*</span>
+</span><span class='line'><span class="nf">process1</span><span class="p">(</span><span class="n">link_node</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">bm</span><span class="p">[</span><span class="mi">100000</span><span class="p">];</span><span class="cm">/* bitmap要开很大，地址大的把小伙伴们都吓尿了！ */</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">bm</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">bm</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">i</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">head</span> <span class="o">/</span> <span class="mi">32</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">j</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">head</span> <span class="o">%</span> <span class="mi">32</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">bm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span><span class="p">))</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">bm</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">j</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;process1: The beginning is %c (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">head</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">head</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="n">link_node</span><span class="o">*</span>
+</span><span class='line'><span class="nf">process2</span><span class="p">(</span><span class="n">link_node</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">fast</span><span class="p">,</span> <span class="o">*</span><span class="n">slow</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">-&gt;</span><span class="n">next</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">fast</span> <span class="o">!=</span> <span class="n">slow</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="cm">/* 固定fast，用slow继续遍历，求环长度 */</span>
+</span><span class='line'>  <span class="k">do</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">cnt</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">slow</span> <span class="o">!=</span> <span class="n">fast</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">fast</span> <span class="o">=</span> <span class="n">slow</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">cnt</span><span class="o">--</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">slow</span> <span class="o">!=</span> <span class="n">fast</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">slow</span> <span class="o">=</span> <span class="n">slow</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">fast</span> <span class="o">=</span> <span class="n">fast</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;process2: The beginning is %c (%d)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">slow</span><span class="o">-&gt;</span><span class="n">c</span><span class="p">,</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">slow</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">slow</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span>
+</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="cm">/* A -&gt; B -&gt; C -&gt; D -&gt; E -&gt; C [the same C as earlier] */</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p1</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">p1</span><span class="o">-&gt;</span><span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;A&#39;</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p2</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">p2</span><span class="o">-&gt;</span><span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;B&#39;</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p3</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">p3</span><span class="o">-&gt;</span><span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;C&#39;</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p4</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">p4</span><span class="o">-&gt;</span><span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;D&#39;</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p5</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">p5</span><span class="o">-&gt;</span><span class="n">c</span> <span class="o">=</span> <span class="sc">&#39;E&#39;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">p1</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p2</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">p3</span><span class="p">,</span> <span class="n">p3</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">p4</span><span class="p">,</span> <span class="n">p4</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">p5</span><span class="p">,</span> <span class="n">p5</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">p3</span><span class="p">;</span>
+</span><span class='line'>  <span class="c1">//process1(p1);</span>
+</span><span class='line'>  <span class="n">process2</span><span class="p">(</span><span class="n">p1</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-04T13:49:00+08:00" pubdate data-updated="true">Aug 4<span>th</span>, 2013</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/crackingthecodinginterview-fourthedition/'>CrackingtheCodingInterview,FourthEdition</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-4/" title="Previous Post: Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.4">&laquo; Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.4</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2013/08/05/ji-ben-pai-xu-suan-fa/" title="Next Post: 基本排序算法">基本排序算法 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,616 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Algorithm | Programath]]></title>
+  <link href="http://Chienlung.github.com/blog/categories/algorithm/atom.xml" rel="self"/>
+  <link href="http://Chienlung.github.com/"/>
+  <updated>2013-08-06T22:03:37+08:00</updated>
+  <id>http://Chienlung.github.com/</id>
+  <author>
+    <name><![CDATA[Chienlung]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[poj 1008 Maya Calendar AC代码]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma/"/>
+    <updated>2013-07-16T23:46:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma</id>
+    <content type="html"><![CDATA[<p>这个题很简单，但是我觉得有点恶心，心里情不自禁想到玛雅人消失肯定有原因，搞特么俩日历，还特么这么麻烦。在根据月份的名字去查找对应的号码时如果想提升效率可以事先建立一个字典，然后每次直接按字符串进行查询即可，时间复杂度O（1），字典可以用哈希来来实现，哈希值的计算可以用霍纳法则来算，但是有个恶心的地方就是建立字典的时候要手动输入每个月份及其对应的号码。最后实现的时候我没这么做，一个是月份不多，另一个是这些月份的前缀相同的字母是极少，所以即使用strcmp也会非常快。还有一个恶心的地方就是第二种日历中，每一天对应的号码数是从1到13，算得时候反正恶心着我了。下面是代码，关键地方都有注释：</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>/<em>
+ * 查询Haab日历某个月份对应的号码
+ </em>/</p>
+
+<p>char haab_mon[19][10] = {"pop", "no", "zip", "zotz", "tzec",</p>
+
+<pre><code>    "xul", "yoxkin","mol", "chen", "yax",
+    "zac", "ceh", "mac", "kankin", "muan",
+    "pax", "koyab", "cumhu","uayet"};
+</code></pre>
+
+<p>char tz_day[20][10] = {"imix", "ik", "akbal", "kan", "chicchan",</p>
+
+<pre><code>    "cimi", "manik", "lamat","muluk", "ok",
+    "chuen", "eb", "ben", "ix", "mem",
+    "cib", "caban", "eznab", "canac", "ahau"};
+</code></pre>
+
+<p>static void
+cal(char <em>day, char </em>mon, int year)
+{</p>
+
+<pre><code>int i;
+int d, m;
+int len;
+int sum_days = 0;
+
+int num;
+int name;
+
+len = strlen(day);
+for (i = 0, d = 0; i &lt; len - 1; i++) {
+    d *= 10;
+    d += day[i] - '0';
+}
+
+for (m = 0; m &lt; 19; m++) {
+    if (!strcmp(mon,haab_mon[m])) break;
+}
+
+/*
+ * 算出haab历中这一天是从世界开始后的第几天，最小为0
+ */
+sum_days = d + m * 20 + year * 365;
+
+/*
+ * Tzolkin历每年只有13 * 20 = 260天
+ */
+year = sum_days / 260;
+/*
+ * Tzolkin历每个period有20天,name为这一天名字的下标
+ */
+name = sum_days % 20;
+/*
+ * Tzolkin历每13天循环计数,num为这一天对应的号码，最小为1.
+ * 老是算不对这个数！
+ */
+num = (sum_days + 1) % 13;/* sum_days + 1为世界形成共多少天了。*/
+num = num?num:13;
+
+printf("%d %s %d\n", num, tz_day[name], year);
+</code></pre>
+
+<p>}
+int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>char day[10];
+char mon[10];
+int year;
+
+int n;
+while (scanf("%d", &amp;n) == 1) {
+    printf("%d\n", n);
+    while (n--) {
+        scanf("%s%s%d", day, mon, &amp;year);
+        cal(day, mon, year);
+    }
+}
+return 0;
+</code></pre>
+
+<p>}</p>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[poj 1007 DNA Sorting AC代码]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma/"/>
+    <updated>2013-07-16T23:02:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma</id>
+    <content type="html"><![CDATA[<p>题目其实就是让求每个字符串的逆序数，然后将字符串按逆序数从小到达排序输出。求逆序数最先想到的就是归并排序，在通过比较合并两个子数组时顺道计算逆序数。当然具体针对这个题目，求逆序数还有更简单的方法，因为字符串只由四种字母构成，具体可以看poj这道题的disguss，大家都有讨论。计算出逆序数以后把逆序数作为排序关键字进行排序，因为是字符串，所以要避免复制字符串，用字符串的起始地址作为代表就好了。代码如下：</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>typedef struct node {</p>
+
+<pre><code>char str[51];
+size_t num_of_inversions;
+size_t index_of_b;
+</code></pre>
+
+<p>} node;</p>
+
+<p>node a[100];
+char b[100][51];
+int cnt;</p>
+
+<p>void
+merge(char *s, int low, int mid, int high) {</p>
+
+<pre><code>char tmp[50];
+int i, j = low, k = mid + 1;
+int len = high - low + 1;
+for (i = 0; i &lt; len; i++) {
+    if (j &lt;= mid &amp;&amp; k &lt;= high) {
+        if (s[j] &gt; s[k]) {
+            tmp[i] = s[k];
+            cnt += mid - j + 1;//求逆序数，前半个数组中比a[k]大的数的总数
+            k++;
+        } else {
+            tmp[i] = s[j];
+            j++;
+        }
+    } else if (j &lt;= mid) {
+        tmp[i] = s[j];
+        j++;
+    } else {
+        tmp[i] = s[k];
+        k++;
+    }
+}
+
+for (i = 0, j = low; i &lt; len; i++) {
+    s[j] = tmp[i];
+    j++;
+}
+</code></pre>
+
+<p>}</p>
+
+<p>void
+mergesort(char *s, int low, int high)
+{</p>
+
+<pre><code>int mid = low + ((high - low) &gt;&gt; 1);
+if (low &gt;= high)
+    return;
+mergesort(s, low, mid);
+mergesort(s, mid + 1, high);
+merge(s, low, mid, high);
+</code></pre>
+
+<p>}</p>
+
+<p>void
+dna(int n, int m)
+{</p>
+
+<pre><code>int i;
+int c[1226];//计数，用于计数排序。最大逆序数为49 + 48 + 。。。 + 1 + 0 = （49 + 0） * 25 =  1225
+int d[100];//d中保存按逆序数从小到大排序后b[[]中字符串的下标
+memset(c, 0, sizeof(c));
+for (i = 0; i &lt; m; i++) {
+    cnt = 0;//cnt用于记录每个字符串的逆序数
+    mergesort(a[i].str, 0, n - 1);//归并排序求逆序数，结果保存在变量cnt中
+    a[i].num_of_inversions = cnt;
+    c[cnt]++;
+}
+
+for (i = 1; i &lt;= 1225; i++) {
+    c[i] += c[i - 1];//计算不大于i的数有多少个，这一步为了计算i在d中的下标
+}
+
+for (i = 0; i &lt; m; i++) {
+    d[--c[a[i].num_of_inversions]] = a[i].index_of_b;
+}
+
+for (i = 0;i &lt; m; i++) {
+    printf("%s\n", b[d[i]]);
+}
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>int n, m;
+int i;
+while (scanf("%d%d", &amp;n, &amp;m) == 2) {
+    for (i = 0; i &lt; m; i++) {
+        scanf("%s", b[i]);
+        strcpy(a[i].str, b[i]);
+        a[i].num_of_inversions = 0;
+        a[i].index_of_b = i;
+    }
+    dna(n, m);
+}
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[poj 1006 Biorhythms AC代码]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma/"/>
+    <updated>2013-07-13T10:21:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma</id>
+    <content type="html"><![CDATA[<p>其实这个题挺简单的，本来不想写解题报告，但是提交的时候连续WA，后来想自己思路不够缜密，这个题最关键的是对输入p,e,i这三个值的理解，这里牵扯到一个定语从句到底修饰谁的语法问题'The values p, e, and i are the number of days from the beginning of the current year at which the physical, emotional, and intellectual cycles peak, respectively.'这个句子中到at which修饰的是' the number'而不是'the beginning'，要是理解错了会发现矛盾。也就是说the beginning of the current year记为0，那么p,e,i指的是在日期p发生physical peak，在日期e发生emotional peak，在日期i发生intellectual peak，但前面这些日期p,e,i不一定是current year各个peak第一次发生的日期，而题目指出给定的日期d可能小于p,e,i，所以要先分别对p,e,i各自做一下模运算求出current year每个peak第一次发生的时间，而这三个第一次发生的时间可能重合即是一个triple peak，而d可能比这个时间小。下面是代码：</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>void
+triple_peak(int p, int e, int i, int d, int c)
+{</p>
+
+<pre><code>int m = 0, n, k;
+p %= 23, e %= 28, i %= 33;//求各个peak第一次发生的时间
+//p + 23 * m == e + 28 * n == i + 33 * k
+int t1 = p - e;
+int t2 = p - i;
+int j;
+while (1) {
+    j = 23 * m;
+    n = (j + t1) / 28;
+    k = (j + t2 ) / 33;
+    if (28 * n == j + t1 &amp;&amp; 33 * k == j + t2 &amp;&amp; j + p &gt; d)
+        break;
+    m++;
+}
+
+d = j + p - d;
+printf("Case %d: the next triple peak occurs in %d days.\n", c, d);
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>int p, e, i, d;
+int c = 1;
+while (scanf("%d%d%d%d", &amp;p, &amp;e, &amp;i, &amp;d) == 4) {
+    if (p == -1) break;
+    triple_peak(p, e, i, d, c);
+    c++;
+}
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[poj 1002 487-3279 AC代码]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/07/11/poj-1002-487-3279-acdai-ma/"/>
+    <updated>2013-07-11T21:07:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/07/11/poj-1002-487-3279-acdai-ma</id>
+    <content type="html"><![CDATA[<p>题目要把一个电话本里面的所有重复的电话号码转成标准格式，即形如102-1129的格式，并且输出其重复次数，号码输出时按字典序输出。如果没有重复的就输出No duplicates.。</p>
+
+<p>这个题目我首先就想用STL，但是一想算了没什么锻炼。然后就想用bitmap，bitmap节省空间，并且还有顺序符合那个字典序要求，但是算了下所有的号码是从000-0000到999-9999，一共1000万个数，用bitmap得耗费125MB，还是算了。所以就用了trie，这个数据结构相当节省空间，而且从上向下从左向右遍历符合字典序要求。我还想用trie的变形就是TST（ternary search trie,即三路搜索线索），TST更加节省空间。标准trie虽然可以复用某些分支，但是在输入不够随机的时候，可能会产生许多空桶。但是在写标准trie的时候因为该死的calloc害我浪费大量时间，后来就没写。</p>
+
+<p>唉，真的，如果因为不熟练造成的无谓的错误真的会让自己淹没在细节中。calloc会初始化分配好的内存，但素，第一个参数不要写成0啊魂淡！！！！开始不知道这里，不停的设置断点进行debug，查看内存的时候我都要怀疑自己对递归的理解了啊魂淡！呵呵:-)，不过，因为这个错误，对eclipse环境也更加熟悉了，而且为了规避递归出错（因为我实在不明白内存为什么是那个样子 TAT）所以还写了个非递归版本的插入操作。</p>
+
+<p>下面是代码，里面关键地方都有注释。题目请戳<a href="http://poj.org/problem?id=1002">487-3279</a>。</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int dic[256];//这个数组相当于一个map，把输入的电话号码中到大写字母映射为相应的数字，赋值见main函数。</p>
+
+<p>/<em>
+ * 一共十个数字（0-9），所以trie树每个节点最多十个儿子。
+ </em>/</p>
+
+<h1>define CHILD_NUM 10</h1>
+
+<p>typedef struct trie_node {</p>
+
+<pre><code>size_t count;//记录号码出现次数
+char phone_num[7];//存放出现次数超过一次的电话号码，共七位，不包含‘-’。
+struct trie_node *child[CHILD_NUM];
+</code></pre>
+
+<p>} trie_node;</p>
+
+<p>int duplicates_flag = 0;</p>
+
+<p>/<em>
+ * 把输入中的字母转换为数字，把数字字符转换为数字。忽略无效的‘-’。
+ </em>/
+void
+letter_to_digit(char <em>str, char </em>result)
+{</p>
+
+<pre><code>size_t len = strlen(str);
+int i, j;
+
+for (i = 0, j = 0; i &lt; len; i++) {
+    if (str[i] != '-') {
+        if (str[i] &gt;= 'A' &amp;&amp; str[i]&lt; 'Z') {
+            result[j++] = dic[str[i]];
+        } else {
+            result[j++] = str[i] - '0';
+        }
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/<em>
+ * 插入每个电话号码到trie树中
+ </em>/
+void
+insert_trie(trie_node <em>node, char </em>result, int index)
+{</p>
+
+<pre><code>char i = result[index];
+int j;
+trie_node *tmp;
+
+if (node-&gt;child[i] == NULL) {
+    node-&gt;child[i] = (trie_node*)calloc(1, sizeof(trie_node));
+}
+
+if (index == 6) {//到第七个数字的时候这个电话号码中每个数字就都要插入完成了。要记录该号码出现次数。
+    tmp = node-&gt;child[i];
+    tmp-&gt;count++;
+    if (tmp-&gt;count &gt; 1) {//仅仅把出现次数超过1的电话号码进行存储，其它就不浪费时间存了。
+        for (j = 0; j &lt; 7; j++) {
+            tmp-&gt;phone_num[j] = result[j];
+        }
+    }
+} else {
+    insert_trie(node-&gt;child[i], result, index+1);
+}
+</code></pre>
+
+<p>}</p>
+
+<p>/<em>
+ * 查询重复号码串，若有出现超过一次的就输出该号码。
+ </em>/
+void
+query_trie(trie_node *node)
+{</p>
+
+<pre><code>int i, j;
+trie_node *tmp;
+
+if (!node) {
+    return;
+}
+
+for (i = 0; i &lt; CHILD_NUM; i++) {
+    tmp = node-&gt;child[i];
+    if (tmp != NULL) {
+        if (tmp-&gt;count &gt; 1) {
+            duplicates_flag = 1;//执行到这里说明电话簿里出现了重复号码。标志置为1。
+            for (j = 0; j &lt; 7; j++) {
+                if(j == 3) printf("-");//记得输出‘-’
+                printf("%d", tmp-&gt;phone_num[j]);
+            }
+            printf(" %d\n",tmp-&gt;count);
+        } else {
+            query_trie(tmp);
+        }
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>void
+destroy_trie(trie_node *node)
+{</p>
+
+<pre><code>int i;
+if (node) {
+    for (i = 0; i &lt; CHILD_NUM; i++) {
+        if (node-&gt;child[i]) {
+            destroy_trie(node-&gt;child[i]);
+        }
+    }
+}
+</code></pre>
+
+<p>}</p>
+
+<p>void
+process(trie_node <em>trie_root, char </em>str)
+{</p>
+
+<pre><code>char result[7];
+letter_to_digit(str, result);
+insert_trie(trie_root, result, 0);
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>size_t n;
+/*
+ * 好坑爹！！！我开始设置的数组长度是20，老是WA，题目看了好几遍也没说输入字符串到底多大。
+ * 特么的最后没招了，把这个设置成2000，立马过了！！！！
+ */
+char str[2000];
+trie_node *trie_root = NULL;
+
+dic['A'] = dic['B'] = dic['C'] = 2;
+dic['D'] = dic['E'] = dic['F'] = 3;
+dic['G'] = dic['H'] = dic['I'] = 4;
+dic['J'] = dic['K'] = dic['L'] = 5;
+dic['M'] = dic['N'] = dic['O'] = 6;
+dic['P'] = dic['R'] = dic['S'] = 7;
+dic['T'] = dic['U'] = dic['V'] = 8;
+dic['W'] = dic['X'] = dic['Y'] = 9;
+
+
+while (scanf("%d", &amp;n) == 1) {
+    trie_root = (trie_node*)calloc(1, sizeof(trie_node));//每次都要destroy这棵trie树，所以每次都要新建根节点
+    while (n--) {
+        scanf("%s", str);
+        process(trie_root, str);
+    }
+    duplicates_flag = 0;//判断是否有重复电话号码的标志
+    query_trie(trie_root);
+    destroy_trie(trie_root);
+
+    if (duplicates_flag == 0) {
+        printf("No duplicates.\n");
+    }
+}
+
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[poj 1001 Expnentiation AC代码]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/07/10/poj-1001-expnentiation-acdai-ma/"/>
+    <updated>2013-07-10T23:56:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/07/10/poj-1001-expnentiation-acdai-ma</id>
+    <content type="html"><![CDATA[<p>自己过去都没正儿八经写过高精度算法，看<a href="http://poj.org/problem?id=1001">poj 1001 Exponentiation</a>通过率不太高，写个试试，没想到一次AC。思路很简单，细节有点小繁杂。数组a始终保存求幂的那个原数;数组b开始跟a内容一样，但是后面累成了几次以后b保存的就是中间结果;数组c保存数组a与数组b的乘积，每次计算完毕把数组c中内容后拷贝到数组b中。最后结果保存在数组c中。关键地方代码做了注释。（再不写博客，就快把markdown语法忘光了。。。</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int a[100], b[100], c[100];</p>
+
+<p>void
+exponentiation(char *r, int  n)
+{</p>
+
+<pre><code>int len = strlen(r);
+int i, j, k, h, p;
+int dot = 0;
+int temp = 0, c1 = 0, c2 = 0;
+int digit_num_a = 0, digit_num_b = 0;
+
+memset(a, 0, sizeof(a));
+memset(b, 0, sizeof(b));
+memset(c, 0, sizeof(c));
+
+p = 0;
+while (r[p] == '0') p++;//记录最高位有效数字位置，以去掉输入中前缀0
+while(r[len - 1] == '0') len--;//去掉后缀无效0
+if(r[len -1] == '.') len--;
+if (n == 1) {//若幂为1，则直接输出有效数字
+    while (p &lt; len) {
+        printf("%c",r[p]);
+        p++;
+    }
+    printf("\n");
+    return;
+}
+for (i = len - 1, j = 0; i &gt;= p; i--, j++) {
+    if (r[i] != '.') {
+        b[j] = a[j] = r[i] - '0';
+        digit_num_a++;//记录有多少个数字
+        digit_num_b++;
+    } else {
+        dot = j;// 记录小数点位置
+        j--;
+    }
+}
+
+if (dot &gt; 0) dot *= n;//求幂完毕后小数点应在的位置
+
+for (j = 1; j &lt; n; j++) {
+    memset(c, 0, sizeof(c));
+    temp = 0, c1 = 0, c2 = 0;
+    for (i = 0; i &lt; digit_num_a; i++) {
+        for (k = 0, h = i; k &lt; digit_num_b; k++, h++) {
+            temp = a[i] * b[k] + c1;
+            c1 = temp / 10;
+            temp =  temp % 10;
+
+            c[h] += temp;
+            c[h] += c2;
+            c2 = c[h] / 10;
+            c[h] = c[h] % 10;
+        }
+        if (c1 != 0) {
+            c[h] = c1;
+            c1 = 0;
+
+        }
+        if (c2 != 0) {
+            c[h] += c2;
+            c2 = 0;
+        }
+    }
+
+    //把第j轮结果拷贝到b[]中
+    if ( c[h] == 0) h--;
+    for (i = 0; i &lt;= h; i++) {
+        b[i] = c[i];
+    }
+    digit_num_b = h+1;
+}
+
+if ( c[h] == 0) h--;
+for (i = 0; i &lt;= h; i++) {//记录尾部第一个有效数字的位置
+    if (c[i] != 0)
+        break;
+}
+for (j = h; j &gt;= dot; j--)
+    printf("%d", c[j]);
+if (dot &gt; 0 &amp;&amp; dot - 1 &gt;= i) {
+    printf(".");
+    for (j = dot - 1; j &gt;= i; j--)
+        printf("%d", c[j]);
+}
+printf("\n");
+</code></pre>
+
+<p>}</p>
+
+<p>int
+main(int argc, char *argv[])
+{</p>
+
+<pre><code>char r[10];
+int n;
+while (scanf("%s%d", r, &amp;n) == 2) {
+        exponentiation(r, n);
+}
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+</feed>
