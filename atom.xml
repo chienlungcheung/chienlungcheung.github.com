@@ -4,7 +4,7 @@
   <title><![CDATA[Programath]]></title>
   <link href="http://Chienlung.github.com/atom.xml" rel="self"/>
   <link href="http://Chienlung.github.com/"/>
-  <updated>2013-08-06T22:03:37+08:00</updated>
+  <updated>2013-08-07T08:39:55+08:00</updated>
   <id>http://Chienlung.github.com/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
@@ -650,10 +650,10 @@
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.5]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5/"/>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.5]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-5</id>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5</id>
     <content type="html"><![CDATA[<p>Interview Question 2.5</p>
 
 <p>题目：<br/>
@@ -895,10 +895,10 @@ Output: C<br/>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.4]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-4/"/>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.4]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-4</id>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4</id>
     <content type="html"><![CDATA[<p>Interview Question 2.4<br/>
 题目：<br/>
 You have two numbers represented by a linked list, where each node contains a sin-
@@ -1113,10 +1113,10 @@ Output: 8 -> 0 -> 8</p>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.3]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-3/"/>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.3]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-3</id>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3</id>
     <content type="html"><![CDATA[<p>Interview Question 2.3</p>
 
 <p>题目：<br/>
@@ -1233,10 +1233,10 @@ Result: nothing is returned, but the new linked list looks like a->b->d->e<br/>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.2]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-2/"/>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.2]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-2</id>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2</id>
     <content type="html"><![CDATA[<p>Interview Question 2.2</p>
 
 <p>题目： <br/>
@@ -1438,10 +1438,10 @@ Implement an algorithm to find the nth to last element of a singly linked list.<
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 2.1]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-1/"/>
+    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.1]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-2-dot-1</id>
+    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1</id>
     <content type="html"><![CDATA[<p>Interview Question 2.1</p>
 
 <p>题目：</p>
@@ -1994,7 +1994,7 @@ only one call to isSubstring (i.e., “waterbottle” is a rotation of “erbott
     <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7/"/>
     <updated>2013-07-17T18:42:00+08:00</updated>
     <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7</id>
-    <content type="html"><![CDATA[<p>Interview Question 1.4</p>
+    <content type="html"><![CDATA[<p>Interview Question 1.7</p>
 
 <p>题目：</p>
 
