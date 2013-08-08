@@ -4,7 +4,7 @@
   <title><![CDATA[Programath]]></title>
   <link href="http://Chienlung.github.com/atom.xml" rel="self"/>
   <link href="http://Chienlung.github.com/"/>
-  <updated>2013-08-07T08:39:55+08:00</updated>
+  <updated>2013-08-08T15:28:01+08:00</updated>
   <id>http://Chienlung.github.com/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
@@ -12,6 +12,29 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[地址空间和特权级别的仿生设计]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji/"/>
+    <updated>2013-08-08T15:13:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji</id>
+    <content type="html"><![CDATA[<p>在看内核相关到书，想到一些自己觉得挺有意思，但是不一定准确，记下来加深记忆。感觉人类设计的东西自觉不自觉地好像都是在模拟人类社会或者人体活动，这篇文章起的可能有点大也可能不准确，只是描述自己一个感觉。</p>
+
+<h2>地址空间（食堂 = 厨房区域 + 非厨房区域）：</h2>
+
+<p>linux针对每个进程，都会分配一个虚拟地址空间，这个空间由不同的架构决定，因为内存都是通过指针寻址，所以CPU的字长决定了地址空间的最大长度，比如常见的IA-32系统上虚拟地址空间为 $2<sup>32</sup> = 4GB$。（64位的系统不见得是$2<sup>64</sup> $ ，这个虚拟空间太大了，所以实际上使用的位数倾向于小于64位，比如42bit或者47bit。后面只说32bit的情况。）这个空间跟实际内存大小没关系，它是虚拟的。使用虚拟空间的另外一个理由是，让系统中每个进程都觉得自己是系统中唯一进程，让它感觉不到其它进程的存在。
+这个4G 的虚拟空间也不全是给进程使用的，这个虚拟空间被划分为内核空间和用户空间。从0到TASK_SIZE是用户空间，这才是给用户进程用的；从TASK_SIZE到$2<sup>32</sup> $为内核空间，用户进程不能访问这一块儿。TASK_SIZE因架构不同而不同，在IA-32中，内核空间为1G，用户空间为3G。就像要盖食堂，先划出一块地来，然后再分成打菜炒菜的厨房区域和就餐的非厨房区域。</p>
+
+<h2>特权级别（拿着碗要菜的学生，打菜的阿姨，炒菜的师傅，视察的领导。。。）：  </h2>
+
+<p>内核把虚拟地址空间划分为两部分，可以保护各个系统进程。现代CPU架构都提供了几种特权级别，进程可以处于某一个特权级别。常见的IA-32架构提供了四种特权级别，从0-3，级别依次降低。但是linux只用了俩特权级别，一个叫核心态，一个叫用户态。这俩状态的关键差别在于对高于TASK_SIZE的虚拟地址空间区域的访问，也就是说用户态禁止访问这部分。就像一个你跑到学校食堂窗口对打菜的阿姨说，让我进你们后面厨房转转玩玩，阿姨肯定不让你进去，你要是进去不小心把什么东西打翻了弄坏了怎么办。本来食堂开始哪儿哪儿都差不多，后来划分出厨房区域和非厨房区域，然后根据这个区域划分定义了特权级别。这样，用户进程就不能操作或者读取内核空间的数据，也没法执行内核空间的代码。
+但是如果用户进程想要执行任何影响整个系统的操作，比如想要从计算机的输入装置键盘获取字符，怎么办？只能借助系统调用向内核发出请求，比如scanf(&#8220;%c&#8221;, &amp;a)。就像你拿着个碗&#8217;a&#8217;跑到打菜的阿姨那说，阿姨，我想要个韭菜炒鸡蛋。阿姨接过碗&#8217;a&#8217;说，好，你等着，我去给你盛，“打菜阿姨”相当于内核的一部分，去“替”你执行“盛菜“这个动作，就像内核为用户进程到键盘获取“字符”，阿姨把菜放到你的碗里，就像内核把数据放到变量a中，这个过程中内核访问了用户空间即变量a。这就是进程上下文在用户态和内核态之间的切换。
+除了代表用户进程执行代码以外，内核还可以由异步硬件中断激活，然后在中断上下文中运行，而且此时内核必须更加谨慎，比如不能进入睡眠状态。就像上面领导突然来食堂视察卫生状况，食堂负责卫生的相关人员就要陪着给领导解说，而且不能在陪领导视察的时候打盹儿，类似内核不能在中断上下文进入睡眠状态。<br/>
+内核在中断上下文中运行与在进程上下文中运行到区别是，内核运行在中断上下文中时不能访问虚拟地址空间中的用户空间部分，就像突然来视察的领导不能去厨房外面摸正在吃饭的女学生。<br/>
+内核线程
+除了普通进程，系统中还有内核线程在运行，内核线程也不与任何特定的内核空间进程相关联，无权处理用户空间。就像，厨房的大师傅炒自己的菜，女学生在厨房外吃自己的饭，炒菜的大师傅不能去厨房外面摸人家女学生。与在中断上下文运转的内核相比，内核线程可以进入睡眠状态，也可以被调度器跟踪。就像领导来视察的时候，食堂的头头陪着就是了，炒菜的师傅还是照样炒菜，炒菜炒累了可以歇歇，也可以被他的上级领导指派去做别的。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[用python实现linux守护进程]]></title>
@@ -3472,90 +3495,6 @@ can not use additional data structures?</p>
     <updated>2013-07-14T22:34:00+08:00</updated>
     <id>http://Chienlung.github.com/blog/2013/07/14/cracking-the-coding-interview-yao-jian-chi-zuo-wan-a-hun-dan</id>
     <content type="html"><![CDATA[<p>我打算做一遍Cracking the Coding Interview里面的题目，希望自己坚持做下去。题目挺好的。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[poj 1006 Biorhythms AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma/"/>
-    <updated>2013-07-13T10:21:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma</id>
-    <content type="html"><![CDATA[<p>其实这个题挺简单的，本来不想写解题报告，但是提交的时候连续WA，后来想自己思路不够缜密，这个题最关键的是对输入p,e,i这三个值的理解，这里牵扯到一个定语从句到底修饰谁的语法问题&#8217;The values p, e, and i are the number of days from the beginning of the current year at which the physical, emotional, and intellectual cycles peak, respectively.&#8217;这个句子中到at which修饰的是&#8217; the number&#8217;而不是&#8217;the beginning&#8217;，要是理解错了会发现矛盾。也就是说the beginning of the current year记为0，那么p,e,i指的是在日期p发生physical peak，在日期e发生emotional peak，在日期i发生intellectual peak，但前面这些日期p,e,i不一定是current year各个peak第一次发生的日期，而题目指出给定的日期d可能小于p,e,i，所以要先分别对p,e,i各自做一下模运算求出current year每个peak第一次发生的时间，而这三个第一次发生的时间可能重合即是一个triple peak，而d可能比这个时间小。下面是代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span>
-</span><span class='line'><span class="nf">triple_peak</span><span class="p">(</span><span class="kt">int</span> <span class="n">p</span><span class="p">,</span> <span class="kt">int</span> <span class="n">e</span><span class="p">,</span> <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="kt">int</span> <span class="n">d</span><span class="p">,</span> <span class="kt">int</span> <span class="n">c</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">m</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">p</span> <span class="o">%=</span> <span class="mi">23</span><span class="p">,</span> <span class="n">e</span> <span class="o">%=</span> <span class="mi">28</span><span class="p">,</span> <span class="n">i</span> <span class="o">%=</span> <span class="mi">33</span><span class="p">;</span><span class="c1">//求各个peak第一次发生的时间</span>
-</span><span class='line'>  <span class="c1">//p + 23 * m == e + 28 * n == i + 33 * k</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">t1</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">e</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">t2</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">i</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">j</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">j</span> <span class="o">=</span> <span class="mi">23</span> <span class="o">*</span> <span class="n">m</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">t1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">28</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">k</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">t2</span> <span class="p">)</span> <span class="o">/</span> <span class="mi">33</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="n">n</span> <span class="o">==</span> <span class="n">j</span> <span class="o">+</span> <span class="n">t1</span> <span class="o">&amp;&amp;</span> <span class="mi">33</span> <span class="o">*</span> <span class="n">k</span> <span class="o">==</span> <span class="n">j</span> <span class="o">+</span> <span class="n">t2</span> <span class="o">&amp;&amp;</span> <span class="n">j</span> <span class="o">+</span> <span class="n">p</span> <span class="o">&gt;</span> <span class="n">d</span><span class="p">)</span>
-</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">m</span><span class="o">++</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">d</span> <span class="o">=</span> <span class="n">j</span> <span class="o">+</span> <span class="n">p</span> <span class="o">-</span> <span class="n">d</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Case %d: the next triple peak occurs in %d days.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span>
-</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">p</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%d%d%d%d&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">e</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">i</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">d</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">triple_peak</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">c</span><span class="p">);</span>
-</span><span class='line'>      <span class="n">c</span><span class="o">++</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
 ]]></content>
   </entry>
   
