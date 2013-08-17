@@ -9,7 +9,7 @@
   <meta name="author" content="Chienlung">
 
   
-  <meta name="description" content="这篇文章是为像我一样的不懂ruby、不懂git的newbie写的，大牛请绕路。 开始之前先说点题外话，这几天对于我这个newbie来说是痛苦的，上段时间开始对Python极其感兴趣，自己又很喜欢豆瓣，所以想用豆瓣的API做点什么，于是为了获取Python版本的API，所以注册了github， &hellip;">
+  <meta name="description" content="这个算法网上很多介绍，但大多都很相似，着重介绍算法实现而没有证明或者容易理解的解释。我说下自己对kosaraju算法的理解思路。这个算法名字我不会读，搜了半天看到本尊，发现他长得像印度人，也就释然了。回正题。kosaraju算法用来求一个有向图的所有强连通分量，算法很简单，但是理解起来有点麻烦， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,130 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/12/17/dui-kosarajusuan-fa-de-li-jie-si-lu/">对kosaraju算法的理解思路</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-17T21:51:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/12/17/dui-kosarajusuan-fa-de-li-jie-si-lu/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这个算法网上很多介绍，但大多都很相似，着重介绍算法实现而没有证明或者容易理解的解释。我说下自己对kosaraju算法的理解思路。这个算法名字我不会读，搜了半天看到本尊，发现他长得像印度人，也就释然了。回正题。kosaraju算法用来求一个有向图的所有强连通分量，算法很简单，但是理解起来有点麻烦，我是这么觉得。但是跟无向图的连通分量求法结合起来，就非常容易理解了。所以理解这个Korasaju算法的前提是你理解无向图所有连通分量的算法，这个算法相当图森破。
+先看无向图的连通分量求法，其实无向图的连通分量就都是强连通分量。无向图的强连通分量就是用DFS算法顺序遍历邻接表时顺道干点小动作，写下代码更直观一些：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#define maxN 1024</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">marked</span><span class="p">[</span><span class="n">maxN</span><span class="p">];</span><span class="c1">//用于记录某个点是否被访问过，0为没有被临幸过，1为被临幸过</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">id</span><span class="p">[</span><span class="n">maxN</span><span class="p">];</span><span class="c1">//记录每个点所属的连通分量</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">count</span><span class="p">;</span><span class="c1">//记录连通分量总数目</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">cc</span><span class="p">(</span><span class="n">graph</span> <span class="o">*</span><span class="n">g</span><span class="p">){</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">memset</span><span class="p">(</span><span class="n">marked</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">marked</span><span class="p">));</span>
+</span><span class='line'>    <span class="n">memset</span><span class="p">(</span><span class="n">id</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">id</span><span class="p">));</span>
+</span><span class='line'>    <span class="n">count</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">for</span><span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">g</span><span class="o">-&gt;</span><span class="n">V</span><span class="p">;</span><span class="n">i</span><span class="o">++</span><span class="p">){</span><span class="c1">//之所以这里用循环就是因为g指向的无向图可能不是一个连通图，而是由多个连同分量组成</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">marked</span><span class="p">[</span><span class="n">i</span><span class="p">]){</span><span class="n">dfs</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">i</span><span class="p">);</span> <span class="n">count</span><span class="o">++</span><span class="p">;}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">dfs</span><span class="p">(</span><span class="n">graph</span> <span class="o">*</span><span class="n">g</span><span class="p">,</span><span class="kt">int</span> <span class="n">v</span><span class="p">){</span>
+</span><span class='line'>    <span class="n">graphNode</span> <span class="o">*</span><span class="n">t</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">marked</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">id</span><span class="p">[</span><span class="n">v</span><span class="p">]</span><span class="o">=</span><span class="n">count</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">t</span><span class="o">=</span><span class="n">g</span><span class="o">-&gt;</span><span class="n">adjlist</span><span class="p">[</span><span class="n">v</span><span class="p">].</span><span class="n">next</span><span class="p">;</span><span class="c1">//t指向v的邻接点</span>
+</span><span class='line'>    <span class="k">while</span><span class="p">(</span><span class="n">t</span><span class="p">){</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">marked</span><span class="p">[</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">]){</span><span class="n">dfs</span><span class="p">(</span><span class="n">g</span><span class="p">,</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">);}</span><span class="c1">//这里是重点，就是你发现v到t-&gt;key有路径就把它算到跟自己在一个</span>
+</span><span class='line'><span class="c1">//连通分量里了，这里有一个隐性前提，就是你提前知道t-&gt;key一定可以到v，所以你发现v可以到t-&gt;key的时候，你毫</span>
+</span><span class='line'><span class="c1">//不犹豫把它算为跟自己一伙儿的了。Korasaju算法不同书上有不同的表述，区别是先遍历图g还是先遍历图g的逆向</span>
+</span><span class='line'><span class="c1">//图，这只是顺序的区别。我把我看得版本完整说一下：（1）先DFS遍历图g的逆向图，记录遍历的逆后序。（什么</span>
+</span><span class='line'><span class="c1">//叫逆后序？逆后序就是DFS时后序的逆序，注意逆后序不一定为DFS的前序。DFS前序为，访问某个顶点前，把它</span>
+</span><span class='line'><span class="c1">//push进队列。DFS后序为访问完某个顶点后才把它push进队列。而DFS逆后序为访问完某个顶点后把它push进一个栈中。</span>
+</span><span class='line'><span class="c1">//当DFS遍历完整个图后，后序队列的输出与逆后序栈的输出正好相反。）（2）然后按着图g逆向图的DFS遍历的逆后</span>
+</span><span class='line'><span class="c1">//序序列遍历图g求所有的强连通分量，这一步的过程跟无向图求所有连通分量的算法一模一样！按着这里说的遍历顺</span>
+</span><span class='line'><span class="c1">//序重复无向图求所有连通分量的步骤求出来的就是有向图的所有强连通分量，为什么呢？因为我们完成第一步后，按</span>
+</span><span class='line'><span class="c1">//着第一步得到的逆后序要对有向图g进行DFS遍历的前一刻，前面这段过程就相当于我们完成了对这幅有向图g一个加工，</span>
+</span><span class='line'><span class="c1">//把它加工成了一个无向图！也就是说，这个加工实现了我注释开头提到的那个隐性前提。所以后面按着无向图求所有</span>
+</span><span class='line'><span class="c1">//连通分量的步骤求出来的就是有向图g的所有强连通分量。举个例子，比如有向图3-&gt;5-&gt;4-&gt;3，它的逆向图</span>
+</span><span class='line'><span class="c1">//为3-&gt;4-&gt;5-&gt;3（你最好在纸上画下，就是个三角循环图），从逆向图的顶点3开始DFS，得到的逆后续为3，4,5 。</span>
+</span><span class='line'><span class="c1">//按着这个顺序对原图进行DFS，DFS(3)时遇到5，则5肯定跟3在一个强连通分量中</span>
+</span><span class='line'><span class="c1">//（为什么？因为我们逆向图DFS(5)时肯定能到达3，这就是隐形前提。所以正向图DFS(3)遇到5时，</span>
+</span><span class='line'><span class="c1">//我们毫不犹豫把它算到自己一个强连通分量中。）</span>
+</span><span class='line'>        <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>

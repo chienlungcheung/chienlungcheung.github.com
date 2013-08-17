@@ -9,7 +9,7 @@
   <meta name="author" content="Chienlung">
 
   
-  <meta name="description" content="在看内核相关到书，想到一些自己觉得挺有意思，但是不一定准确，记下来加深记忆。感觉人类设计的东西自觉不自觉地好像都是在模拟人类社会或者人体活动，这篇文章起的可能有点大也可能不准确，只是描述自己一个感觉。 地址空间（食堂 = 厨房区域 + 非厨房区域）： linux针对每个进程， &hellip;">
+  <meta name="description" content="过去每次查单词都是打开google translate，中午吃完饭查单词，正好今天周末所以网速比平时更慢，google也更卡。于是想自己写个在命令行下使用的英汉词典，这样以后用VIM看源码或者看文档就可以借助tmux开个小窗口给这个命令行词典，想想就很方便。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,50 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict/">MyDict：一个用C语言实现的命令行英汉对照词典</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-17T21:15:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>过去每次查单词都是打开google translate，中午吃完饭查单词，正好今天周末所以网速比平时更慢，google也更卡。于是想自己写个在命令行下使用的英汉词典，这样以后用VIM看源码或者看文档就可以借助tmux开个小窗口给这个命令行词典，想想就很方便。考虑到启动词典建立字典可能会话费比较多的时间，尤其当词库特别大的时候，语言当然用速度比较猛的C语言了。</p>
+
+<p>先在网上下载了一个包含四万五千多词的词典，分成了好几个文件，光制作我要的原始词库就花了许多时间，文件本来是gbk编码，所以在我ubuntu上是乱码，先写了个bash文件用linux自带的iconv命令把这几个文件转码成utf8格式，然后自己又写了俩小程序把这些转码后的文件处理成一行单词一行中文含义的格式。就开始动手写主程序，调试乱七八糟的，还有修改了下输出。</p>
+
+<p>运行起来迅速,只需0.145秒就可以建立词典，45093个中英对照占用内存73MB，改成无空桶的三向单词查找树应更加节省内存，后面找时间实现对比一下。</p>
+
+<p>详细实现请见我的github吧，感兴趣请戳<a href="https://github.com/Chienlung/MyDict">MyDict</a>。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -2108,243 +2152,6 @@ How would you solve this problem if a temporary buffer is not allowed?</p>
 </span><span class='line'>
 </span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
 </span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8/">Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.8</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-07-17T18:42:00+08:00" pubdate data-updated="true">Jul 17<span>th</span>, 2013</time>
-        
-         | <a href="/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Interview Question 1.8</p>
-
-<p>题目：</p>
-
-<p>Assume you have a method isSubstring which checks if one word is a substring of
-another. Given two strings, s1 and s2, write code to check if s2 is a rotation of s1 using
-only one call to isSubstring (i.e., “waterbottle” is a rotation of “erbottlewat”).</p>
-
-<p>代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 1.8   Assume you have a method isSubstring which checks</span>
-</span><span class='line'><span class="cm"> * if one word is a substring of another. Given two strings, s1 and s2,</span>
-</span><span class='line'><span class="cm"> * write code to check if s2 is a rotation of s1 using only one call</span>
-</span><span class='line'><span class="cm"> * to isSubstring (i.e., “waterbottle” is a rotation of “erbottlewat”).</span>
-</span><span class='line'><span class="cm"> * 中文：假设你现在已经有了一个用于判断一个字符串是否是另一个字符串的isSubstring函数。</span>
-</span><span class='line'><span class="cm"> * 给你俩字符串s1和s2，请你写个代码，在仅仅调用一次isSubstring函数的前提下，</span>
-</span><span class='line'><span class="cm"> * 判断s2是否为s1的旋转（比如，“waterbottle” 就是 “erbottlewat” 的一个</span>
-</span><span class='line'><span class="cm"> * 旋转，“waterbottle”循环左移两个字符得到）。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * Cracking the Coding Interview里的代码是用大java实现的。</span>
-</span><span class='line'><span class="cm"> * C语言没有判断子串的函数，那只好自己先写一个啦。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="k">static</span> <span class="kt">int</span>
-</span><span class='line'><span class="nf">isSubstring</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">s1</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s2</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len_s1</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len_s2</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s2</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">len_s2</span> <span class="o">&gt;</span> <span class="n">len_s1</span><span class="p">)</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len_s1</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">len_s2</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">len_s1</span> <span class="o">&amp;&amp;</span> <span class="n">s2</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="n">s1</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">]))</span> <span class="p">{</span>
-</span><span class='line'>              <span class="k">break</span><span class="p">;</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">j</span> <span class="o">==</span> <span class="n">len_s2</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 现在来看最重要的地方。</span>
-</span><span class='line'><span class="cm"> * 这个题如果不看题目限制，直觉上会这么做，首先比较俩字符串长度是否相等，</span>
-</span><span class='line'><span class="cm"> * 不相等的话s2不可能是s1的旋转；如果长度相等，那么就将s2每次向左旋转一个字符，</span>
-</span><span class='line'><span class="cm"> * 然后判断跟s1是否相等，如果相等，那么s2就是s1的旋转，否则继续直到s2旋转本身长度次数，</span>
-</span><span class='line'><span class="cm"> * 即又变回到自己。但是这种做法会调用n次isSubstring函数，而不是题目要求的一次。</span>
-</span><span class='line'><span class="cm"> * 那该怎么做呢？这里用到一个技巧（编程之美 里面好像也提到过），就是把两个s1直接拼接起来，</span>
-</span><span class='line'><span class="cm"> * 即s1s1，然后调用isSubstring判断s2是否为s1s1的子串，如果是的话，那么s2就是s1的一个</span>
-</span><span class='line'><span class="cm"> * 旋转。设s1长度为n，那么s1s1就相当于把s1旋转n次，但是每次旋转的时候保留原串不变，而是在左移时</span>
-</span><span class='line'><span class="cm"> * 复制出去。比如在保留原串不变的前提下，将apple向左移动一个字符的结果就是applea。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">is_rotation</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">s1</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">s2</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len_s1</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s1</span><span class="p">);</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len_s2</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">s2</span><span class="p">);</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">s1s1</span><span class="p">[</span><span class="mi">400</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">len_s1</span> <span class="o">!=</span> <span class="n">len_s2</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;NO</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>      <span class="k">return</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">s1s1</span><span class="p">,</span> <span class="n">s1</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">s1s1</span> <span class="o">+</span> <span class="n">len_s1</span><span class="p">,</span> <span class="n">s1</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">isSubstring</span><span class="p">(</span><span class="n">s1s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">)</span><span class="o">?</span><span class="s">&quot;YES&quot;</span><span class="o">:</span><span class="s">&quot;NO&quot;</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span>
-</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">agrv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">s1</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">s2</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s%s&quot;</span><span class="p">,</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">is_rotation</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">s2</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm">apple</span>
-</span><span class='line'><span class="cm">pleap</span>
-</span><span class='line'><span class="cm">YES</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">apple</span>
-</span><span class='line'><span class="cm">ppale</span>
-</span><span class='line'><span class="cm">NO</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">waterbottle</span>
-</span><span class='line'><span class="cm">erbottlewat</span>
-</span><span class='line'><span class="cm">YES</span>
-</span><span class='line'><span class="cm">*/</span>
 </span></code></pre></td></tr></table></div></figure>
 
 </div>
