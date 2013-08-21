@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>C99中的restrict和volatile关键字 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">C99中的restrict和volatile关键字</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-21T09:34:00+08:00" pubdate data-updated="true">Aug 21<span>st</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 <br/>
+这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量，告诉编译器它们所修饰的变量的“物理性质”，即变量是否稳定，程序运行过程会不会发生变化。我这么说不是太准确，根据我看的资料，这俩关键字用的场景不同，但是确实跟“稳定性”有关，但不是一类稳定性。详细看下面，我理解有误请您务必斧正。但是我觉得出现这俩关键字的目的是为了避免编译器优化代码的副作用。</p>
+
+<h2>volatile关键字   </h2>
+
+<p>如果变量没有被volatile修饰，编译器分析完程序结构后可能会彻底把这个变量从某些代码段里给优化到消失！看下面从wikipedia抄来的例子:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">bar</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">foo</span> <span class="o">!=</span> <span class="mi">255</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>具有优化功能的编译器分析完代码后觉得没有其它代码“可能”会改变存储在foo中的值，注意那个“可能”，编译器不是神，优化结果也许会出错。于是代码给优化成下面的样子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">bar_optimized</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是foo变量可能会被计算机的某些部件所改变，上面优化后的代码就无法检测到了，就会悲剧了。  <br/>
+除了上面所说的，还有内存屏障即<a href="http://en.wikipedia.org/wiki/Memory_barrier">memory barrier</a> ，变量使用时会被从内存取出放入CPU的寄存器，以后使用的时候为了速度考虑不去内存读了，还是从寄存器取出来，但是并发环境下这个变量可能会被其它线程所改变，这时就必须去内存中读取，这种情况就必须要用volatile修饰，表明该变量不稳定，程序运行过程可能会改变，不要优化，每次乖乖去内存读。  <br/>
+从上面也可以看出来，程序员使用这个关键字的时候必须要有充分的把握，不能乱用，否则会影响程序的执行效率。但是该用的时候不用又会影响程序的正确性。</p>
+
+<h2>restrict关键字  </h2>
+
+<p>这个关键字用来表明变量是各自独立的，这个保证需要程序员给予，继续看wikipedia的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">val</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrA</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrB</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当你写出上面的代码后，编译器不清楚三个参数指针是不是指向同一个地方，所以不敢随便对它进行优化（对比下面优化代码就可也看出这里是怎么个不随便了），编译器老老实实按着逻辑来生成的代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val  <span class="p">;</span> 加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA <span class="p">;</span> Load the value of ptrA pointer
+</span><span class='line'>add  R2 <span class="o">+=</span> R1   <span class="p">;</span> Perform Addition
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA <span class="p">;</span> Update the value of ptrA pointer
+</span><span class='line'><span class="p">;</span> Similarly for ptrB<span class="p">,</span> note that val is loaded twice<span class="p">,</span>
+</span><span class='line'><span class="p">;</span> because ptrA may be equal to val.
+</span><span class='line'>load R1 ← <span class="o">*</span>val <span class="p">;</span>再次加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>中间注释分开的上下两部分代码差不多，重点是val会被重复加载两次。因为程序员没说，编译器不敢确定val会不会跟ptrA或者ptrB指向相同的地方。如果指向相同的地方就必须重新载入，因为运算可能导致val指针指向的内容发生了变化。  <br/>
+但是如果程序员能保证这仨指针会指向不同的地方，写出下面的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="n">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">val</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>既然程序员如此确定，保证这仨指针指向不同的地方，那么编译器就不客气了，生成如下优化代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA
+</span><span class='line'><span class="p">;</span> 请注意下面，val不再会被重新载入了，
+</span><span class='line'><span class="p">;</span> 因为编译器知道它不会被改变
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这俩关键字的使用需要丰富的经验和对代码的整体把握。不能乱用。不确定的情况下使用volatile最多阻止优化拖慢程序运行速度，但是程序正确性不会被影响。如果没有百分百保证就不要用restrict了。 <br/>
+总之，根据这俩关键字的性质，在不能百分之百肯定的情况下，最保守的做法是可以用volatile，但是不要用restrict。不知我这么理解对不对。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-21T09:34:00+08:00" pubdate data-updated="true">Aug 21<span>st</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict/" title="Previous Post: 一个用C语言实现的命令行英汉对照词典: MyDict">&laquo; 一个用C语言实现的命令行英汉对照词典: MyDict</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

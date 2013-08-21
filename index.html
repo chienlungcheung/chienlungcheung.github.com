@@ -9,7 +9,7 @@
   <meta name="author" content="Chienlung">
 
   
-  <meta name="description" content="过去每次查单词都是打开google translate，中午吃完饭查单词，正好今天周末所以网速比平时更慢，google也更卡。于是想自己写个在命令行下使用的英汉词典，这样以后用VIM看源码或者看文档就可以借助tmux开个小窗口给这个命令行词典，想想就很方便。 &hellip;">
+  <meta name="description" content="在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -64,6 +64,165 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/">C99中的restrict和volatile关键字</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-21T09:34:00+08:00" pubdate data-updated="true">Aug 21<span>st</span>, 2013</time>
+        
+         | <a href="/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 <br/>
+这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量，告诉编译器它们所修饰的变量的“物理性质”，即变量是否稳定，程序运行过程会不会发生变化。我这么说不是太准确，根据我看的资料，这俩关键字用的场景不同，但是确实跟“稳定性”有关，但不是一类稳定性。详细看下面，我理解有误请您务必斧正。但是我觉得出现这俩关键字的目的是为了避免编译器优化代码的副作用。</p>
+
+<h2>volatile关键字   </h2>
+
+<p>如果变量没有被volatile修饰，编译器分析完程序结构后可能会彻底把这个变量从某些代码段里给优化到消失！看下面从wikipedia抄来的例子:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">bar</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">foo</span> <span class="o">!=</span> <span class="mi">255</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>具有优化功能的编译器分析完代码后觉得没有其它代码“可能”会改变存储在foo中的值，注意那个“可能”，编译器不是神，优化结果也许会出错。于是代码给优化成下面的样子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">bar_optimized</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是foo变量可能会被计算机的某些部件所改变，上面优化后的代码就无法检测到了，就会悲剧了。  <br/>
+除了上面所说的，还有内存屏障即<a href="http://en.wikipedia.org/wiki/Memory_barrier">memory barrier</a> ，变量使用时会被从内存取出放入CPU的寄存器，以后使用的时候为了速度考虑不去内存读了，还是从寄存器取出来，但是并发环境下这个变量可能会被其它线程所改变，这时就必须去内存中读取，这种情况就必须要用volatile修饰，表明该变量不稳定，程序运行过程可能会改变，不要优化，每次乖乖去内存读。  <br/>
+从上面也可以看出来，程序员使用这个关键字的时候必须要有充分的把握，不能乱用，否则会影响程序的执行效率。但是该用的时候不用又会影响程序的正确性。</p>
+
+<h2>restrict关键字  </h2>
+
+<p>这个关键字用来表明变量是各自独立的，这个保证需要程序员给予，继续看wikipedia的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">val</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrA</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrB</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当你写出上面的代码后，编译器不清楚三个参数指针是不是指向同一个地方，所以不敢随便对它进行优化（对比下面优化代码就可也看出这里是怎么个不随便了），编译器老老实实按着逻辑来生成的代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val  <span class="p">;</span> 加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA <span class="p">;</span> Load the value of ptrA pointer
+</span><span class='line'>add  R2 <span class="o">+=</span> R1   <span class="p">;</span> Perform Addition
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA <span class="p">;</span> Update the value of ptrA pointer
+</span><span class='line'><span class="p">;</span> Similarly for ptrB<span class="p">,</span> note that val is loaded twice<span class="p">,</span>
+</span><span class='line'><span class="p">;</span> because ptrA may be equal to val.
+</span><span class='line'>load R1 ← <span class="o">*</span>val <span class="p">;</span>再次加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>中间注释分开的上下两部分代码差不多，重点是val会被重复加载两次。因为程序员没说，编译器不敢确定val会不会跟ptrA或者ptrB指向相同的地方。如果指向相同的地方就必须重新载入，因为运算可能导致val指针指向的内容发生了变化。  <br/>
+但是如果程序员能保证这仨指针会指向不同的地方，写出下面的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="n">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">val</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>既然程序员如此确定，保证这仨指针指向不同的地方，那么编译器就不客气了，生成如下优化代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA
+</span><span class='line'><span class="p">;</span> 请注意下面，val不再会被重新载入了，
+</span><span class='line'><span class="p">;</span> 因为编译器知道它不会被改变
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这俩关键字的使用需要丰富的经验和对代码的整体把握。不能乱用。不确定的情况下使用volatile最多阻止优化拖慢程序运行速度，但是程序正确性不会被影响。如果没有百分百保证就不要用restrict了。 <br/>
+总之，根据这俩关键字的性质，在不能百分之百肯定的情况下，最保守的做法是可以用volatile，但是不要用restrict。不知我这么理解对不对。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1782,379 +1941,6 @@ Implement an algorithm to find the nth to last element of a singly linked list.<
 </span></code></pre></td></tr></table></div></figure>
 
 
-
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1/">Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.1</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2013-08-04T13:49:00+08:00" pubdate data-updated="true">Aug 4<span>th</span>, 2013</time>
-        
-         | <a href="/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Interview Question 2.1</p>
-
-<p>题目：</p>
-
-<p>Write code to remove duplicates from an unsorted linked list.<br/>
-FOLLOW UP<br/>
-How would you solve this problem if a temporary buffer is not allowed?</p>
-
-<p>解题思路与代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-<span class='line-number'>135</span>
-<span class='line-number'>136</span>
-<span class='line-number'>137</span>
-<span class='line-number'>138</span>
-<span class='line-number'>139</span>
-<span class='line-number'>140</span>
-<span class='line-number'>141</span>
-<span class='line-number'>142</span>
-<span class='line-number'>143</span>
-<span class='line-number'>144</span>
-<span class='line-number'>145</span>
-<span class='line-number'>146</span>
-<span class='line-number'>147</span>
-<span class='line-number'>148</span>
-<span class='line-number'>149</span>
-<span class='line-number'>150</span>
-<span class='line-number'>151</span>
-<span class='line-number'>152</span>
-<span class='line-number'>153</span>
-<span class='line-number'>154</span>
-<span class='line-number'>155</span>
-<span class='line-number'>156</span>
-<span class='line-number'>157</span>
-<span class='line-number'>158</span>
-<span class='line-number'>159</span>
-<span class='line-number'>160</span>
-<span class='line-number'>161</span>
-<span class='line-number'>162</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 2.1   Write code to remove duplicates from an unsorted linked list.</span>
-</span><span class='line'><span class="cm"> * FOLLOW UP</span>
-</span><span class='line'><span class="cm"> * How would you solve this problem if a temporary buffer is not allowed?</span>
-</span><span class='line'><span class="cm"> * 中文：删除未排序链表中的重复节点。</span>
-</span><span class='line'><span class="cm"> * 还有，</span>
-</span><span class='line'><span class="cm"> * 不允许临时缓冲区你该怎么办？</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;malloc.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">link_node</span> <span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">data</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">struct</span> <span class="n">link_node</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span> <span class="n">link_node</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 这题本质还是计数问题，去重嘛！如果允许开一个缓冲区可以用hash，遍历一个判断一下是否在</span>
-</span><span class='line'><span class="cm"> * hash里面，如果没有则加入，如果在里面则删除。稍微费劲的是需要自己实现一个hashmap，</span>
-</span><span class='line'><span class="cm"> * 不能直接用以链表存储的数值为索引的数组，因为数值可能为负数。多占了空间，时间复杂度</span>
-</span><span class='line'><span class="cm"> * 相应就可以降低，为O（n）。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 表长为素数</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="cp">#define M 4093</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 开链法实现</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="n">hash_node</span> <span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">hash_value</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">struct</span> <span class="n">hash_node</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span> <span class="n">hash_node</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="n">hash_node</span> <span class="n">st</span><span class="p">[</span><span class="n">M</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">int</span>
-</span><span class='line'><span class="nf">hash</span><span class="p">(</span><span class="kt">int</span> <span class="n">data</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">return</span> <span class="n">data</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">?</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="n">M</span><span class="o">:</span><span class="n">data</span> <span class="o">%</span> <span class="n">M</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">int</span>
-</span><span class='line'><span class="nf">st_contain</span><span class="p">(</span><span class="kt">int</span> <span class="n">data</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">h</span> <span class="o">=</span> <span class="n">hash</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hash_node</span> <span class="o">*</span><span class="n">tmp</span> <span class="o">=</span> <span class="n">st</span><span class="p">[</span><span class="n">h</span><span class="p">].</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">tmp</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">tmp</span><span class="o">-&gt;</span><span class="n">hash_value</span> <span class="o">==</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">st_add</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">h</span> <span class="o">=</span> <span class="n">hash</span><span class="p">(</span><span class="n">data</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">hash_node</span> <span class="o">*</span><span class="n">new_node</span> <span class="o">=</span> <span class="p">(</span><span class="n">hash_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">hash_node</span><span class="p">));</span>
-</span><span class='line'>  <span class="n">new_node</span><span class="o">-&gt;</span><span class="n">hash_value</span> <span class="o">=</span> <span class="n">data</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">new_node</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">st</span><span class="p">[</span><span class="n">h</span><span class="p">].</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">st</span><span class="p">[</span><span class="n">h</span><span class="p">].</span><span class="n">next</span> <span class="o">=</span> <span class="n">new_node</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">del_dup1</span><span class="p">(</span><span class="n">link_node</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">pre</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">cur</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">cur</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">st_contain</span><span class="p">(</span><span class="n">cur</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">))</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">pre</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">cur</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>          <span class="n">free</span><span class="p">(</span><span class="n">cur</span><span class="p">);</span>
-</span><span class='line'>          <span class="n">cur</span> <span class="o">=</span> <span class="n">pre</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">st_add</span><span class="p">(</span><span class="n">cur</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">);</span>
-</span><span class='line'>          <span class="n">pre</span> <span class="o">=</span> <span class="n">cur</span><span class="p">;</span>
-</span><span class='line'>          <span class="n">cur</span> <span class="o">=</span> <span class="n">cur</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 如果不让用缓冲区的话，那就用俩指针，一个p指针从头开始慢慢悠悠，</span>
-</span><span class='line'><span class="cm"> * 一个q指针快速遍历去找是否有跟p指向重复的数据。时间复杂度为O(n*n)。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">del_dup2</span><span class="p">(</span><span class="n">link_node</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p</span><span class="p">,</span> <span class="o">*</span><span class="n">q</span><span class="p">,</span> <span class="o">*</span><span class="n">pre</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">p</span> <span class="o">=</span> <span class="n">head</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">pre</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">q</span> <span class="o">=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>      <span class="k">while</span> <span class="p">(</span><span class="n">q</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">q</span><span class="o">-&gt;</span><span class="n">data</span> <span class="o">==</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>              <span class="n">pre</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">q</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>              <span class="n">free</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
-</span><span class='line'>              <span class="n">q</span> <span class="o">=</span> <span class="n">pre</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span><span class='line'>              <span class="n">pre</span> <span class="o">=</span> <span class="n">q</span><span class="p">;</span>
-</span><span class='line'>              <span class="n">q</span> <span class="o">=</span> <span class="n">q</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>          <span class="p">}</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">init_link</span><span class="p">(</span><span class="n">link_node</span> <span class="o">**</span><span class="n">head</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
-</span><span class='line'>  <span class="o">*</span><span class="n">head</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">p</span> <span class="o">=</span> <span class="o">*</span><span class="n">head</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">tmp</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">a</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">};</span>
-</span><span class='line'>  <span class="n">p</span><span class="o">-&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">tmp</span> <span class="o">=</span> <span class="p">(</span><span class="n">link_node</span><span class="o">*</span><span class="p">)</span><span class="n">calloc</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">link_node</span><span class="p">));</span>
-</span><span class='line'>      <span class="n">tmp</span><span class="o">-&gt;</span><span class="n">data</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
-</span><span class='line'>      <span class="n">p</span><span class="o">-&gt;</span><span class="n">next</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">p</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">static</span> <span class="kt">void</span>
-</span><span class='line'><span class="nf">print_link</span><span class="p">(</span><span class="n">link_node</span> <span class="o">*</span><span class="n">head</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">head</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%d &quot;</span><span class="p">,</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">);</span>
-</span><span class='line'>      <span class="n">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">-&gt;</span><span class="n">next</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span>
-</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="n">link_node</span> <span class="o">*</span><span class="n">head</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">init_link</span><span class="p">(</span><span class="o">&amp;</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">print_link</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">st</span><span class="p">));</span>
-</span><span class='line'>  <span class="n">del_dup1</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;del_dup1: &quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">print_link</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">init_link</span><span class="p">(</span><span class="o">&amp;</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">print_link</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">st</span><span class="p">));</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;del_dup2: &quot;</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">del_dup2</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">print_link</span><span class="p">(</span><span class="n">head</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
 
 </div>
   

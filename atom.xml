@@ -4,7 +4,7 @@
   <title><![CDATA[Programath]]></title>
   <link href="http://Chienlung.github.com/atom.xml" rel="self"/>
   <link href="http://Chienlung.github.com/"/>
-  <updated>2013-08-18T08:31:46+08:00</updated>
+  <updated>2013-08-21T10:49:27+08:00</updated>
   <id>http://Chienlung.github.com/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
@@ -12,6 +12,136 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[C99中的restrict和volatile关键字]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/"/>
+    <updated>2013-08-21T09:34:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi</id>
+    <content type="html"><![CDATA[<p>在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 <br/>
+这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量，告诉编译器它们所修饰的变量的“物理性质”，即变量是否稳定，程序运行过程会不会发生变化。我这么说不是太准确，根据我看的资料，这俩关键字用的场景不同，但是确实跟“稳定性”有关，但不是一类稳定性。详细看下面，我理解有误请您务必斧正。但是我觉得出现这俩关键字的目的是为了避免编译器优化代码的副作用。</p>
+
+<h2>volatile关键字   </h2>
+
+<p>如果变量没有被volatile修饰，编译器分析完程序结构后可能会彻底把这个变量从某些代码段里给优化到消失！看下面从wikipedia抄来的例子:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">bar</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">foo</span> <span class="o">!=</span> <span class="mi">255</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>具有优化功能的编译器分析完代码后觉得没有其它代码“可能”会改变存储在foo中的值，注意那个“可能”，编译器不是神，优化结果也许会出错。于是代码给优化成下面的样子：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">bar_optimized</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">foo</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span>
+</span><span class='line'>         <span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>但是foo变量可能会被计算机的某些部件所改变，上面优化后的代码就无法检测到了，就会悲剧了。  <br/>
+除了上面所说的，还有内存屏障即<a href="http://en.wikipedia.org/wiki/Memory_barrier">memory barrier</a> ，变量使用时会被从内存取出放入CPU的寄存器，以后使用的时候为了速度考虑不去内存读了，还是从寄存器取出来，但是并发环境下这个变量可能会被其它线程所改变，这时就必须去内存中读取，这种情况就必须要用volatile修饰，表明该变量不稳定，程序运行过程可能会改变，不要优化，每次乖乖去内存读。  <br/>
+从上面也可以看出来，程序员使用这个关键字的时候必须要有充分的把握，不能乱用，否则会影响程序的执行效率。但是该用的时候不用又会影响程序的正确性。</p>
+
+<h2>restrict关键字  </h2>
+
+<p>这个关键字用来表明变量是各自独立的，这个保证需要程序员给予，继续看wikipedia的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="nf">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="n">val</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrA</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'>    <span class="o">*</span><span class="n">ptrB</span> <span class="o">+=</span> <span class="o">*</span><span class="n">val</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>当你写出上面的代码后，编译器不清楚三个参数指针是不是指向同一个地方，所以不敢随便对它进行优化（对比下面优化代码就可也看出这里是怎么个不随便了），编译器老老实实按着逻辑来生成的代码如下：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val  <span class="p">;</span> 加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA <span class="p">;</span> Load the value of ptrA pointer
+</span><span class='line'>add  R2 <span class="o">+=</span> R1   <span class="p">;</span> Perform Addition
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA <span class="p">;</span> Update the value of ptrA pointer
+</span><span class='line'><span class="p">;</span> Similarly for ptrB<span class="p">,</span> note that val is loaded twice<span class="p">,</span>
+</span><span class='line'><span class="p">;</span> because ptrA may be equal to val.
+</span><span class='line'>load R1 ← <span class="o">*</span>val <span class="p">;</span>再次加载val指向的值
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>中间注释分开的上下两部分代码差不多，重点是val会被重复加载两次。因为程序员没说，编译器不敢确定val会不会跟ptrA或者ptrB指向相同的地方。如果指向相同的地方就必须重新载入，因为运算可能导致val指针指向的内容发生了变化。  <br/>
+但是如果程序员能保证这仨指针会指向不同的地方，写出下面的代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">void</span> <span class="n">updatePtrs</span><span class="p">(</span><span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrA</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">ptrB</span><span class="p">,</span> <span class="kt">size_t</span> <span class="o">*</span><span class="kr">restrict</span> <span class="n">val</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>既然程序员如此确定，保证这仨指针指向不同的地方，那么编译器就不客气了，生成如下优化代码：</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='s'><span class='line'>load R1 ← <span class="o">*</span>val
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrA
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrA
+</span><span class='line'><span class="p">;</span> 请注意下面，val不再会被重新载入了，
+</span><span class='line'><span class="p">;</span> 因为编译器知道它不会被改变
+</span><span class='line'>load R2 ← <span class="o">*</span>ptrB
+</span><span class='line'>add  R2 <span class="o">+=</span> R1
+</span><span class='line'>set  R2 → <span class="o">*</span>ptrB
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这俩关键字的使用需要丰富的经验和对代码的整体把握。不能乱用。不确定的情况下使用volatile最多阻止优化拖慢程序运行速度，但是程序正确性不会被影响。如果没有百分百保证就不要用restrict了。 <br/>
+总之，根据这俩关键字的性质，在不能百分之百肯定的情况下，最保守的做法是可以用volatile，但是不要用restrict。不知我这么理解对不对。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[一个用C语言实现的命令行英汉对照词典: MyDict]]></title>
@@ -3339,165 +3469,6 @@ Write the test cases for this method.</p>
 </span><span class='line'>  <span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
 </span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
 </span><span class='line'>      <span class="n">reverse_cstr</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.1]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/15/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-1/"/>
-    <updated>2013-07-15T22:07:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/15/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-1</id>
-    <content type="html"><![CDATA[<p>Interview Question 1.1</p>
-
-<p>题目：</p>
-
-<p>Implement an algorithm to determine if a string has all unique characters. What if you
-can not use additional data structures?</p>
-
-<p>解题思路与代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 1.1    Implement an algorithm to determine if a string has all unique characters.</span>
-</span><span class='line'><span class="cm"> *       What if you can not use additional data structures?</span>
-</span><span class='line'><span class="cm"> *       中文：实现一个算法来确定一个字符串中的字符是否互补相同。如果不用额外的数据结构你会怎么来实现？</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 题目本质我觉得就是个计数问题，如果计数问题，计数就理所当然用索引数组啦。</span>
-</span><span class='line'><span class="cm"> * 假设字符串中到字符属于扩展的ASCII字符集。</span>
-</span><span class='line'><span class="cm"> * 用一个索引数组a[256]来实现，初始化为0，</span>
-</span><span class='line'><span class="cm"> * 遍历一遍字符串，某个字符未出现过则把起对应位置置为1，否则包含重复字符跳出遍历。</span>
-</span><span class='line'><span class="cm"> * 当然，如果想节省空间就用bitmap，这个用时间换空间，因为定位需要进行计算。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span>
-</span><span class='line'><span class="nf">unique_v1</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">a</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">a</span><span class="p">));</span>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">printf</span><span class="p">(</span><span class="s">&quot;NO</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>          <span class="k">return</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">a</span><span class="p">[</span><span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;YES</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span>
-</span><span class='line'><span class="nf">unique_v2</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="cm">/*</span>
-</span><span class='line'><span class="cm">  * 每个int四个字节，即32 bit，那么256个ascii码共需要8个int。</span>
-</span><span class='line'><span class="cm">  */</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">a</span><span class="p">[</span><span class="mi">8</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">arr_index</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">bit_index</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">len</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">arr_index</span> <span class="o">=</span> <span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="mi">32</span><span class="p">;</span><span class="cm">/* 定位数组下标索引，即哪个int */</span>
-</span><span class='line'>      <span class="n">bit_index</span> <span class="o">=</span> <span class="n">str</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">%</span> <span class="mi">32</span><span class="p">;</span><span class="cm">/* 定位在该int中的位索引,每个int最右边为第0位(为了便于移位运算） */</span>
-</span><span class='line'>      <span class="k">if</span> <span class="p">((</span><span class="n">a</span><span class="p">[</span><span class="n">arr_index</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">bit_index</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>          <span class="n">printf</span><span class="p">(</span><span class="s">&quot;NO</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'>          <span class="k">return</span><span class="p">;</span>
-</span><span class='line'>      <span class="p">}</span>
-</span><span class='line'>      <span class="n">a</span><span class="p">[</span><span class="n">arr_index</span><span class="p">]</span> <span class="o">|=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">bit_index</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;YES</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span>
-</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">unique_v1</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>      <span class="n">unique_v2</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
 </span><span class='line'>  <span class="p">}</span>
 </span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
 </span><span class='line'><span class="p">}</span>
