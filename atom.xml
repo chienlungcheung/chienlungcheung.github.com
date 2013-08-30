@@ -4,7 +4,7 @@
   <title><![CDATA[Programath]]></title>
   <link href="http://Chienlung.github.com/atom.xml" rel="self"/>
   <link href="http://Chienlung.github.com/"/>
-  <updated>2013-08-21T10:49:27+08:00</updated>
+  <updated>2013-08-30T15:35:56+08:00</updated>
   <id>http://Chienlung.github.com/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
@@ -12,6 +12,25 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[用Go语言实现的LZW压缩解压缩算法]]></title>
+    <link href="http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/"/>
+    <updated>2013-08-30T14:13:00+08:00</updated>
+    <id>http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa</id>
+    <content type="html"><![CDATA[<p>上几天看了许巨巨关于Go的一条微博，翻出他的PPT看了下，原来Unix和C语言的创始人也是Go领导者之一，忽然想学学这门号称21世纪C语言的Go语言。</p>
+
+<p>看了点基础语法我就想笑，各种似曾相识的感觉，但是又极其精简，作为一个C粉儿/Python粉儿，甚是喜欢这个语言。于是想写点什么，亲自感受一下。于是就用它实现了一个LZW算法，这个算法用的很多，也挺简单的，Sedgewick那本Java版算法讲的甚是通俗易懂，感兴趣的可以看下。</p>
+
+<p>用到的数据结构也很常见。  <br/>
+因为压缩时涉及字符串前缀，所以Compress部分保存charaters&#8212;code的编码表用的是TSTree即三向单词查找树，这个结构比普通的单词查找树节省空间，因为几乎没有空桶。 <br/>
+Expand部分用于储存code-characters的对照表就是map，用了go内部自带的，自己实现也不难。</p>
+
+<p>程序写完感觉好像在用C写。</p>
+
+<p>一个不完善的地方是本来想压缩个小说来着，但是输入输出处理起来比较费劲，因为都是位级别的，Go的IO部分我还没看，以后改进吧。具体代码我托管到了<a href="https://github.com/Chienlung/LZW-wrote-in-golang-">github</a>。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[C99中的restrict和volatile关键字]]></title>
@@ -3360,118 +3379,6 @@ Write the test cases for this method.</p>
 </span><span class='line'><span class="cm"> * 4.     String with all continuous duplicates, e.g.: aaabbb</span>
 </span><span class='line'><span class="cm"> * 5.    String with non-contiguous duplicate, e.g.: abababa</span>
 </span><span class='line'><span class="cm"> */</span>
-</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.2]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/16/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-2/"/>
-    <updated>2013-07-16T00:17:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/16/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-2</id>
-    <content type="html"><![CDATA[<p>Interview Question 1.2</p>
-
-<p>题目：</p>
-
-<p>Write code to reverse a C-Style String. (C-String means that “abcd” is represented as five characters, including the null character.)</p>
-
-<p>解题思路与代码：</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 1.2    Write code to reverse a C-Style String.</span>
-</span><span class='line'><span class="cm"> * (C-String means that “abcd” is represented as five characters,</span>
-</span><span class='line'><span class="cm"> * including the null character.)</span>
-</span><span class='line'><span class="cm"> * 中文：写代码来逆转一个C风格的字符串。所谓的C风格就是指最后以空字符&#39;\0&#39;结束的字符串。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*</span>
-</span><span class='line'><span class="cm"> * 很直观的念头就是俩指针，一个指向头，一个指向尾，同时向中间移动一个位置，移动前交换所指向的字符。</span>
-</span><span class='line'><span class="cm"> * 注意C风格的字符串最后是空字符，不要动它，应该只逆转它前面的所有字符。</span>
-</span><span class='line'><span class="cm"> */</span>
-</span><span class='line'><span class="kt">void</span>
-</span><span class='line'><span class="nf">swap</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">b</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="o">*</span><span class="n">a</span> <span class="o">=</span> <span class="o">*</span><span class="n">a</span> <span class="o">^</span> <span class="o">*</span><span class="n">b</span><span class="p">;</span>
-</span><span class='line'>  <span class="o">*</span><span class="n">b</span> <span class="o">=</span> <span class="o">*</span><span class="n">a</span> <span class="o">^</span> <span class="o">*</span><span class="n">b</span><span class="p">;</span>
-</span><span class='line'>  <span class="o">*</span><span class="n">a</span> <span class="o">=</span> <span class="o">*</span><span class="n">a</span> <span class="o">^</span> <span class="o">*</span><span class="n">b</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span>
-</span><span class='line'><span class="nf">reverse_cstr</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">str</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">p</span><span class="p">,</span> <span class="o">*</span><span class="n">q</span><span class="p">;</span>
-</span><span class='line'>  <span class="kt">int</span> <span class="n">len</span> <span class="o">=</span> <span class="n">strlen</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="n">p</span> <span class="o">=</span> <span class="n">str</span><span class="p">;</span>
-</span><span class='line'>  <span class="n">q</span> <span class="o">=</span> <span class="n">str</span> <span class="o">+</span> <span class="p">(</span><span class="n">len</span> <span class="o">-</span><span class="mi">1</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">p</span> <span class="o">&lt;</span> <span class="n">q</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">swap</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
-</span><span class='line'>      <span class="n">p</span><span class="o">++</span><span class="p">;</span>
-</span><span class='line'>      <span class="n">q</span><span class="o">--</span><span class="p">;</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;result : %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span>
-</span><span class='line'><span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">str</span><span class="p">[</span><span class="mi">100</span><span class="p">];</span>
-</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">scanf</span><span class="p">(</span><span class="s">&quot;%s&quot;</span><span class="p">,</span> <span class="n">str</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>      <span class="n">reverse_cstr</span><span class="p">(</span><span class="n">str</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
 </span></code></pre></td></tr></table></div></figure>
 
 ]]></content>

@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>用Go语言实现的LZW压缩解压缩算法 - Programath</title>
+  <meta name="author" content="Chienlung">
+
+  
+  <meta name="description" content="上几天看了许巨巨关于Go的一条微博，翻出他的PPT看了下，原来Unix和C语言的创始人也是Go领导者之一，忽然想学学这门号称21世纪C语言的Go语言。 看了点基础语法我就想笑，各种似曾相识的感觉，但是又极其精简，作为一个C粉儿/Python粉儿，甚是喜欢这个语言。于是想写点什么，亲自感受一下。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Programath" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Programath</a></h1>
+  
+    <h2>善战者无名。LoveLY!o(∩_∩)o。</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">用Go语言实现的LZW压缩解压缩算法</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-30T14:13:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2013</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>上几天看了许巨巨关于Go的一条微博，翻出他的PPT看了下，原来Unix和C语言的创始人也是Go领导者之一，忽然想学学这门号称21世纪C语言的Go语言。</p>
+
+<p>看了点基础语法我就想笑，各种似曾相识的感觉，但是又极其精简，作为一个C粉儿/Python粉儿，甚是喜欢这个语言。于是想写点什么，亲自感受一下。于是就用它实现了一个LZW算法，这个算法用的很多，也挺简单的，Sedgewick那本Java版算法讲的甚是通俗易懂，感兴趣的可以看下。</p>
+
+<p>用到的数据结构也很常见。  <br/>
+因为压缩时涉及字符串前缀，所以Compress部分保存charaters&#8212;code的编码表用的是TSTree即三向单词查找树，这个结构比普通的单词查找树节省空间，因为几乎没有空桶。 <br/>
+Expand部分用于储存code-characters的对照表就是map，用了go内部自带的，自己实现也不难。</p>
+
+<p>程序写完感觉好像在用C写。</p>
+
+<p>一个不完善的地方是本来想压缩个小说来着，但是输入输出处理起来比较费劲，因为都是位级别的，Go的IO部分我还没看，以后改进吧。具体代码我托管到了<a href="https://github.com/Chienlung/LZW-wrote-in-golang-">github</a>。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Chienlung</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-08-30T14:13:00+08:00" pubdate data-updated="true">Aug 30<span>th</span>, 2013</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/" data-via="" data-counturl="http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/" >Tweet</a>
+  
+  
+  
+  
+    <a class="bshareDiv" href="http://www.bshare.cn/share">Sharing</a><script type="text/javascript" charset="utf-8" src="http://static.bshare.cn/b/buttonLite.js#uuid=a2292c22-20b6-4f24-98fe-4a4d07d25dd4 &amp;style=999&amp;img=http%3A%2F%2Fstatic.bshare.cn%2Fimages%2Fbuttons%2Fbox-shareTo-zh.gif&amp;w=147&amp;h=21"></script>
+  
+</div>
+
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/" title="Previous Post: C99中的restrict和volatile关键字">&laquo; C99中的restrict和volatile关键字</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>最新评论</h1>
+  <script type="text/javascript" src="http://chienlung.disqus.com/recent_comments_widget.js?num_items=5&hide_avatars=0&avatar_size=32&excerpt_length=200"></script>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2013 - Chienlung -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'Chienlung';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/';
+        var disqus_url = 'http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
