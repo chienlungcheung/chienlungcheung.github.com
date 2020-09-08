@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: python | Programath]]></title>
-  <link href="http://Chienlung.github.com/blog/categories/python/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/blog/categories/python/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[用python实现linux守护进程]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng/"/>
     <updated>2013-08-06T19:47:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng</id>
     <content type="html"><![CDATA[<p>昨天在微博看到<a href="http://www.vimer.cn/2010/08/%E7%94%A8python%E7%BC%96%E5%86%99linux%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B.html">这篇文章</a>,然后又看到<a href="http://colding.bokee.com/5277082.html">这个稍微详细点的解释</a>。本着好记性不如烂键盘，就自己把整个代码敲了一遍。不知道是吸收的知识量越来越大了，还是自己记性不如以前了，一看知道怎么回事，写出来或者讲出来就费点劲，甚至有点哑口。一定要多实践！APUE也要赶紧再看一遍。  <br/>
 这个程序我自己敲的时候，加了一些自己的理解，注释里更多的解释了一下原理。</p>
 

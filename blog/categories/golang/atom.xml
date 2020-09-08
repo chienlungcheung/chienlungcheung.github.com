@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: golang | Programath]]></title>
-  <link href="http://Chienlung.github.com/blog/categories/golang/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/blog/categories/golang/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Go语言中反射包的实现原理（The Laws of Reflection)]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection/"/>
     <updated>2013-09-01T14:03:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection</id>
+    <id>http://chienlungcheung.github.io/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection</id>
     <content type="html"><![CDATA[<h2>前言</h2>
 
 <p>过去只是知道某些语言带有反射，但是一直没机会使用这种高级功能，所以也没有深入了解过。昨天看golang时里面提到reflection，既然这么多语言支持这个性质，那就深入了解下好了。这篇文档翻译自官方文档的<a href="http://golang.org/doc/articles/laws_of_reflection.html">The Laws of Reflection</a>，翻译目的不是为了翻译，而是加深自己记忆以及理解，所以有些地方可能不会直译，因为我没那么高水平，有时自己能看懂，但是按着原话翻译出来给别人听感觉好难。某些专用名词会继续保留原文，有时，其实我觉得还是英文更加容易理解。</p>

@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://Chienlung.github.com/blog/page/4/">
+  <link rel="canonical" href="http://chienlungcheung.github.io/blog/page/4/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -49,7 +49,7 @@
   
 <form action="http://google.com/search" method="get">
   <fieldset role="search">
-    <input type="hidden" name="q" value="site:Chienlung.github.com" />
+    <input type="hidden" name="q" value="site:chienlungcheung.github.io" />
     <input class="search" type="text" name="q" results="0" placeholder="Search"/>
   </fieldset>
 </form>
@@ -469,7 +469,7 @@
 <h1>第二部分<a href="http://octopress.org/docs/deploying/github/">Deploying to Github Pages</a></h1></li>
 <li><p>创建<a href="https://github.com/new">new Github repository</a></p>
 
-<p> 这里先多说两句，在我们的Blog中为什么涉及到Github呢，因为，Github相当于我们的免费主机，我们把Blog的所有代码和相关内容都存储到了Github上，所以才有了这里的为我们的Blog创建一个Github仓库。<a href="https://github.com/new">戳这</a>进入创建repository，这里又有一个地方容易出错，就是repository name，这个名字的格式为<em>username.github.com</em>，这里的<em>username</em>必须跟你的github网站用户名相同，比如我的github用户名叫Chienlung，然后的repository name必须为<em>chienlung.github.com</em>，而不能是其它。开始我本来打算它<em>ponyo.github.com</em>，可是后面就是不成功，详细原因我还没去细究，先不管它，搭起来再说。后面Description你可也随便写，也可也不写。再后面一般选public，要是选private是要给github交钱的。再后面Initialize this repository with a README 前面的勾可以勾上也可也不勾上，它推荐勾上。好了，点击Create repository就完成了。
+<p> 这里先多说两句，在我们的Blog中为什么涉及到Github呢，因为，Github相当于我们的免费主机，我们把Blog的所有代码和相关内容都存储到了Github上，所以才有了这里的为我们的Blog创建一个Github仓库。<a href="https://github.com/new">戳这</a>进入创建repository，这里又有一个地方容易出错，就是repository name，这个名字的格式为<em>username.github.com</em>，这里的<em>username</em>必须跟你的github网站用户名相同，比如我的github用户名叫Chienlung，然后的repository name必须为<em>chienlungcheung.github.io</em>，而不能是其它。开始我本来打算它<em>ponyo.github.com</em>，可是后面就是不成功，详细原因我还没去细究，先不管它，搭起来再说。后面Description你可也随便写，也可也不写。再后面一般选public，要是选private是要给github交钱的。再后面Initialize this repository with a README 前面的勾可以勾上也可也不勾上，它推荐勾上。好了，点击Create repository就完成了。
  这里还要多说几句，就是如果你申请github帐号后需要在本地系统生成SSH KEY，然后贴到你的github账户里，因为octopress命令是通过SSH方式进行Deploy的。如果你已经做过了，那就跳过这里。点击<a href="https://help.github.com/articles/generating-ssh-keys">Generating SSH Keys</a>，这个页面有详细的生成SSH KEY的步骤：
  打开一个新的Terminal终端，按如下步骤进行：
  第一步输入：</p>
@@ -509,7 +509,7 @@
 <pre><code>     rake setup_github_pages # 这个命令执行后，会要求你输入你为Blog建立的repository的SSH地址，这个提示是个坑，而且不只有我一个newbie掉进去了，下面详细来说这个坑。
 </code></pre>
 
- 看<a href="http://stackoverflow.com/questions/12060903/github-error-repository-not-found-when-installing-octopress/13888445#13888445">stackoverflow关于这个坑的问答</a>，如果按照这个提示，我应该输入<code>git@github.com:Chienlung/chienlung.github.com</code>，结果就是说这个repository找不到，因为这个根本不是repository的SSH地址，后面还必须要加上<code>.git</code>，所以正确的输入应该为<code>git@github.com:Chienlung/chienlung.github.com.git</code>。
+ 看<a href="http://stackoverflow.com/questions/12060903/github-error-repository-not-found-when-installing-octopress/13888445#13888445">stackoverflow关于这个坑的问答</a>，如果按照这个提示，我应该输入<code>git@github.com:Chienlung/chienlungcheung.github.io</code>，结果就是说这个repository找不到，因为这个根本不是repository的SSH地址，后面还必须要加上<code>.git</code>，所以正确的输入应该为<code>git@github.com:Chienlung/chienlungcheung.github.io.git</code>。
  然后输入下面的命令：
 
 <pre><code>     rake generate # 这个命令就是把按照所有的更新在本地生成网站。注意这个命令的输出，有时候你的更改出错的时候，这个命令不会执行成功，然后你可也根据输出来检查自己到底哪里出错了。
@@ -530,7 +530,7 @@
 </code></pre>
 
 <p> 以后你对Blog有所更改后，执行完毕这些命令后，去这个分支下点开文件你就会看到一些改变。这三个命令也经常使用，跟上面那三个一样，你对你的Blog增删改以后要执行这个命令来更新repository。
-到这里，算是完事了，输入你Blog的网址，类似与我这个<code>chienlung.github.com</code>，你就可以看到你的Blog啦。</p></li>
+到这里，算是完事了，输入你Blog的网址，类似与我这个<code>chienlungcheung.github.io</code>，你就可以看到你的Blog啦。</p></li>
 </ol>
 
 
@@ -539,7 +539,7 @@
 <p>我觉得Octopress牛逼的地方，也是吸引我的地方就是写博客跟写程序似的。写完了你可以现在本地“调试”看结果，然后满意了再deploy到远端，下面我用修改Blog配置来举个例子。
 找到Octopress文件夹下有个_config.yml文件，打开它，修改开头的一下内容：</p>
 
-<pre><code>url: http://Chienlung.github.com
+<pre><code>url: http://chienlungcheung.github.io
 title: My Octopress Blog
 subtitle: A blogging framework for hackers.
 author: Your Name
@@ -549,7 +549,7 @@ description:
 
 <p>把这些内容修改为下面的样子：</p>
 
-<pre><code>url: http://Chienlung.github.com
+<pre><code>url: http://chienlungcheung.github.io
 title: 陆彦帑的博客
 subtitle: 宗介波妞手拉手，宗介永远爱波妞。 
 author: 陆彦帑

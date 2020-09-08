@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Algorithm | Programath]]></title>
-  <link href="http://Chienlung.github.com/blog/categories/algorithm/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/blog/categories/algorithm/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[poj 1008 Maya Calendar AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma/"/>
     <updated>2013-07-16T23:46:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma</id>
     <content type="html"><![CDATA[<p>这个题很简单，但是我觉得有点恶心，心里情不自禁想到玛雅人消失肯定有原因，搞特么俩日历，还特么这么麻烦。在根据月份的名字去查找对应的号码时如果想提升效率可以事先建立一个字典，然后每次直接按字符串进行查询即可，时间复杂度O（1），字典可以用哈希来来实现，哈希值的计算可以用霍纳法则来算，但是有个恶心的地方就是建立字典的时候要手动输入每个月份及其对应的号码。最后实现的时候我没这么做，一个是月份不多，另一个是这些月份的前缀相同的字母是极少，所以即使用strcmp也会非常快。还有一个恶心的地方就是第二种日历中，每一天对应的号码数是从1到13，算得时候反正恶心着我了。下面是代码，关键地方都有注释：</p>
 
 <p>```c</p>
@@ -117,9 +117,9 @@ return 0;
   
   <entry>
     <title type="html"><![CDATA[poj 1007 DNA Sorting AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma/"/>
     <updated>2013-07-16T23:02:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma</id>
     <content type="html"><![CDATA[<p>题目其实就是让求每个字符串的逆序数，然后将字符串按逆序数从小到达排序输出。求逆序数最先想到的就是归并排序，在通过比较合并两个子数组时顺道计算逆序数。当然具体针对这个题目，求逆序数还有更简单的方法，因为字符串只由四种字母构成，具体可以看poj这道题的disguss，大家都有讨论。计算出逆序数以后把逆序数作为排序关键字进行排序，因为是字符串，所以要避免复制字符串，用字符串的起始地址作为代表就好了。代码如下：</p>
 
 <p>```c</p>
@@ -243,9 +243,9 @@ return 0;
   
   <entry>
     <title type="html"><![CDATA[poj 1006 Biorhythms AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/13/poj-1006-biorhythms-acdai-ma/"/>
     <updated>2013-07-13T10:21:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/13/poj-1006-biorhythms-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/13/poj-1006-biorhythms-acdai-ma</id>
     <content type="html"><![CDATA[<p>其实这个题挺简单的，本来不想写解题报告，但是提交的时候连续WA，后来想自己思路不够缜密，这个题最关键的是对输入p,e,i这三个值的理解，这里牵扯到一个定语从句到底修饰谁的语法问题'The values p, e, and i are the number of days from the beginning of the current year at which the physical, emotional, and intellectual cycles peak, respectively.'这个句子中到at which修饰的是' the number'而不是'the beginning'，要是理解错了会发现矛盾。也就是说the beginning of the current year记为0，那么p,e,i指的是在日期p发生physical peak，在日期e发生emotional peak，在日期i发生intellectual peak，但前面这些日期p,e,i不一定是current year各个peak第一次发生的日期，而题目指出给定的日期d可能小于p,e,i，所以要先分别对p,e,i各自做一下模运算求出current year每个peak第一次发生的时间，而这三个第一次发生的时间可能重合即是一个triple peak，而d可能比这个时间小。下面是代码：</p>
 
 <p>```c</p>
@@ -298,9 +298,9 @@ return 0;
   
   <entry>
     <title type="html"><![CDATA[poj 1002 487-3279 AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/11/poj-1002-487-3279-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/11/poj-1002-487-3279-acdai-ma/"/>
     <updated>2013-07-11T21:07:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/11/poj-1002-487-3279-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/11/poj-1002-487-3279-acdai-ma</id>
     <content type="html"><![CDATA[<p>题目要把一个电话本里面的所有重复的电话号码转成标准格式，即形如102-1129的格式，并且输出其重复次数，号码输出时按字典序输出。如果没有重复的就输出No duplicates.。</p>
 
 <p>这个题目我首先就想用STL，但是一想算了没什么锻炼。然后就想用bitmap，bitmap节省空间，并且还有顺序符合那个字典序要求，但是算了下所有的号码是从000-0000到999-9999，一共1000万个数，用bitmap得耗费125MB，还是算了。所以就用了trie，这个数据结构相当节省空间，而且从上向下从左向右遍历符合字典序要求。我还想用trie的变形就是TST（ternary search trie,即三路搜索线索），TST更加节省空间。标准trie虽然可以复用某些分支，但是在输入不够随机的时候，可能会产生许多空桶。但是在写标准trie的时候因为该死的calloc害我浪费大量时间，后来就没写。</p>
@@ -494,9 +494,9 @@ return 0;
   
   <entry>
     <title type="html"><![CDATA[poj 1001 Expnentiation AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/10/poj-1001-expnentiation-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/10/poj-1001-expnentiation-acdai-ma/"/>
     <updated>2013-07-10T23:56:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/10/poj-1001-expnentiation-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/10/poj-1001-expnentiation-acdai-ma</id>
     <content type="html"><![CDATA[<p>自己过去都没正儿八经写过高精度算法，看<a href="http://poj.org/problem?id=1001">poj 1001 Exponentiation</a>通过率不太高，写个试试，没想到一次AC。思路很简单，细节有点小繁杂。数组a始终保存求幂的那个原数;数组b开始跟a内容一样，但是后面累成了几次以后b保存的就是中间结果;数组c保存数组a与数组b的乘积，每次计算完毕把数组c中内容后拷贝到数组b中。最后结果保存在数组c中。关键地方代码做了注释。（再不写博客，就快把markdown语法忘光了。。。</p>
 
 <p>```c</p>

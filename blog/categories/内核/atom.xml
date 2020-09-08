@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: 内核 | Programath]]></title>
-  <link href="http://Chienlung.github.com/blog/categories/内核/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/blog/categories/内核/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[地址空间和特权级别的仿生设计]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji/"/>
     <updated>2013-08-08T15:13:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji</id>
     <content type="html"><![CDATA[<p>在看内核相关到书，想到一些自己觉得挺有意思，但是不一定准确，记下来加深记忆。感觉人类设计的东西自觉不自觉地好像都是在模拟人类社会或者人体活动，这篇文章起的可能有点大也可能不准确，只是描述自己一个感觉。</p>
 
 <h2>地址空间（食堂 = 厨房区域 + 非厨房区域）：</h2>

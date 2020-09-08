@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: 数据结构与算法 | Programath]]></title>
-  <link href="http://Chienlung.github.com/blog/categories/数据结构与算法/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/blog/categories/数据结构与算法/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[增强版插入排序---------希尔排序]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/06/xi-er-pai-xu/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/06/xi-er-pai-xu/"/>
     <updated>2013-08-06T13:32:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/06/xi-er-pai-xu</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/06/xi-er-pai-xu</id>
     <content type="html"><![CDATA[<p>希尔排序是插入排序的加强版，我们知道插入排序是一种自适应的排序算法，即如果待排序文件基本有序的话，插入排序的速度将会非常快。<br/>
 插入排序在把一个元素插入到合适位置时，需要从右向左一个一个的进行比较，如果是最小元素，比较次数更多了。如果把待排序文件改造成基本有序，那么排序速度就会很快了！希尔排序就是在插入排序的外面加了一道工序，这道工序用来对待排序文件进行预处理，处理成从任意元素开始，每隔h个元素构成的序列是有序的，即h-有序的。经过这道工序，然后进行插入排序，速度就很快了。<br/>
 看下代码容易理解：  <br/>
@@ -51,9 +51,9 @@ for (h; h &gt;0; h /= 3) {
   
   <entry>
     <title type="html"><![CDATA[基本排序算法]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/05/ji-ben-pai-xu-suan-fa/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/05/ji-ben-pai-xu-suan-fa/"/>
     <updated>2013-08-05T11:58:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/05/ji-ben-pai-xu-suan-fa</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/05/ji-ben-pai-xu-suan-fa</id>
     <content type="html"><![CDATA[<p>这里总结的基本排序算法包括选择排序、插入排序、冒泡排序。<br/>
 对于随机组合的n个数据进行排序时，这三个算法的时间复杂度与 $O(n<sup>2</sup> )$ 成正比，但是不要看不起这几个算法，对于小规模文件或者具有特殊结构（比如基本有序）的文件，这些算法比一些复杂算法的效率要高。这三个算法都不适合大型随机组合的文件，因为即使计算机运行速度非常快也是非常耗时的。下一篇文章要说的希尔排序算个例外，希尔排序的时间复杂度要低于 $O(n<sup>2</sup> )$ ，而是与 $O(n<sup>3/2</sup> )$ 成正比，适合中等大小的文件排序。</p>
 

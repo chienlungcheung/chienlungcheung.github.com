@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Programath]]></title>
-  <link href="http://Chienlung.github.com/atom.xml" rel="self"/>
-  <link href="http://Chienlung.github.com/"/>
+  <link href="http://chienlungcheung.github.io/atom.xml" rel="self"/>
+  <link href="http://chienlungcheung.github.io/"/>
   <updated>2013-09-01T21:37:29+08:00</updated>
-  <id>http://Chienlung.github.com/</id>
+  <id>http://chienlungcheung.github.io/</id>
   <author>
     <name><![CDATA[Chienlung]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[Go语言中反射包的实现原理（The Laws of Reflection)]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection/"/>
     <updated>2013-09-01T14:03:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection</id>
+    <id>http://chienlungcheung.github.io/blog/2013/09/01/goyu-yan-zhong-fan-she-bao-de-shi-xian-yuan-li-The-laws-of-reflection</id>
     <content type="html"><![CDATA[<h2>前言</h2>
 
 <p>过去只是知道某些语言带有反射，但是一直没机会使用这种高级功能，所以也没有深入了解过。昨天看golang时里面提到reflection，既然这么多语言支持这个性质，那就深入了解下好了。这篇文档翻译自官方文档的<a href="http://golang.org/doc/articles/laws_of_reflection.html">The Laws of Reflection</a>，翻译目的不是为了翻译，而是加深自己记忆以及理解，所以有些地方可能不会直译，因为我没那么高水平，有时自己能看懂，但是按着原话翻译出来给别人听感觉好难。某些专用名词会继续保留原文，有时，其实我觉得还是英文更加容易理解。</p>
@@ -547,9 +547,9 @@
   
   <entry>
     <title type="html"><![CDATA[用Go语言实现的LZW压缩解压缩算法]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa/"/>
     <updated>2013-08-30T14:13:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/30/yong-goyu-yan-shi-xian-de-lzwya-suo-jie-ya-suo-suan-fa</id>
     <content type="html"><![CDATA[<p>上几天看了许巨巨关于Go的一条微博，翻出他的PPT看了下，原来Unix和C语言的创始人也是Go领导者之一，忽然想学学这门号称21世纪C语言的Go语言。</p>
 
 <p>看了点基础语法我就想笑，各种似曾相识的感觉，但是又极其精简，作为一个C粉儿/Python粉儿，甚是喜欢这个语言。于是想写点什么，亲自感受一下。于是就用它实现了一个LZW算法，这个算法用的很多，也挺简单的，Sedgewick那本Java版算法讲的甚是通俗易懂，感兴趣的可以看下。</p>
@@ -566,9 +566,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[C99中的restrict和volatile关键字]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi/"/>
     <updated>2013-08-21T09:34:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/21/c99zhong-de-restricthe-volatileguan-jian-zi</id>
     <content type="html"><![CDATA[<p>在看到restrict关键字之前，我只见过volatile关键字，因为平时几乎用不到，所以没有深究过。但是在看一些库代码或者内核代码时经常碰到。分别查过，今天简单总结一下。 <br/>
 这俩词基本是对反义词，restrict意思是限定，volatile意思是不稳定的。都用来修饰变量，告诉编译器它们所修饰的变量的“物理性质”，即变量是否稳定，程序运行过程会不会发生变化。我这么说不是太准确，根据我看的资料，这俩关键字用的场景不同，但是确实跟“稳定性”有关，但不是一类稳定性。详细看下面，我理解有误请您务必斧正。但是我觉得出现这俩关键字的目的是为了避免编译器优化代码的副作用。</p>
 
@@ -696,9 +696,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[一个用C语言实现的命令行英汉对照词典: MyDict]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict/"/>
     <updated>2013-08-17T21:15:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/17/yong-cyu-yan-shi-xian-de-ming-ling-xing-ying-yi-dui-zhao-ci-dian-mydict</id>
     <content type="html"><![CDATA[<p>过去每次查单词都是打开google translate，中午吃完饭查单词，正好今天周末所以网速比平时更慢，google也更卡。于是想自己写个在命令行下使用的英汉词典，这样以后用VIM看源码或者看文档就可以借助tmux开个小窗口给这个命令行词典，想想就很方便。考虑到启动词典建立字典可能会话费比较多的时间，尤其当词库特别大的时候，语言当然用速度比较猛的C语言了。</p>
 
 <p>先在网上下载了一个包含四万五千多词的词典，分成了好几个文件，光制作我要的原始词库就花了许多时间，文件本来是gbk编码，所以在我ubuntu上是乱码，先写了个bash文件用linux自带的iconv命令把这几个文件转码成utf8格式，然后自己又写了俩小程序把这些转码后的文件处理成一行单词一行中文含义的格式。就开始动手写主程序，调试乱七八糟的，还有修改了下输出。</p>
@@ -711,9 +711,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[地址空间和特权级别的仿生设计]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji/"/>
     <updated>2013-08-08T15:13:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/08/di-zhi-kong-jian-he-te-quan-ji-bie-de-fang-sheng-she-ji</id>
     <content type="html"><![CDATA[<p>在看内核相关到书，想到一些自己觉得挺有意思，但是不一定准确，记下来加深记忆。感觉人类设计的东西自觉不自觉地好像都是在模拟人类社会或者人体活动，这篇文章起的可能有点大也可能不准确，只是描述自己一个感觉。</p>
 
 <h2>地址空间（食堂 = 厨房区域 + 非厨房区域）：</h2>
@@ -736,9 +736,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[用python实现linux守护进程]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng/"/>
     <updated>2013-08-06T19:47:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/06/yong-pythonshi-xian-linuxshou-hu-jin-cheng</id>
     <content type="html"><![CDATA[<p>昨天在微博看到<a href="http://www.vimer.cn/2010/08/%E7%94%A8python%E7%BC%96%E5%86%99linux%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B.html">这篇文章</a>,然后又看到<a href="http://colding.bokee.com/5277082.html">这个稍微详细点的解释</a>。本着好记性不如烂键盘，就自己把整个代码敲了一遍。不知道是吸收的知识量越来越大了，还是自己记性不如以前了，一看知道怎么回事，写出来或者讲出来就费点劲，甚至有点哑口。一定要多实践！APUE也要赶紧再看一遍。  <br/>
 这个程序我自己敲的时候，加了一些自己的理解，注释里更多的解释了一下原理。</p>
 
@@ -1139,9 +1139,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[增强版插入排序---------希尔排序]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/06/xi-er-pai-xu/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/06/xi-er-pai-xu/"/>
     <updated>2013-08-06T13:32:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/06/xi-er-pai-xu</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/06/xi-er-pai-xu</id>
     <content type="html"><![CDATA[<p>希尔排序是插入排序的加强版，我们知道插入排序是一种自适应的排序算法，即如果待排序文件基本有序的话，插入排序的速度将会非常快。<br/>
 插入排序在把一个元素插入到合适位置时，需要从右向左一个一个的进行比较，如果是最小元素，比较次数更多了。如果把待排序文件改造成基本有序，那么排序速度就会很快了！希尔排序就是在插入排序的外面加了一道工序，这道工序用来对待排序文件进行预处理，处理成从任意元素开始，每隔h个元素构成的序列是有序的，即h-有序的。经过这道工序，然后进行插入排序，速度就很快了。<br/>
 看下代码容易理解：</p>
@@ -1193,9 +1193,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[基本排序算法]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/05/ji-ben-pai-xu-suan-fa/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/05/ji-ben-pai-xu-suan-fa/"/>
     <updated>2013-08-05T11:58:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/05/ji-ben-pai-xu-suan-fa</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/05/ji-ben-pai-xu-suan-fa</id>
     <content type="html"><![CDATA[<p>这里总结的基本排序算法包括选择排序、插入排序、冒泡排序。<br/>
 对于随机组合的n个数据进行排序时，这三个算法的时间复杂度与 $O(n<sup>2</sup> )$ 成正比，但是不要看不起这几个算法，对于小规模文件或者具有特殊结构（比如基本有序）的文件，这些算法比一些复杂算法的效率要高。这三个算法都不适合大型随机组合的文件，因为即使计算机运行速度非常快也是非常耗时的。下一篇文章要说的希尔排序算个例外，希尔排序的时间复杂度要低于 $O(n<sup>2</sup> )$ ，而是与 $O(n<sup>3/2</sup> )$ 成正比，适合中等大小的文件排序。</p>
 
@@ -1372,9 +1372,9 @@ Expand部分用于储存code-characters的对照表就是map，用了go内部自
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.5]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-5</id>
     <content type="html"><![CDATA[<p>Interview Question 2.5</p>
 
 <p>题目：<br/>
@@ -1617,9 +1617,9 @@ Output: C<br/>
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.4]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-4</id>
     <content type="html"><![CDATA[<p>Interview Question 2.4<br/>
 题目：<br/>
 You have two numbers represented by a linked list, where each node contains a sin-
@@ -1835,9 +1835,9 @@ Output: 8 -> 0 -> 8</p>
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.3]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-3</id>
     <content type="html"><![CDATA[<p>Interview Question 2.3</p>
 
 <p>题目：<br/>
@@ -1955,9 +1955,9 @@ Result: nothing is returned, but the new linked list looks like a->b->d->e<br/>
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.2]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-2</id>
     <content type="html"><![CDATA[<p>Interview Question 2.2</p>
 
 <p>题目： <br/>
@@ -2160,9 +2160,9 @@ Implement an algorithm to find the nth to last element of a singly linked list.<
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 2 - Linked Lists - IQ 2.1]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1/"/>
     <updated>2013-08-04T13:49:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1</id>
+    <id>http://chienlungcheung.github.io/blog/2013/08/04/cracking-the-coding-interview-chapter-2-Linked-Lists-iq-2-dot-1</id>
     <content type="html"><![CDATA[<p>Interview Question 2.1</p>
 
 <p>题目：</p>
@@ -2504,9 +2504,9 @@ How would you solve this problem if a temporary buffer is not allowed?</p>
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.8]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8/"/>
     <updated>2013-07-17T18:42:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-8</id>
     <content type="html"><![CDATA[<p>Interview Question 1.8</p>
 
 <p>题目：</p>
@@ -2712,9 +2712,9 @@ only one call to isSubstring (i.e., “waterbottle” is a rotation of “erbott
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.7]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7/"/>
     <updated>2013-07-17T18:42:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-7</id>
     <content type="html"><![CDATA[<p>Interview Question 1.7</p>
 
 <p>题目：</p>
@@ -2861,9 +2861,9 @@ column is set to 0.</p>
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.6]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-6/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-6/"/>
     <updated>2013-07-17T18:41:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-6</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-6</id>
     <content type="html"><![CDATA[<p>Interview Question 1.6</p>
 
 <p>题目：</p>
@@ -3070,9 +3070,9 @@ bytes, write a method to rotate the image by 90 degrees. Can you do this in plac
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.5]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-5/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-5/"/>
     <updated>2013-07-17T18:41:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-5</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-5</id>
     <content type="html"><![CDATA[<p>Interview Question 1.5</p>
 
 <p>题目：</p>
@@ -3208,9 +3208,9 @@ bytes, write a method to rotate the image by 90 degrees. Can you do this in plac
   
   <entry>
     <title type="html"><![CDATA[Cracking the Coding Interview - Chapter 1 - Arrays and Strings - IQ 1.4]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-4/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-4/"/>
     <updated>2013-07-17T18:41:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-4</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/17/cracking-the-coding-interview-chapter-1-arrays-and-strings-iq-1-dot-4</id>
     <content type="html"><![CDATA[<p>Interview Question 1.4</p>
 
 <p>题目：</p>
@@ -3382,9 +3382,9 @@ bytes, write a method to rotate the image by 90 degrees. Can you do this in plac
   
   <entry>
     <title type="html"><![CDATA[poj 1008 Maya Calendar AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma/"/>
     <updated>2013-07-16T23:46:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/16/poj-1008-maya-calendar-acdai-ma</id>
     <content type="html"><![CDATA[<p>这个题很简单，但是我觉得有点恶心，心里情不自禁想到玛雅人消失肯定有原因，搞特么俩日历，还特么这么麻烦。在根据月份的名字去查找对应的号码时如果想提升效率可以事先建立一个字典，然后每次直接按字符串进行查询即可，时间复杂度O（1），字典可以用哈希来来实现，哈希值的计算可以用霍纳法则来算，但是有个恶心的地方就是建立字典的时候要手动输入每个月份及其对应的号码。最后实现的时候我没这么做，一个是月份不多，另一个是这些月份的前缀相同的字母是极少，所以即使用strcmp也会非常快。还有一个恶心的地方就是第二种日历中，每一天对应的号码数是从1到13，算得时候反正恶心着我了。下面是代码，关键地方都有注释：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -3550,9 +3550,9 @@ bytes, write a method to rotate the image by 90 degrees. Can you do this in plac
   
   <entry>
     <title type="html"><![CDATA[poj 1007 DNA Sorting AC代码]]></title>
-    <link href="http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma/"/>
+    <link href="http://chienlungcheung.github.io/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma/"/>
     <updated>2013-07-16T23:02:00+08:00</updated>
-    <id>http://Chienlung.github.com/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma</id>
+    <id>http://chienlungcheung.github.io/blog/2013/07/16/poj-1007-dna-sorting-acdai-ma</id>
     <content type="html"><![CDATA[<p>题目其实就是让求每个字符串的逆序数，然后将字符串按逆序数从小到达排序输出。求逆序数最先想到的就是归并排序，在通过比较合并两个子数组时顺道计算逆序数。当然具体针对这个题目，求逆序数还有更简单的方法，因为字符串只由四种字母构成，具体可以看poj这道题的disguss，大家都有讨论。计算出逆序数以后把逆序数作为排序关键字进行排序，因为是字符串，所以要避免复制字符串，用字符串的起始地址作为代表就好了。代码如下：</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
