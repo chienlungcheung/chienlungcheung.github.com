@@ -6,6 +6,8 @@ cache: npm
 branches:
   only:
     - master # build master branch only
+before_script:
+  - npm install hexo-toc --save    
 script:
   - hexo generate # generate static files
 deploy:
