@@ -4,7 +4,7 @@
 
 # Site
 title: programatrix
-subtitle: ''
+subtitle: 'Be the change you wish to see in the world.'
 description: ''
 keywords:
 author: Chienlung Cheung
@@ -104,3 +104,15 @@ theme: Hacker
 ## Docs: https://hexo.io/docs/one-command-deployment
 deploy:
   type: ''
+
+# enable markdown  <!-- toc -->, hexo-toc is necessary
+# npm install hexo-toc --save
+toc:
+  maxdepth: 3
+  class: toc
+  slugify: transliteration
+  decodeEntities: false
+  anchor:
+    position: after
+    symbol: '#'
+    style: header-anchor

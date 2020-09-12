@@ -28,7 +28,7 @@ disqus: true
 disqus_shortname: Chienlung
 
 # google analytics
-googleTrackId:
+googleTrackId: UA-177829579-1
 
 # whether to show read more button when showing article in excerpt in main page
 read_more: true
