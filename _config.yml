@@ -98,7 +98,7 @@ ignore:
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: Hacker
+theme: next
 
 # Deployment
 ## Docs: https://hexo.io/docs/one-command-deployment
@@ -107,12 +107,12 @@ deploy:
 
 # enable markdown  <!-- toc -->, hexo-toc is necessary
 # npm install hexo-toc --save
-toc:
-  maxdepth: 3
-  class: toc
-  slugify: transliteration
-  decodeEntities: false
-  anchor:
-    position: after
-    symbol: '#'
-    style: header-anchor
+# toc:
+#   maxdepth: 3
+#   class: toc
+#   slugify: transliteration
+#   decodeEntities: true  
+#   anchor:
+#     position: after
+#     symbol: '#'
+#     style: header-anchor

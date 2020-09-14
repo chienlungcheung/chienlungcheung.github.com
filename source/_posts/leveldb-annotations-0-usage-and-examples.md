@@ -88,7 +88,7 @@ LevelDB 会在后台压实底层的数据来改善读性能. 上面列出的结�
 ```
 
 读操作消耗高的地方有一些来自重复解压从磁盘读取的数据块. 如果我们能提供足够的缓存给 leveldb 来将
-解压后的数据保存在内存中, 读性能会进一步改善：
+解压后的数据保存在内存中, 读性能会进一步改善: 
 
 ```bash   
     readrandom  : 9.775 micros/op;  (approximately 100,000 reads per second before compaction)
@@ -103,7 +103,7 @@ LevelDB 会在后台压实底层的数据来改善读性能. 上面列出的结�
 
 该工程开箱支持 CMake. 
 
-所以构建起来超简单：
+所以构建起来超简单: 
 
 ```bash
 mkdir -p build && cd build
@@ -151,7 +151,7 @@ assert(status.ok());
 ...
 ```
 
-如果你想在数据库已存在的时候触发一个异常, 将下面这行加到 `leveldb::DB::Open` 调用之前：
+如果你想在数据库已存在的时候触发一个异常, 将下面这行加到 `leveldb::DB::Open` 调用之前: 
 
 ```c++
 options.error_if_exists = true;
@@ -159,11 +159,7 @@ options.error_if_exists = true;
 
 ## Status 类型
 
-You may have noticed the `leveldb::Status` type above. Values of this type are
-returned by most functions in leveldb that may encounter an error. You can check
-if such a result is ok, and also print an associated error message:
-
-你可能注意到上面的 `leveldb::Status` 类型了. leveldb 中大部分方法在遇到错误的时候会返回该类型的值. 你可以检查它是否为 ok, 然后打印关联的错误信息即可：
+你可能注意到上面的 `leveldb::Status` 类型了. leveldb 中大部分方法在遇到错误的时候会返回该类型的值. 你可以检查它是否为 ok, 然后打印关联的错误信息即可: 
 
 ```c++
 leveldb::Status s = ...;
@@ -172,7 +168,7 @@ if (!s.ok()) cerr << s.ToString() << endl;
 
 ## 关闭数据库
 
-当数据库不再使用的时候, 像下面这样直接删除数据库对象就可以了：
+当数据库不再使用的时候, 像下面这样直接删除数据库对象就可以了: 
 
 ```c++
 ... open the db as described above ...
@@ -216,7 +212,7 @@ if (s.ok()) {
 
 ## 同步写操作
 
-默认地, leveldb 每个写操作都是异步的：进程把要写的内容 push 给操作系统后立马返回. 从操作系统内存到底层持久性存储的迁移异步地发生. 当然, 也可以把某个写操作的 sync 标识打开, 以等到数据真正被记录到持久化存储再让写操作返回. (在 Posix 系统上, 这是通过在写操作返回前调用 `fsync(...)` 或 `fdatasync(...)` 或 `msync(..., MS_SYNC)` 来实现的. )
+默认地, leveldb 每个写操作都是异步的: 进程把要写的内容 push 给操作系统后立马返回. 从操作系统内存到底层持久性存储的迁移异步地发生. 当然, 也可以把某个写操作的 sync 标识打开, 以等到数据真正被记录到持久化存储再让写操作返回. (在 Posix 系统上, 这是通过在写操作返回前调用 `fsync(...)` 或 `fdatasync(...)` 或 `msync(..., MS_SYNC)` 来实现的. )
 
 ```c++
 leveldb::WriteOptions write_options;
@@ -226,34 +222,11 @@ db->Put(write_options, ...);
 
 异步写通常比同步写快 1000 倍. 异步写的缺点是, 一旦机器崩溃可能会导致最后几个更新操作丢失. 注意, 仅仅是写进程崩溃(而非机器重启)则不会引起任何更新操作丢失, 因为哪怕 sync 标识为 false, 在进程退出之前写操作也已经从进程内存 push 到了操作系统. 
 
-Asynchronous writes can often be used safely. For example, when loading a large
-amount of data into the database you can handle lost updates by restarting the
-bulk load after a crash. A hybrid scheme is also possible where every Nth write
-is synchronous, and in the event of a crash, the bulk load is restarted just
-after the last synchronous write finished by the previous run. (The synchronous
-write can update a marker that describes where to restart on a crash.)
-
 异步写总是可以安全使用. 比如你要将大量的数据写入数据库, 如果丢失了最后几个更新操作, 你可以重启整个写过程. 如果数据量非常大, 一个优化点是, 每进行 N 个异步写操作则进行一次同步地写操作, 如果期间发生了崩溃, 重启自从上一个成功的同步写操作以来的更新操作即可. (同步的写操作可以同时更新一个标识, 该标识用于描述崩溃重启后从何处开始重启更新操作. )
-
-`WriteBatch` provides an alternative to asynchronous writes. Multiple updates
-may be placed in the same WriteBatch and applied together using a synchronous
-write (i.e., `write_options.sync` is set to true). The extra cost of the
-synchronous write will be amortized across all of the writes in the batch.
 
 `WriteBatch` 可以作为异步写操作的替代品. 多个更新操作可以放到同一个 WriteBatch 中然后通过一次同步写(即 `write_options.sync` 置为 true)一起应用. 
 
 ## 并发
-
-A database may only be opened by one process at a time. The leveldb
-implementation acquires a lock from the operating system to prevent misuse.
-Within a single process, the same `leveldb::DB` object may be safely shared by
-multiple concurrent threads. I.e., different threads may write into or fetch
-iterators or call Get on the same database without any external synchronization
-(the leveldb implementation will automatically do the required synchronization).
-However other objects (like Iterator and `WriteBatch`) may require external
-synchronization. If two threads share such an object, they must protect access
-to it using their own locking protocol. More details are available in the public
-header files.
 
 一个数据库同时只能被一个进程打开. LevelDB 会从操作系统获取一把锁来防止多进程同时打开同一个数据库. 在单个进程中, 同一个 `leveldb::DB` 对象可以被多个并发的线程安全地使用, 也就是说, 不同的线程可以写入或者获取迭代器, 或者针对同一个数据库调用 `Get`, 前述全部操作均不需要借助外部同步设施(leveldb 实现会自动地确保必要的同步). 但是其它对象, 比如 `Iterator` 或者 `WriteBatch` 需要外部自己提供同步保证. 如果两个线程共享此类对象, 需要使用锁进行互斥访问. 具体见对应的头文件. 
 
@@ -292,7 +265,7 @@ for (it->SeekToLast(); it->Valid(); it->Prev()) {
 
 快照提供了针对整个 KV 存储的一致性只读视图. `ReadOptions::snapshot` 不为空表示读操作应该作用在 DB 的某个特定版本上; 若为空, 则读操作将会作用在当前版本的一个隐式的快照上.  
 
-快照通过调用 `DB::GetSnapshot()` 方法创建： 
+快照通过调用 `DB::GetSnapshot()` 方法创建:  
 
 ```c++
 leveldb::ReadOptions options;
@@ -311,7 +284,7 @@ db->ReleaseSnapshot(options.snapshot);
 
 `it->key()` 和 `it->value()` 调用返回的值是 `leveldb::Slice` 类型的实例. 熟悉 Golang 或者 Rust 的同学对 slice 应该不陌生. slice 是一个简单的数据结构, 包含一个长度和一个指向外部字节数组的指针. 返回一个切片比返回 `std::string` 更加高效, 因为不需要隐式地拷贝大量的 keys 和 values. 另外, leveldb 方法不返回空字符结尾的 C 风格地字符串, 因为 leveldb 的 keys 和 values 允许包含 `\0` 字节. 
 
-C++ 风格的 string 和 C 风格的空字符结尾的字符串很容易转换为一个切片：
+C++ 风格的 string 和 C 风格的空字符结尾的字符串很容易转换为一个切片: 
 
 ```c++
 leveldb::Slice s1 = "hello";
@@ -320,14 +293,14 @@ std::string str("world");
 leveldb::Slice s2 = str;
 ```
 
-一个切片也很容易转换回 C++ 风格的字符串：
+一个切片也很容易转换回 C++ 风格的字符串: 
 
 ```c++
 std::string str = s1.ToString();
 assert(str == std::string("hello"));
 ```
 
-注意, 当使用切片时, 调用者要确保它内部指针指向的外部字节数组保持存活. 比如, 下面的代码就有问题：
+注意, 当使用切片时, 调用者要确保它内部指针指向的外部字节数组保持存活. 比如, 下面的代码就有问题: 
 
 ```c++
 leveldb::Slice slice;
@@ -342,7 +315,7 @@ Use(slice);
 
 ## 比较器
 
-前面的例子中用的都是默认的比较函数, 即逐字节按照字典序比较. 你可以定制自己的比较函数, 然后在打开数据库的时候传入. 只需继承 `leveldb::Comparator` 然后定义相关逻辑即可, 下面是一个例子：
+前面的例子中用的都是默认的比较函数, 即逐字节按照字典序比较. 你可以定制自己的比较函数, 然后在打开数据库的时候传入. 只需继承 `leveldb::Comparator` 然后定义相关逻辑即可, 下面是一个例子: 
 
 ```c++
 class TwoPartComparator : public leveldb::Comparator {
@@ -369,7 +342,7 @@ class TwoPartComparator : public leveldb::Comparator {
 };
 ```
 
-然后使用上面定义的比较器打开数据库：
+然后使用上面定义的比较器打开数据库: 
 
 ```c++
 // 实例化比较器
@@ -388,14 +361,6 @@ leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
 
 比较器 `Name` 方法返回的结果在创建数据库时会被绑定到数据库上, 后续每次打开都会进行检查. 如果名称改了, 对 `leveldb::DB::Open` 的调用就会失败. 因此, 当且仅当在新的 key 格式和比较函数与已有的数据库不兼容而且已有数据不再被需要的时候再修改比较器名称. 总而言之, 一个数据库只能对应一个比较器, 而且比较器由名字唯一确定, 一旦修改名称或者比较器逻辑, 数据库的操作逻辑就统统会出错, 毕竟 leveldb 是一个有序的 KV 存储.
 
-You can however still gradually evolve your key format over time with a little
-bit of pre-planning. For example, you could store a version number at the end of
-each key (one byte should suffice for most uses). When you wish to switch to a
-new key format (e.g., adding an optional third part to the keys processed by
-`TwoPartComparator`), (a) keep the same comparator name (b) increment the
-version number for new keys (c) change the comparator function so it uses the
-version numbers found in the keys to decide how to interpret them.
-
 如果非要修改比较逻辑怎么办呢? 你可以根据预先规划一点一点的演进你的 key 格式, 注意, 事先的演进规划非常重要. 比如, 你可以存储一个版本号在每个 key 的结尾(大多数场景, 一个字节足够了). 当你想要切换到新的 key 格式的时候(比如新增 third-part 到上面例子 `TwoPartComparator` 处理的 keys 中), 那么你需要做的是:
 - (a) 保持比较器名称不变
 - (b) 递增新 keys 的版本号
@@ -411,7 +376,7 @@ Leveldb 把相邻的 keys 组织在同一个 block 中(具体见后面文章针�
 
 ### 压缩
 
-每个 block 在写入持久存储之前都会被单独压缩. 压缩默认是开启的, 因为默认的压缩算法非常快, 而且对于不可压缩的数据会自动关闭压缩功能. 极少有场景会让用户想要完全关闭压缩功能, 除非基准测试显示关闭压缩会显著改善性能. 按照下面方式做就关闭了压缩功能：
+每个 block 在写入持久存储之前都会被单独压缩. 压缩默认是开启的, 因为默认的压缩算法非常快, 而且对于不可压缩的数据会自动关闭压缩功能. 极少有场景会让用户想要完全关闭压缩功能, 除非基准测试显示关闭压缩会显著改善性能. 按照下面方式做就关闭了压缩功能: 
 
 ```c++
 leveldb::Options options;
@@ -439,7 +404,7 @@ delete options.block_cache;
 
 注意 cache 保存的是未压缩的数据, 因此应该根据应用程序所需的数据大小来设置它的大小. (已压缩数据的缓存工作交给操作系统的 buffer cache 或者用户提供的定制的 Env 实现去干. )
 
-当执行一个大块数据读操作时, 应用程序可能想要取消缓存功能, 这样读进来的大块数据就不会导致 cache 中当前大部分数据被置换出去, 我们可以为它提供一个单独的 iterator 来达到该目的：
+当执行一个大块数据读操作时, 应用程序可能想要取消缓存功能, 这样读进来的大块数据就不会导致 cache 中当前大部分数据被置换出去, 我们可以为它提供一个单独的 iterator 来达到该目的: 
 
 ```c++
 leveldb::ReadOptions options;
@@ -457,7 +422,7 @@ for (it->SeekToFirst(); it->Valid(); it->Next()) {
 
 注意, 磁盘传输的单位以及磁盘缓存的单位都是一个 block. 相邻的 keys(已排序)总是在同一个 block 中. 因此应用程序可以通过把需要一起访问的 keys 放在一起, 同时把不经常使用的 keys 放到一个独立的键空间区域来提升性能. 
 
-举个例子, 假设我们正基于 leveldb 实现一个简单的文件系统. 我们打算存储到这个文件系统的数据项类型如下：
+举个例子, 假设我们正基于 leveldb 实现一个简单的文件系统. 我们打算存储到这个文件系统的数据项类型如下: 
 
 ```bash
     filename -> permission-bits, length, list of file_block_ids
@@ -484,7 +449,7 @@ delete options.filter_policy;
 
 上述代码将一个基于布隆过滤器的过滤策略与数据库进行了关联. 基于布隆过滤器的过滤方式依赖于如下事实, 在内存中保存每个 key 的部分位(在上面例子中是 10 位, 因为我们传给 `NewBloomFilterPolicy` 的参数是 10). 这个过滤器将会使得 `Get()` 调用中非必须的磁盘读操作大约减少 100 倍. 每个 key 用于过滤器的位数增加将会进一步减少读磁盘次数, 当然也会占用更多内存空间. 我们推荐数据集无法全部放入内存同时又存在大量随机读的应用设置一个过滤器策略. 
 
-如果你在使用定制的比较器, 你应该确保你在用的过滤器策略与你的比较器兼容. 举个例子, 如果一个比较器在比较 key 的时候忽略结尾的空格, 那么`NewBloomFilterPolicy` 一定不能与此比较器共存. 相反, 应用应该提供一个定制的过滤器策略, 而且它也应该忽略键的尾部空格. 示例如下：
+如果你在使用定制的比较器, 你应该确保你在用的过滤器策略与你的比较器兼容. 举个例子, 如果一个比较器在比较 key 的时候忽略结尾的空格, 那么`NewBloomFilterPolicy` 一定不能与此比较器共存. 相反, 应用应该提供一个定制的过滤器策略, 而且它也应该忽略键的尾部空格. 示例如下: 
 
 ```c++
 class CustomFilterPolicy : public leveldb::FilterPolicy {
@@ -513,7 +478,7 @@ class CustomFilterPolicy : public leveldb::FilterPolicy {
 
 ## 校验和
 
-Leveldb 将一个校验和与它存储在文件系统中的全部数据进行关联. 根据激进程度有两种方式控制校验和的核对：
+Leveldb 将一个校验和与它存储在文件系统中的全部数据进行关联. 根据激进程度有两种方式控制校验和的核对: 
 
 `ReadOptions::verify_checksums` 可以设置为 true 来强制核对从文件系统读取的全部数据的进行校验和检查. 默认为 false. 
 

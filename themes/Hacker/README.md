@@ -90,7 +90,7 @@ baiduTrackId:
 `baiduTrackId`: your Baidu Analytics ID, Hacker will not use Baidu Analytics if it's empty.
 
 ### Enable Categories and Tags pages
-Categories Page: run `hexo new page categories`，then modify the generated file `source/categories/index.md`：
+Categories Page: run `hexo new page categories`，then modify the generated file `source/categories/index.md`: 
 ``` markdown
 title: categories
 date: 2017-01-30 19:16:17
@@ -99,7 +99,7 @@ layout: "categories"
 ```
 If you need to close comments of this page , you can add a line `comments: false`; `title` corresponds to the title of the page.
 
-Tags Page: run `hexo new page tags`，then modify the generated file `source/tags/index.md`：
+Tags Page: run `hexo new page tags`，then modify the generated file `source/tags/index.md`: 
 ``` markdown
 title: tags
 date: 2017-01-30 19:16:17
@@ -108,7 +108,7 @@ layout: "tags"
 ```
 Configuration is the same as Categories Page.  
 
-Add links to the menu: Edit the `_config.yml` file of the theme, add `Categories: /categories` and `Tags: /tags` in `menu` like this：
+Add links to the menu: Edit the `_config.yml` file of the theme, add `Categories: /categories` and `Tags: /tags` in `menu` like this: 
 ``` yml
 menu:
   Home: /
