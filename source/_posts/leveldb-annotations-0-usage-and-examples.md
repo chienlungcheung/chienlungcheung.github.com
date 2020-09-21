@@ -106,8 +106,9 @@ LevelDB 会在后台压实底层的数据来改善读性能. 上面列出的结�
 所以构建起来超简单: 
 
 ```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build
+$ mkdir -p build && cd build
+$ cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build .
+$ sudo make install
 ```
 
 更多高级用法请请参照 CMake 文档和本项目的 CMakeLists.txt. 
