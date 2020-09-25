@@ -1,1 +1,1 @@
-[博客] (https://chienlungcheung.github.io)
+[博客](https://chienlungcheung.github.io)
