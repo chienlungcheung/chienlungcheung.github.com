@@ -133,6 +133,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
       } else if (record_type == kLastType) {
         resyncing_ = false;
         continue;
+        continue;
       } else {
         // 如果是 full 类型的 record, 而且这个 record 起始地址
         // 不小于 inital_offset_(否则 ReadPhysicalRecord 返回的

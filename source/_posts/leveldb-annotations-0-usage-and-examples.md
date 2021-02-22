@@ -87,8 +87,7 @@ LevelDB 会在后台压实底层的数据来改善读性能. 上面列出的结�
     readreverse :  0.663 micros/op;  166.9 MB/s
 ```
 
-读操作消耗高的地方有一些来自重复解压从磁盘读取的数据块. 如果我们能提供足够的缓存给 leveldb 来将
-解压后的数据保存在内存中, 读性能会进一步改善: 
+读操作消耗高的地方有一些来自重复解压从磁盘读取的数据块. 如果我们能提供足够的缓存给 leveldb 来将解压后的数据保存在内存中, 读性能会进一步改善: 
 
 ```bash   
     readrandom  : 9.775 micros/op;  (approximately 100,000 reads per second before compaction)

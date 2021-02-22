@@ -9,7 +9,7 @@ tags:
 
 <!-- toc -->
 
-memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList.
+memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable(所以可能同时有两个 memtable 存在) 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList.
 
 # 1 核心文件和核心类
 
@@ -96,7 +96,7 @@ void MemTable::Add(SequenceNumber s, ValueType type,
 }
 ```
 
-可以看到由于模块化抽象做得好, 整体来说还是比较简单的. 下面再重点说一下上述处理中有关内存分配(`arena_.Allocate()`)和数据项插入到 SkipList (`table_.Insert()`) 的相关操作.
+可以看到由于模块化抽象做得好, 整体来说还是比较简单的. 后面章节会重点说一下上述处理中有关内存分配(`arena_.Allocate()`)和数据项插入到 SkipList (`table_.Insert()`) 的相关操作.
 
 
 ## 3.2 MemTable 读方法

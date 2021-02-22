@@ -29,6 +29,7 @@ tags:
  * 存储 nullptr 到 *dbptr 同时返回一个错误状态. 
  *
  * 调用者不再使用这个数据库时需要负责释放 *dbptr 指向的内存. 
+ *
  * @param options 控制数据库行为和性能的参数配置
  * @param name 数据库名称
  * @param dbptr 存储指向堆内存中数据库的指针
@@ -41,15 +42,15 @@ static Status Open(const Options& options,
 
 该方法在数据库启动时调用, 主要工作由 `leveldb::DBImpl::Recover` 方法完成, 后者主要做如下事情:
 
-- 1. 调用其 VersionSet 成员的 `leveldb::VersionSet::Recover` 方法该方法从磁盘读取 CURRENT 文件, 进而读取 MANIFEST 文件内容, 然后在内存建立 level 架构:
+1. 调用其 VersionSet 成员的 `leveldb::VersionSet::Recover` 方法. 该方法从磁盘读取 CURRENT 文件, 进而读取 MANIFEST 文件内容, 然后在内存重建 level 架构:
   - 读取 CURRENT 文件(不存在则新建)找到最新的 MANIFEST 文件(不存在则新建)的名称
-  - 读取该 MANIFEST 文件内容与当前 Version 保存的 level 架构合并保存到一个新建的 Version 中, 然后将这个新的 version 作为当前的 version.
+  - 读取该 MANIFEST 文件内容与当前 Version 保存的 level 架构合并保存到一个新建的 Version 中, 然后将这个新的 version 作为当前的 version, 即最新的 level 架构信息.
   - 清理过期的文件
   - 这一步我们可以打开全部 sstables, 但最好等会再打开
   - 将 log 文件块转换为一个新的 level-0 sstable
   - 将接下来的要写的数据写入一个新的 log 文件
 
-- 2. 遍历数据库目录下全部文件. 筛选出 sorted table 文件, 验证 VersionSet 包含的 level 架构图有效性; 同时将全部 log 文件筛选换出来后续反序列化成 memtable. 恢复 log 文件时会按照从旧到新逐个 log 文件恢复, 这样新的修改会覆盖旧的, 如果对应 memtable 太大了, 将其转为 sorted table 文件写入磁盘, 同时将其对应的 table 对象放到 table_cache_ 缓存. 若发生 memtable 落盘表示 level 架构新增文件则将 save_manifest 标记为 true, 表示需要写变更日志到 manifest 文件. 恢复 log 文件主要由方法 `leveldb::DBImpl::RecoverLogFile` 负责完成.
+2. 遍历数据库目录下全部文件. 筛选出 sorted table 文件, 验证 VersionSet 包含的 level 架构图有效性; 同时将全部 log 文件筛选换出来后续反序列化成 memtable. 恢复 log 文件时会按照从旧到新逐个 log 文件恢复, 这样新的修改会覆盖旧的, 如果对应 memtable 太大了, 将其转为 sorted table 文件写入磁盘, 同时将其对应的 table 对象放到 table_cache_ 缓存. 若发生 memtable 落盘表示 level 架构新增文件则将 save_manifest 标记为 true, 表示需要写变更日志到 manifest 文件. 恢复 log 文件主要由方法 `leveldb::DBImpl::RecoverLogFile` 负责完成.
 
 ### Put
 
@@ -121,9 +122,9 @@ virtual Status Get(const ReadOptions& options,
                     const Slice& key, std::string* value) = 0;
 ```
 
-- 1 先查询当前在用的 memtable(具体工作由 `leveldb::MemTable::Get` 负责, 本质就是 SkipList 查询, 速度很快)
-- 2 如果没有则查询正在转换为 sorted table 的 memtable 中寻找
-- 3 如果没有则我们在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
+1. 先查询当前在用的 memtable(具体工作由 `leveldb::MemTable::Get` 负责, 本质就是 SkipList 查询, 速度很快)
+2. 如果没有则查询正在转换为 sorted table 的 memtable 中寻找
+3. 如果没有则我们在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
 
 针对上述第 3 步, 具体由 db VersionSet 的当前 Version 负责, 因为该结构保存了 db 当前最新的 level 架构信息, 即每个 level 及其对应的文件列表和每个文件的键范围. 对应方法为 `leveldb::Version::Get`, 具体为:
 - 从低 level 向高 level 寻找. 由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.
@@ -333,8 +334,8 @@ log 文件格式的好处是(总结一句话就是容易划分边界):
 
 log 文件格式的缺点: 
 
-- 1. 没有打包小的 records. 通过增加一个新的 record 类型可以解决这个问题, 所以这个问题是当前实现的不足而不是 log 格式的缺陷. 
-- 2. 没有压缩. 同样地, 这个也可以通过增加一个新的 record 类型来解决. 
+1. 没有打包小的 records. 通过增加一个新的 record 类型可以解决这个问题, 所以这个问题是当前实现的不足而不是 log 格式的缺陷. 
+2. 没有压缩. 同样地, 这个也可以通过增加一个新的 record 类型来解决. 
 
 #### log 文件主要接口
 
@@ -369,9 +370,9 @@ memtable 可以看作是 log 文件的内存形式, 但是格式不同.
 ##### 用途
 
 我们已经知道, 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable 以及磁盘上的各个 level 包含的文件构成了数据全集. 所以当调用 DB 的 `Get` 方法查询某个 key 的时候, 具体步骤是这样的(具体实现位于 `leveldb::Status leveldb::Version::Get(const leveldb::ReadOptions &options, const leveldb::LookupKey &k, string *value, leveldb::Version::GetStats *stats)`, DB 的 `Get` 方法会调用前述实现.):
-- 1 先查询当前在用的 memtable, 查到返回, 未查到下一步
-- 2 查询正在转换为 sorted table 的 memtable 中寻找, 查到返回, 未查到下一步 
-- 3 在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
+1. 先查询当前在用的 memtable, 查到返回, 未查到下一步
+2. 查询正在转换为 sorted table 的 memtable 中寻找, 查到返回, 未查到下一步 
+3. 在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
   - 由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.
   - 由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key; 针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.
 
@@ -411,11 +412,11 @@ leveldb sorted table (又叫 sstable) 文件主要包含五个部分, 即多个 
 
 下面详细解释下上面提到的文件格式: 
 
-- 1. 文件里存的是一系列 key/value 对, 而且按照 key 排过序了, 同时被划分到了多个 blocks 中. 这些 blocks 从文件起始位置开始一个接一个. 每个 data block 组织形式在 `block_builder.cc` 定义, 用户可以选择对 data block 进行压缩. 
-- 2. 全部 data blocks 之后是一组 meta blocks. 已经支持的 meta block 类型见下面描述, 将来可能会加入更多的类型. 每个 meta block 组织形式在 `block_builder.cc` 定义, 同样地, 用户可以选择对其进行压缩. 
-- 3. 全部 meta blocks 后是一个 metaindex block. 每个 meta block 都有一个对应的 entry 保存在该部分, 其中 key 就是某个 meta block 的名字, value 是一个指向该 meta block 的 BlockHandle. 
-- 4. 紧随 metaindex block 之后是一个 index block. 针对每个 data block 都有一个对应的 entry 包含在该部分, 其中 key 为大于等于对应 data block 最后(也是最大的, 因为排序过了)一个 key 同时小于接下来的 data block 第一个 key 的字符串; value 是指向一个对应 data block 的 BlockHandle. 
-- 5. 在每个文件的末尾是一个固定长度的 footer, 固定长度的好处就是读取文件时, 用 file size 减去这个固定长度就能定位到 footer 起始偏移, 然后就可以解析了. 它包含了一个指向 metaindex block 的 BlockHandle 和一个指向 index block 的 BlockHandle 以及一个 magic number. 具体格式如下:
+1. 文件里存的是一系列 key/value 对, 而且按照 key 排过序了, 同时被划分到了多个 blocks 中. 这些 blocks 从文件起始位置开始一个接一个. 每个 data block 组织形式在 `block_builder.cc` 定义, 用户可以选择对 data block 进行压缩(注意前面讲 log 文件的时候说不支持对 block 进行压缩是 log 文件目前的缺点). 
+2. 全部 data blocks 之后是一组 meta blocks. 已经支持的 meta block 类型见下面描述, 将来可能会加入更多的类型. 每个 meta block 组织形式在 `block_builder.cc` 定义, 同样地, 用户可以选择对其进行压缩. 
+3. 全部 meta blocks 后是一个 metaindex block. 每个 meta block 都有一个对应的 entry 保存在该部分, 其中 key 就是某个 meta block 的名字, value 是一个指向该 meta block 的 BlockHandle. 
+4. 紧随 metaindex block 之后是一个 index block. 针对每个 data block 都有一个对应的 entry 包含在该部分, 其中 key 为大于等于对应 data block 最后(也是最大的, 因为排序过了)一个 key 同时小于接下来的 data block 第一个 key 的字符串; value 是指向一个对应 data block 的 BlockHandle. 
+5. 在每个文件的末尾是一个固定长度的 footer, 它非常关键, 它虽然位于文件尾部却是文件的入口. 固定长度的好处就是读取文件时, 用 file size 减去这个固定长度就能定位到 footer 起始偏移, 然后就可以解析了. 它包含了一个指向 metaindex block 的 BlockHandle 和一个指向 index block 的 BlockHandle 以及一个 magic number. 具体格式如下:
 
           // 指向 metaindex 的 BlockHandle
           metaindex_handle: char[p];     
@@ -427,7 +428,11 @@ leveldb sorted table (又叫 sstable) 文件主要包含五个部分, 即多个 
           // 具体内容为 0xdb4775248b80fb57 (小端字节序)
           magic:            fixed64;     
 
+注意 footer 存的都是 index-of-xx, 找到 index 就可以找到 xx 了.
+
 #### "filter" Meta Block
+
+目前 sstable 只有一种类型的 meta block, 那就是 filter.
 
 如果打开(创建)数据库的时候指定了一个 `FilterPolicy`, 那么一个 filter block 就会被存储到每个 sstable 中. metaindex block 包含了一个 entry, 它是从 `filter.<Name>` 到 filter block 的 BlockHandle 的映射. 其中, `<Name>` 是一个由 filter policy 的 `Name()`方法返回的字符串. 
 
@@ -441,7 +446,7 @@ void leveldb::FilterPolicy::CreateFilter(const Slice *keys, int n, string *dst) 
 
     [ i*base ... (i+1)*base-1 ]
 
-当前, 上面的 base 是 2KB. 举个例子, 如果 block X 和 block Y 起始地址落在 `[ 0KB .. 2KB ]` 范围内, 则 X 和 Y 中的全部 keys 将会在调用 `FilterPolicy::CreateFilter()` 时被转换为一个 filter, 然后这个 filter 会作为一个(为啥是第一个, 因为 X、Y 起始地址落在第一个地址空间 `[ 0KB .. 2KB ]` 里) filter 被保存在 filter block 中. (用大白话再说一遍, 每个 FilterPolicy 都有一个唯一的名字, 在 metaindex block 通过这个名字就能找到对应的 filter block 了. 而 filter block 存的就是用这个 FilterPolicy 构造的一系列 filters, 为啥是一系列呢？因为 data blocks 太多了, 所以分了区间, 每几个 data blocks 对应一个 filter, 具体几个根据上面那个带 base 的公式来算. 再说说 filter 是怎么回事. data block 保存的不是键值对构成的 records 嘛, 根据前面说的键区间限制, 把每几个 blocks 的全部键根据某个 FilterPolicy 算一下就得到了一个 filter, 然后把这个 filter 保存到了 filter block 的第 i 个位置. )
+当前, 上面的 base 是 2KB. 举个例子, 如果 block X 和 block Y 起始地址落在 `[ 0KB .. 2KB ]` 范围内, 则 X 和 Y 中的全部 keys 将会在调用 `FilterPolicy::CreateFilter()` 时被转换为一个 filter, 然后这个 filter 会作为第一个(为啥是第一个, 因为 X、Y 起始地址落在第一个地址空间 `[ 0KB .. 2KB ]` 里) filter 被保存在 filter block 中. (用大白话再说一遍, 每个 FilterPolicy 都有一个唯一的名字, 在 metaindex block 通过这个名字就能找到对应的 filter block 了. 而 filter block 存的就是用这个 FilterPolicy 构造的一系列 filters, 为啥是一系列呢？因为 data blocks 太多了, 所以分了区间, 每几个 data blocks 对应一个 filter, 具体几个根据上面那个带 base 的公式来算. 再说说 filter 是怎么回事. data block 保存的不是键值对构成的 records 嘛, 根据前面说的键区间限制, 把每几个 blocks 的全部键根据某个 FilterPolicy 算一下就得到了一个 filter, 然后把这个 filter 保存到了 filter block 的第 i 个位置. )
 
 具有 N 个 filter 的 filter block 格式如下: 
 
