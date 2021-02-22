@@ -448,6 +448,10 @@ Iterator* Block::NewIterator(const Comparator* cmp) {
    - value 是指向一个对应 data block 的 BlockHandle. 
 - 另一个是 data_iter_, 它指向 data block 包含的数据项. 至于这个 data block 是否与 index_iter_ 所指数据项对应 data block 一致, 那要看实际情况, 不过即使不一致也无碍. 
 
+示意图如下:
+
+![Figure 1](/images/leveldb-annotations-4-iterator/1-two_level_iterator.png)
+
 这两个迭代器, 可以把 index_iter 看作钟表的时针, 指向具体小时, 可以把 data_iter_ 看作更精细的分针, 指向当前小时的具体分钟. 两个指针一起配合精确定位到我们要查询的数据. 这么说其实就能大体上猜出来, 迭代器前后移动, 定位等等这些方法是如何实现的了, 简单说就是先移动 `index_iter_` 再移动 `data_iter_`. 以 `Seek()` 方法举例来说:
 
 ```c++
