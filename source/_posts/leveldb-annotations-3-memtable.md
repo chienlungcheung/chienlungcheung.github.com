@@ -105,7 +105,7 @@ void MemTable::Add(SequenceNumber s, ValueType type,
 
 当用户调用 DB 的 `Get` 方法查询某个 key 的时候, 具体步骤是这样的(具体实现位于 `leveldb::Status leveldb::Version::Get(const leveldb::ReadOptions &options, const leveldb::LookupKey &k, string *value, leveldb::Version::GetStats *stats)`, DB 的 `Get` 方法会调用前述实现.):
 - 1 先查询当前在用的 memtable, 查到返回, 未查到下一步
-- 2 查询正在转换为 sorted table 的 memtable 中寻找, 查到返回, 未查到下一步 
+- 2 查询正在转换为 sorted string table 的 memtable 中寻找, 查到返回, 未查到下一步 
 - 3 在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
   - 由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.
   - 由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key; 针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.

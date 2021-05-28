@@ -50,7 +50,7 @@ static Status Open(const Options& options,
   - 将 log 文件块转换为一个新的 level-0 sstable
   - 将接下来的要写的数据写入一个新的 log 文件
 
-2. 遍历数据库目录下全部文件. 筛选出 sorted table 文件, 验证 VersionSet 包含的 level 架构图有效性; 同时将全部 log 文件筛选换出来后续反序列化成 memtable. 恢复 log 文件时会按照从旧到新逐个 log 文件恢复, 这样新的修改会覆盖旧的, 如果对应 memtable 太大了, 将其转为 sorted table 文件写入磁盘, 同时将其对应的 table 对象放到 table_cache_ 缓存. 若发生 memtable 落盘表示 level 架构新增文件则将 save_manifest 标记为 true, 表示需要写变更日志到 manifest 文件. 恢复 log 文件主要由方法 `leveldb::DBImpl::RecoverLogFile` 负责完成.
+2. 遍历数据库目录下全部文件. 筛选出 sorted string table 文件, 验证 VersionSet 包含的 level 架构图有效性; 同时将全部 log 文件筛选换出来后续反序列化成 memtable. 恢复 log 文件时会按照从旧到新逐个 log 文件恢复, 这样新的修改会覆盖旧的, 如果对应 memtable 太大了, 将其转为 sorted string table 文件写入磁盘, 同时将其对应的 table 对象放到 table_cache_ 缓存. 若发生 memtable 落盘表示 level 架构新增文件则将 save_manifest 标记为 true, 表示需要写变更日志到 manifest 文件. 恢复 log 文件主要由方法 `leveldb::DBImpl::RecoverLogFile` 负责完成.
 
 ### Put
 
@@ -123,7 +123,7 @@ virtual Status Get(const ReadOptions& options,
 ```
 
 1. 先查询当前在用的 memtable(具体工作由 `leveldb::MemTable::Get` 负责, 本质就是 SkipList 查询, 速度很快)
-2. 如果没有则查询正在转换为 sorted table 的 memtable 中寻找
+2. 如果没有则查询正在转换为 sorted string table 的 memtable 中寻找
 3. 如果没有则我们在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
 
 针对上述第 3 步, 具体由 db VersionSet 的当前 Version 负责, 因为该结构保存了 db 当前最新的 level 架构信息, 即每个 level 及其对应的文件列表和每个文件的键范围. 对应方法为 `leveldb::Version::Get`, 具体为:
@@ -147,13 +147,13 @@ virtual Status Get(const ReadOptions& options,
 virtual Iterator* NewIterator(const ReadOptions& options) = 0;
 ```
 
-该方法负责将内存 memtable(可能有两个, 一个在写, 一个写完待存盘) 和磁盘 sorted table 文件全部数据结构串起来构造一个大一统迭代器, 可以遍历整个数据库.
+该方法负责将内存 memtable(可能有两个, 一个在写, 一个写完待存盘) 和磁盘 sorted string table 文件全部数据结构串起来构造一个大一统迭代器, 可以遍历整个数据库.
 
 上述工作其实是由 `leveldb::Iterator *leveldb::DBImpl::NewInternalIterator` 负责完成的. 该方法实现涉及到 leveldb 特别精巧的迭代器的实现. 这个单独可以写一篇文章来专门介绍. 这里大致说下处理流程:
 - 1 初始化一个列表
 - 2 把当前 memtable 迭代器加入列表中
 - 3 把待写盘 memtable 迭代器追加到列表中
-- 4 将当前 version 维护的 level 架构中每个 sorted table 文件对应的迭代器追加到列表中. 针对 level-0 和其它 levels 处理方式不同.
+- 4 将当前 version 维护的 level 架构中每个 sorted string table 文件对应的迭代器追加到列表中. 针对 level-0 和其它 levels 处理方式不同.
   - 由于 level-0 文件之间可能存在重叠, 所以按照文件生成顺序(这极其重要, 其实就是按照 key 从小到大, 只有这样才能确保最后生成的迭代器能够从小到大按序遍历整个数据库) 为每个文件生成一个两级迭代器(`TwoLevelIterator`, 该结构巧妙地将索引块和数据块结合到了一起)追加到列表中. 
   - 针对 level-1 及其以上 level, 按照从低 level 到高 level(这极其重要, 原因同 level-0), 为每个 level 生成一个两级迭代器, 数据结构依然是 `TwoLevelIterator`, 不过这里把每个 level 的文件列表抽象成了第一级索引, 然后每个文件对应的 table 对象抽象层二级索引.
 - 最后将前述全部迭代器构成的迭代器列表再级联成一个大一统的迭代器 `MergingIterator`. 这其实也是一个两级迭代器, 第一级指向迭代器列表, 第二级是某个迭代器指向的内容的迭代器.
@@ -262,7 +262,7 @@ virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
 
 手动触发与目标键区间重叠的文件压实. 具体为:
 - 检查每个 level, 确认其包含的键区间释放与目标键区间有交集.
-- 因为当前在写 memtable 可能与目标键区间有交集, 所以强制触发一次 memtable 压实(即将当前 memtable 文件转为 sorted table 文件并写入磁盘)并生成新 log 文件和对应的 memtable.
+- 因为当前在写 memtable 可能与目标键区间有交集, 所以强制触发一次 memtable 压实(即将当前 memtable 文件转为 sorted string table 文件并写入磁盘)并生成新 log 文件和对应的 memtable.
 - 针对与目标键区间有交集的各个 level 触发一次手动压实
 
 具体压实过程后续会写一篇文章进行介绍.
@@ -273,9 +273,9 @@ virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
 
 ### log 文件
 
-一个 log 文件(*.log)保存着最近一系列更新操作, 它相当于 leveldb 的 WAL(write-ahead log). 每个更新操作都被追加到当前的 log 文件中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件就会被转换为一个 sorted table (见下文)然后一个新的 log 文件就会被创建以保存未来的更新操作. 
+一个 log 文件(*.log)保存着最近一系列更新操作, 它相当于 leveldb 的 WAL(write-ahead log). 每个更新操作都被追加到当前的 log 文件中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件就会被转换为一个 sorted string table (见下文)然后一个新的 log 文件就会被创建以保存未来的更新操作. 
 
-当前 log 文件内容同时也会被记录到一个内存数据结构中(即 `memtable` ). 这个结构加上全部 sorted tables (*.ldb) 才是完整数据, 一起确保每个读操作都能查到当前最新. 
+当前 log 文件内容同时也会被记录到一个内存数据结构中(即 `memtable` ). 这个结构加上全部 sorted string tables (*.ldb) 才是完整数据, 一起确保每个读操作都能查到当前最新. 
 
 #### log 文件格式
 
@@ -371,22 +371,22 @@ memtable 可以看作是 log 文件的内存形式, 但是格式不同.
 
 我们已经知道, 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable 以及磁盘上的各个 level 包含的文件构成了数据全集. 所以当调用 DB 的 `Get` 方法查询某个 key 的时候, 具体步骤是这样的(具体实现位于 `leveldb::Status leveldb::Version::Get(const leveldb::ReadOptions &options, const leveldb::LookupKey &k, string *value, leveldb::Version::GetStats *stats)`, DB 的 `Get` 方法会调用前述实现.):
 1. 先查询当前在用的 memtable, 查到返回, 未查到下一步
-2. 查询正在转换为 sorted table 的 memtable 中寻找, 查到返回, 未查到下一步 
+2. 查询正在转换为 sorted string table 的 memtable 中寻找, 查到返回, 未查到下一步 
 3. 在磁盘上采用从底向上 level-by-level 的寻找目标 key. 
   - 由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.
   - 由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key; 针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.
 
-### sorted table 文件
+### sorted string table 文件
 
-sorted table(*.ldb) 文件就是 leveldb 的数据库文件了. 每一个 level 都对应一组有序的 sorted table 文件. 每个 sorted table 文件保存着按 key 排序的一系列数据项. 每个数据项要么是一个与某个 key 对应的 value, 要么是某个 key 的删除标记. (删除标记其它地方又叫墓碑消息, 用于声明时间线上在此之前的同名 key 对应的记录都失效了, 后台线程负责对这类记录进行压实, 即拷贝到另一个文件时物理删除这类记录.). 注意, leveldb 是一个 append 类型而非 MySQL 那种 in-place 修改的数据库.
+sorted string table(*.ldb) 文件就是 leveldb 的数据库文件了. 每一个 level 都对应一组有序的 sorted string table 文件. 每个 sorted string table 文件保存着按 key 排序的一系列数据项. 每个数据项要么是一个与某个 key 对应的 value, 要么是某个 key 的删除标记. (删除标记其它地方又叫墓碑消息, 用于声明时间线上在此之前的同名 key 对应的记录都失效了, 后台线程负责对这类记录进行压实, 即拷贝到另一个文件时物理删除这类记录.). 注意, leveldb 是一个 append 类型而非 MySQL 那种 in-place 修改的数据库.
 
-sorted tables 文件被组织成一系列 levels. 一个 log 文件生成的对应 sorted table 文件会被放到一个特殊的 **young** level(也被叫做 level-0). 当 young 文件数目超过某个阈值(当前是 4), 全部 young 文件就会和 level-1 与之重叠的全部文件进行合并, 进而生成一系列新的 level-1 文件(每 2MB 数据就会生成一个新的 level-1 文件). 
+sorted string tables 文件被组织成一系列 levels. 一个 log 文件生成的对应 sorted string table 文件会被放到一个特殊的 **young** level(也被叫做 level-0). 当 young 文件数目超过某个阈值(当前是 4), 全部 young 文件就会和 level-1 与之重叠的全部文件进行合并, 进而生成一系列新的 level-1 文件(每 2MB 数据就会生成一个新的 level-1 文件). 
 
 level-0 的文件之间可能存在键区间重叠, 但是其它每层 level 内部文件之间是不存在重叠情况的. 我们下面来说下 level-1 及其以上的 level 的文件如何合并. 当 level-L (L >= 1)的文件总大小超过了 $10^L$ MB(即 level-1 超过了 10MB, level-2 超过了 100MB, ...), 此时一个 level-L 文件就会和 level-(L+1) 中与自己键区间重叠的全部文件进行合并, 然后为 level-(L+1) 生成一组新的文件. 这些合并操作可以实现将 young level 中新的 updates 一点一点搬到最高的那层 level, 这个迁移过程使用的都是块读写(最小化了昂贵的 seek 操作的时间消耗). 
 
-#### sorted table 文件格式
+#### sorted string table 文件格式
 
-leveldb sorted table (又叫 sstable) 文件主要包含五个部分, 即多个 data blocks, 多个 meta blocks, 一个 metaindex block, 一个 index block 以及一个 footer, 具体格式如下: 
+leveldb sorted string table (又叫 sstable) 文件主要包含五个部分, 即多个 data blocks, 多个 meta blocks, 一个 metaindex block, 一个 index block 以及一个 footer, 具体格式如下: 
 
     <beginning_of_file>
     [data block 1]
@@ -487,13 +487,13 @@ void leveldb::FilterPolicy::CreateFilter(const Slice *keys, int n, string *dst) 
 遗憾的是, 目前这个还没实现, 🤭.
 
 
-#### sorted table 文件主要接口
+#### sorted string table 文件主要接口
 
-下面说明一下 sorted table 文件主要的操作接口, 主要是读与写.
+下面说明一下 sorted string table 文件主要的操作接口, 主要是读与写.
 
-##### sorted table 文件读接口
+##### sorted string table 文件读接口
 
-完成该工作的是 `class leveldb::Table`, 该类是对 sorted table 文件的抽象, 负责对 sorted table 文件进行读操作.
+完成该工作的是 `class leveldb::Table`, 该类是对 sorted string table 文件的抽象, 负责对 sorted string table 文件进行读操作.
 
 具体底层存储由 helper 类 `struct leveldb::Table::Rep` 负责.
 
@@ -504,7 +504,7 @@ void leveldb::FilterPolicy::CreateFilter(const Slice *keys, int n, string *dst) 
 
 从外部(这里强调外部, 是因为还有一个私有方法 `leveldb::Status leveldb::Table::InternalGet` 可以访问 Table 对象内容)打开文件后如果要访问其内容, 需要一个迭代器, 该工作通过 `leveldb::Iterator *leveldb::Table::NewIterator` 完成. 返回的迭代器为一个 `leveldb::<unnamed>::TwoLevelIterator`, 该迭代器处于匿名的命名空间所以未直接对外暴露, 仅能通过返回的指针访问其从 `class leveldb::Iterator` 继承的方法. 该迭代器设计精巧, 会单独写文章介绍.
 
-##### sorted table 文件写接口
+##### sorted string table 文件写接口
 
 完成该工作的是 `class leveldb::TableBuilder`, 该类负责构造 sstable 文件构造.
 
@@ -519,7 +519,7 @@ void leveldb::FilterPolicy::CreateFilter(const Slice *keys, int n, string *dst) 
 
 ### MANIFEST 文件
 
-MANIFEST 文件可以看作 leveldb 存储元数据的地方. 它列出了每一个 level 及其包含的全部 sorted table 文件, 每个 sorted table 文件对应的键区间, 以及其它重要的元数据. 每当重新打开数据库的时候, 就会创建一个新的 MANIFEST 文件(文件名中嵌有一个新生成的数字). MANIFEST 文件被格式化成形同 log 文件的格式, 针对它所服务的数据的变更都会被追加到该文件后面. 比如每当某个 level 发生文件新增或者删除操作时, 就会有一条日志被追加到 MANIFEST 中. 
+MANIFEST 文件可以看作 leveldb 存储元数据的地方. 它列出了每一个 level 及其包含的全部 sorted string table 文件, 每个 sorted string table 文件对应的键区间, 以及其它重要的元数据. 每当重新打开数据库的时候, 就会创建一个新的 MANIFEST 文件(文件名中嵌有一个新生成的数字). MANIFEST 文件被格式化成形同 log 文件的格式, 针对它所服务的数据的变更都会被追加到该文件后面. 比如每当某个 level 发生文件新增或者删除操作时, 就会有一条日志被追加到 MANIFEST 中. 
 
 MANIFEST 文件在实现时又叫 descriptor 文件, 文件格式同 log 文件, 所以写入/读取方法就复用了. 其每条日志就是一个序列化后的 `leveldb::VersionEdit`. 每次针对 level 架构有文件增删时都要写日志到 manifest 文件.
 

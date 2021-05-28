@@ -13,7 +13,7 @@ tags:
 
 我们先简单回顾下 log 文件相关的基础知识点, 具体请见 {% post_link leveldb-annotations-1-interfaces-and-files %}.
 
-log 文件(*.log)保存着数据库最近一系列更新操作, 它相当于 leveldb 的 WAL([write-ahead logging](https://en.wikipedia.org/wiki/Write-ahead_logging)). 当前在用的 log 文件内容同时也会被记录到一个内存数据结构中(即 `memtable` ). 每个更新操作都被追加到当前的 log 文件和 `memtable` 中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件对应的 `memtable` 就会被转换为一个 sorted table 文件落盘然后一个新的 log 文件就会被创建以保存未来的更新操作. 
+log 文件(*.log)保存着数据库最近一系列更新操作, 它相当于 leveldb 的 WAL([write-ahead logging](https://en.wikipedia.org/wiki/Write-ahead_logging)). 当前在用的 log 文件内容同时也会被记录到一个内存数据结构中(即 `memtable` ). 每个更新操作都被追加到当前的 log 文件和 `memtable` 中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件对应的 `memtable` 就会被转换为一个 sorted string table 文件落盘然后一个新的 log 文件就会被创建以保存未来的更新操作. 
 
 log 文件内容是一系列 blocks, 每个 block 大小为 32KB(有时候最后一个 block 可能装不满). 每个 block 由一系列 records 构成, 具体定义如下(熟悉编译原理的应该对下述写法不陌生): 
 
