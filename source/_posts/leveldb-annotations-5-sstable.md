@@ -1,12 +1,12 @@
 ---
 title: "Leveldb 源码详解系列之五: SSTable 设计与实现"
-date: 2021-02-17 10:55:21
+date: 2021-5-29 14:02:43
 tags:
   - leveldb
   - LSM-Tree
   - db
 ---
-[toc]
+
 <!-- toc -->
 
 leveldb, leveldb, 每个 level 保存的内容就是一组 sorted string table (简称 sstable) 文件.
@@ -68,9 +68,17 @@ restarts[i] 保存的是第 i 个 restart point 在 block 内的偏移量.
 
 ## 1.2 meta block 布局
 
+它由 `<一系列 filters + filter-offset 数组 + filters 部分的结束偏移量(4 字节) + base log 值(1 字节)>` 构成. 注意该 block 最后 5 字节内容是固定的, 这也是该部分的解析入口.
+
+该部分在写入文件时不进行压缩.
+
 ## 1.3 meta-index block 布局
 
+只有一个数据项, key 为 `"filter."+过滤器名`, value 为 meta block 的 handle.
+
 ## 1.4 index block 布局
+
+同 data block, 每个数据项的 key 是某个 data block 的最后一个 key, 每个数据项的 value 是这个 data block 的 handle. 注意, 由于该 block 数据项数和 data blocks 个数一样, 相对来说非常少, 所以就没做前缀压缩(具体实现就是将 restart point interval 设置为 1).
 
 ## 1.5 footer 布局
 
@@ -97,182 +105,14 @@ Footer 具体格式如下:
 
 了解了布局, 下面让我们来看看针对 sstable 的读写实现.
 
-# 2 sorted string table 文件主要接口
+# 2 sstable 文件的序列化与反序列化
 
-下面说明一下 sorted string table 文件主要的操作接口, 主要是读与写.
+sstable 文件集合保存着 leveldb 实例的数据, 定义在 `db/version_set.h` 中的 `class leveldb::Version` 跟踪每个 level 及其文件, 可以将这个类看做是对 leveldb 全部层级文件架构的抽象. 
 
-## 2.1 sorted string table 文件读接口
+下面说明一下针对 sstable 文件的序列化和反序列化.
 
-打开一个 sstable 文件的入口为 `leveldb::Status leveldb::Table::Open`. 最后得到一个 `class leveldb::Table` 对象, 该类是对 sorted string table 文件的抽象, 负责对 sorted string table 文件进行读操作. 具体底层存储由 Table 的 helper 类 `struct leveldb::Table::Rep` 负责. 代码如下:
 
-```c++
-// 将 file 表示的 sstable 文件反序列化为 Table 对象, 具体保存
-// 实际内容的是 Table::rep_.
-//
-// 如果成功, 返回 OK 并将 *table 设置为新打开的 table. 
-// 当不再使用该 table 时候, 需要调用方负责删除之. 
-// 如果初始化 table 出错, 将 *table 设置为 nullptr 并返回 non-OK. 
-// 注意, 在 table 打开期间, 调用方要确保数据源即 file 持续有效. 
-Status Table::Open(const Options& options,
-                   RandomAccessFile* file,
-                   uint64_t size,
-                   Table** table) {
-  /**
-   * 1 先解析 table 文件结尾的 Footer, 它是 sstable 的入口.
-   */
-  *table = nullptr;
-  // 每个 table 文件末尾是一个固定长度的 footer
-  if (size < Footer::kEncodedLength) { 
-    return Status::Corruption("file is too short to be an sstable");
-  }
-
-  char footer_space[Footer::kEncodedLength];
-  Slice footer_input;
-  // 读取 footer, 放到 footer_input
-  Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
-                        &footer_input, footer_space);
-  if (!s.ok()) return s;
-
-  Footer footer;
-  // 解析 footer
-  s = footer.DecodeFrom(&footer_input);
-  if (!s.ok()) return s;
-
-  /**
-   * 2 根据已解析的 Footer, 解析出 index block(它保存了指向全部 data blocks 的索引) 
-   * 存储到 index_block_contents.
-   */
-  BlockContents index_block_contents;
-  if (s.ok()) {
-    ReadOptions opt;
-    if (options.paranoid_checks) {
-      opt.verify_checksums = true;
-    }
-    // 读取 index block, 它对应的 BlockHandle 存储在 footer 里面
-    s = ReadBlock(file, opt, footer.index_handle(), &index_block_contents);
-  }
-
-  if (s.ok()) {
-    // 已经成功读取了 Footer 和 index block, 是时候读取 data 了. 
-    Block* index_block = new Block(index_block_contents);
-    Rep* rep = new Table::Rep;
-    rep->options = options;
-    rep->file = file;
-    // filter-index block 对应的指针 (二级索引), 解析 footer 时候就拿到了.
-    rep->metaindex_handle = footer.metaindex_handle();
-    // data-index block 
-    // (注意它只是一个索引, 即 data blocks 的索引, 
-    //  真正使用的时候是基于 data-index block 做二级迭代器来进行查询,
-    //  一级索引跨度大, 二级索引粒度小, 可以快速定位数据,
-    //  具体见 Table::NewIterator() 方法)
-    rep->index_block = index_block;
-    // 如果调用方要求缓存这个 table, 则为其分配缓存 id
-    rep->cache_id = (options.block_cache ? options.block_cache->NewId() : 0);
-    // 接下来跟 filter 相关的两个成员将在下面 ReadMeta 进行填充.
-    rep->filter_data = nullptr;
-    rep->filter = nullptr;
-    *table = new Table(rep);
-    /**
-     * 3 根据已解析的 Footer 所包含的 metaindex block 指针, 
-     * 解析出 metaindex block, 再基于此解析出 mate block 
-     * 存储到 Table::rep_.
-     */
-    // 读取并解析 filter block 到 table::rep_, 
-    // 它一般为布隆过滤器, 可以加速数据查询过程.
-    (*table)->ReadMeta(footer);
-  }
-
-  return s;
-}
-```
-
-总结下, 该方法主要干了下面三件事:
-1. 先解析 sstable 文件结尾的 Footer, 它是 sstable 的入口.
-2. 根据已解析的 Footer, 解析出 (data) index block 存储到 Table::rep_.
-3. 根据已解析的 Footer, 解析出 meta block 存储到 Table::rep_.
-
-注意, `Open` 方法并未去解析 data block 部分, 仅仅是解析了它对应的 index block 部分; 但是解析出了 meta block, 因为它包含的是过滤器, 用来快速确认 key 是否存在.
-
-`Open()` 方法会读取 block 构造 Block 然后到 Table::Rep 中, 下面我们讲一下 Block 结构.
-
-### 2.1.1 Block 结构
-
-Block 定义在 `table/block.h` 和 `table/block.cc` 文件, 它主要用于将 sstable 反序列化后盛放 block 内容.   
-
-具体类定义如下:
-
-```c++
-class Block {
- public:
-  // 使用特定的 contents 来构造一个 Block
-  explicit Block(const BlockContents& contents);
-
-  ~Block();
-
-  size_t size() const { return size_; }
-  // 根据用户定制的 comparator 构造该 block 的一个迭代器
-  Iterator* NewIterator(const Comparator* comparator);
-
- private:
-  uint32_t NumRestarts() const;
-
-  // block 全部数据(数据项 + restart array + restart number)
-  const char* data_;
-  // block 总大小 
-  size_t size_; 
-  // block 的 restart array 在 block 中的起始偏移量
-  uint32_t restart_offset_;
-  // 如果 data_ 指向的空间是在堆上分配的, 
-  // 那么该 block 对象销毁时需要释放该处空间, 该成员使用见析构方法.
-  bool owned_;                  
-
-  // 不允许拷贝 block 
-  Block(const Block&);
-  void operator=(const Block&);
-
-  // 为迭代 block 内容服务的迭代器, block 相当于迭代器的数据源.
-  class Iter;
-};
-```
-
-构造 Block 只有一种方式, 就是先读取文件内容构造 BlockContents, 然后基于 BlockContents 构造 Block, 这个调用是 `Table::Open()` 负责的: 
-
-```c++
-Block::Block(const BlockContents& contents)
-    : data_(contents.data.data()),
-      size_(contents.data.size()),
-      owned_(contents.heap_allocated) { 
-  //　当数据存储在堆上的时候 owned_ 才为 true
-  if (size_ < sizeof(uint32_t)) { 
-    // block 最后 4 字节用于存储 restart 个数, 所以最小也为 4 字节长度
-    size_ = 0;  // Error marker
-  } else {
-    // 该 Block 最多可以分配的 restart 的个数, 其中每个 restart 
-    // 为 4 字节偏移量.
-    // 在构建 block 的时候会每隔一段设置一个 restart point, 
-    // 位于 restart point 的数据项的 key 不会进行前缀压缩, 此项之后
-    // 的数据项会相对于前一个数据项进行前缀压缩直至下一个 restart  point. 
-    // block 最后 4 字节用于存储 restart 个数, 所以计算时不能算在内. 
-    size_t max_restarts_allowed = (size_-sizeof(uint32_t)) / sizeof(uint32_t);
-    if (NumRestarts() > max_restarts_allowed) {
-      // 如果实际的 restart 总数超过了上面计算的最大值, 
-      // 那该 Block 空间太小了, 肯定有问题
-      size_ = 0; 
-    } else {
-      // 最后一个 uint_32 存的是 restart 个数, 不能用于存放 restart; 
-      // 全部 restart 占用字节数为 NumRestarts() * sizeof(uint32_t); 
-      // 所以 restart array 的起始 offset 为下面的值. 
-      restart_offset_ = size_ - (1 + NumRestarts()) * sizeof(uint32_t);
-    }
-  }
-}
-```
-
-### 2.1.2 构造迭代器
-
-从外部 (这里强调外部, 是因为还有一个私有方法 `leveldb::Status leveldb::Table::InternalGet` 可以访问 Table 对象内容) 打开文件后如果要访问其内容, 需要一个迭代器, 该工作通过 `leveldb::Iterator *leveldb::Table::NewIterator` 完成. 返回的迭代器为一个 `leveldb::<unnamed>::TwoLevelIterator`, 该迭代器处于匿名的命名空间所以未直接对外暴露, 仅能通过返回的指针访问其从 `class leveldb::Iterator` 继承的方法. 该迭代器设计精巧, 会单独写文章介绍.
-
-## 2.2 sorted string table 文件写接口
+## 2.1 sstable 文件序列化
 
 完成该工作的是 `class leveldb::TableBuilder`, 该类负责构造 sstable 文件. 
 
@@ -285,7 +125,7 @@ Block::Block(const BlockContents& contents)
 
 每个分段也都有类似 XXBuilder 的类, 具体构造时会被 TableBuilder 调用. 除此之外, 还有一个类似的地方, 就是每个 XXBuilder 主要干活的基本都叫做 `Add()` 和 `Finish()` , 前者负责将具体数据添加到自己分段中, 后者负责将本段的元数据追加到自己分段尾部从而完成分段构造. 具体执行过程中, 各个 XXBuilder 有交叉的地方. 典型地, BlockBuilder 构造 data block 时会将自己的 BlockHandle 保存到 index block, 同时会将自己的 key 添加到 filter block 的相关状态里. 具体下面详述.
 
-### 2.2.1 总干事 TableBuilder
+### 2.1.1 总干事 TableBuilder
 
 该类是构造 sstable 的入口, 外部(如 `leveldb::BuildTable()` 方法在被 `leveldb::DBImpl::WriteLevel0Table()` 方法调用将 memtable 转为 sstable 的时候)直接循环调用该类的 `Add()` 方法来向 sstable 追加 k,v 数据, 追加完毕后调用该类 `Finish()` 方法做收尾工作.
 
@@ -358,9 +198,15 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     // 已经将写满的 data block flush 到文件了.
     assert(r->data_block.empty());
     // 为 pending index entry 选一个合适的 key.
-    // 下面这个函数调用结束, last_key 可能不变, 也可能长度更短但是值更大, 
+    // 下面这个函数调用结束, last_key 可能不变, 也可能长度更短(省空间)但是值更大, 
     // 但不会 >= 要追加的 key. 因为进入该方法之前关于两个参数
     // 已经有了一个约束: 第一个字符串肯定小于第二个字符串, 这个上面有断言保证了.
+    //
+    // 为何这么做? 因为在查询数据时, 是先在 data-index block 中定位包含该数据的
+    // 目标 data block, 然后再转入目标 data block 中进行查找. 第一个定位靠的
+    // 就是这里的 last_key, 它和 data block 对应的 handle 一起构成了 data block 
+    // 在 data-index block 中的数据项. 第一个定位主要过程就是在 data-index block 
+    // 上查找第一个大于等于要查询数据的数据项, 具体见 TwoLevelIterator::Seek().  
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     // 用于存储序列化后的 BlockHandle
     std::string handle_encoding;
@@ -426,7 +272,7 @@ void TableBuilder::Flush() {
 }
 ```
 
-#### 2.2.1.1 TableBuilder 的存储小助手 Rep
+#### 2.1.1.1 TableBuilder 的存储小助手 Rep
 
 从 TableBuilder 定义可以看到, private 部分有一个 Rep, 这是 TableBuilder 用于存放构造中的 sstable 的地方. 因为它太重要, 所以单独拿出来说一下:
 
@@ -493,7 +339,7 @@ struct TableBuilder::Rep {
   }
 };
 ```
-### 2.2.2 写 data blocks
+### 2.1.2 写 data blocks
 
 BlockBuilder 被 TableBuilder 使用来构造 sstable 文件里的 block, 注意, 该类用于构造 block 的序列化形式, 也就是构造 sstable 时候使用; 反序列化用的是 Block 类.
 
@@ -613,7 +459,7 @@ Slice BlockBuilder::Finish() {
 }
 ```
 
-### 2.2.3 写 meta(filter) block
+### 2.1.3 写 meta(filter) block
 
 不同于 data block 和 data index block, filter block 有专用的 builder, 叫做 `FilterBlockBuilder`. 它的核心方法是 `AddKey()` 和 `Finish()`.
 
@@ -856,7 +702,7 @@ if (ok() && r->filter_block != nullptr) {
                 &filter_block_handle); 
 }
 ```
-### 2.2.4 写 meta-index block
+### 2.1.4 写 meta-index block
 
 这部分比较简单, 其在 TableBuilder 的 Finish() 方法里完成:
 ```c++
@@ -882,7 +728,7 @@ if (ok()) {
   WriteBlock(&meta_index_block, &metaindex_block_handle); 
 }
 ```
-### 2.2.5 写 data-index block
+### 2.1.5 写 data-index block
 
 这部分比较简单, 其在 TableBuilder 的 Finish() 方法里完成:
 
@@ -902,7 +748,7 @@ if (ok()) {
   WriteBlock(&r->index_block, &index_block_handle);
 }
 ```
-### 2.2.6 写 footer
+### 2.1.6 写 footer
 
 footer 是 sstable 文件的入口, 结构比较简单:
 
@@ -947,3 +793,621 @@ if (ok()) {
   }
 }
 ```
+
+## 2.2 sstable 文件反序列化
+
+`class leveldb::Table` 可以看做是 sstable 文件的反序列化表示. 它负责对 sstable 进行反序列化并解析其内容, 该类是对 sstable 文件的抽象, 具体底层存储由 Table 的 helper 类 `struct leveldb::Table::Rep` 负责.
+
+该类并不直接被客户代码调用, 用户调用 `DBImpl::Get()` 查询某个 key 的时候, 如果不在 memtable, 则会查询 sstable 文件, 此时会调用 `VersionSet::current_::Get()`, 并进而调用 `leveldb::TableCache::Get()` 查询被缓存的 Table 对象, 如果还没缓存文件对应的 Table 对象, 则会先读取然后将其加入缓存, 这里的读取操作就是 `Table::Open()` 方法提供的反序列化功能. 拿到 Table 对象后, 会调用其 `InternalGet()` 查询数据.
+
+### 2.2.1 总干事 Table 类
+
+`Table` 是 sstable 文件反序列化后的内存形式, 包括 data blocks, data-index block, filter block 等, 核心成员如下:
+
+```c++
+// Table 是不可变且持久化的. 
+// Table 可以被多个线程在不依赖外部同步设施的情况下安全地访问. 
+class LEVELDB_EXPORT Table {
+ public:
+  // 打开一个保存在 file 中 [0..file_size) 里的
+  // 有序 table, 并读取必要的 metadata 数据项
+  // 以从该 table 检索数据. 
+  //
+  // 如果成功, 返回 OK 并将 *table 设置为新打开
+  // 的 table. 当不再使用该 table 时候, 客户端负责删除之. 
+  // 如果在初始化 table 出错, 将 *table 设置
+  // 为 nullptr 并返回 non-OK. 
+  // 而且, 在 table 打开期间, 客户端要确保数据源持续有效,
+  // 即当 table 在使用过程中, *file 必须保持有效. 
+  static Status Open(const Options& options,
+                     RandomAccessFile* file,
+                     uint64_t file_size,
+                     Table** table);
+
+  // 返回一个基于该 table 内容的迭代器. 
+  // 该方法返回的结果默认是无效的(在使用该迭代器之前, 
+  // 调用者在使用前必须调用其中一个 Seek 方法来
+  // 使迭代器生效.)
+  Iterator* NewIterator(const ReadOptions&) const;
+ private:
+  struct Rep;
+  Rep* rep_;
+
+  // Seek(key) 找到某个数据项则会自动
+  // 调用 (*handle_result)(arg, ...);
+  // 如果过滤器明确表示不能做则不会调用.
+  friend class TableCache;
+  Status InternalGet(
+      const ReadOptions&, const Slice& key,
+      void* arg,
+      void (*handle_result)(void* arg, const Slice& k, const Slice& v));
+
+
+  void ReadMeta(const Footer& footer);
+  void ReadFilter(const Slice& filter_handle_value);
+};
+```
+
+读取 sstable 的入口为 `Table::Open()` 方法, 读取过程和 sstable 布局密切相关: 读 footer(这是文件入口), 读 data-index block, 再读 meta-index block 和 meta block. 没错, 该方法没有读取 data block. 
+
+该方法最后返回一个 `class leveldb::Table` 对象, 该对象会被调用方用作查询数据使用. 
+
+具体代码如下:
+
+```c++
+// 将 file 表示的 sstable 文件反序列化为 Table 对象, 具体保存
+// 实际内容的是 Table::rep_.
+//
+// 如果成功, 返回 OK 并将 *table 设置为新打开的 table. 
+// 当不再使用该 table 时候, 需要调用方负责删除之. 
+// 如果初始化 table 出错, 将 *table 设置为 nullptr 并返回 non-OK. 
+// 注意, 在 table 打开期间, 调用方要确保数据源即 file 持续有效. 
+Status Table::Open(const Options& options,
+                   RandomAccessFile* file,
+                   uint64_t size,
+                   Table** table) {
+  /**
+   * 1 解析 footer: 它是 sstable 的入口.
+   */
+  *table = nullptr;
+  // 每个 table 文件末尾是一个固定长度的 footer
+  if (size < Footer::kEncodedLength) { 
+    return Status::Corruption("file is too short to be an sstable");
+  }
+
+  char footer_space[Footer::kEncodedLength];
+  Slice footer_input;
+  // 读取 footer, 放到 footer_input
+  Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
+                        &footer_input, footer_space);
+  if (!s.ok()) return s;
+
+  Footer footer;
+  // 解析 footer
+  s = footer.DecodeFrom(&footer_input);
+  if (!s.ok()) return s;
+
+  /**
+   * 2 解析 data-index block:
+   * 根据已解析的 Footer, 解析出 index block(它保存了指向全部 data blocks 的索引) 
+   * 存储到 index_block_contents.
+   */
+  BlockContents index_block_contents;
+  if (s.ok()) {
+    ReadOptions opt;
+    if (options.paranoid_checks) {
+      opt.verify_checksums = true;
+    }
+    // 读取 index block, 它对应的 BlockHandle 存储在 footer 里面
+    s = ReadBlock(file, opt, footer.index_handle(), &index_block_contents);
+  }
+
+  if (s.ok()) {
+    // 已经成功读取了 Footer 和 index block, 是时候读取 data 了. 
+    Block* index_block = new Block(index_block_contents);
+    Rep* rep = new Table::Rep;
+    rep->options = options;
+    rep->file = file;
+    // filter-index block 对应的指针 (二级索引), 解析 footer 时候就拿到了.
+    rep->metaindex_handle = footer.metaindex_handle();
+    // data-index block 
+    // (注意它只是一个索引, 即 data blocks 的索引, 
+    //  真正使用的时候是基于 data-index block 做二级迭代器来进行查询,
+    //  一级索引跨度大, 二级索引粒度小, 可以快速定位数据,
+    //  具体见 Table::NewIterator() 方法)
+    rep->index_block = index_block;
+    // 如果调用方要求缓存这个 table, 则为其分配缓存 id
+    rep->cache_id = (options.block_cache ? options.block_cache->NewId() : 0);
+    // 接下来跟 filter 相关的两个成员将在下面 ReadMeta 进行填充.
+    rep->filter_data = nullptr;
+    rep->filter = nullptr;
+    *table = new Table(rep);
+    /**
+     * 3 解析 meta-index block 和 meta block:
+     * 根据已解析的 Footer 所包含的 metaindex block 指针, 
+     * 解析出 metaindex block, 再基于此解析出 mate block 
+     * 存储到 Table::rep_.
+     */
+    // 读取并解析 filter block 到 table::rep_, 
+    // 它一般为布隆过滤器, 可以加速数据查询过程.
+    (*table)->ReadMeta(footer);
+  }
+
+  // 是的, 该方法没有解析 data blocks.
+
+  return s;
+}
+```
+
+总结下, 该方法主要干了下面三件事:
+1. 先解析 sstable 文件结尾的 Footer, 它是 sstable 的入口.
+2. 根据已解析的 Footer, 解析出 (data) index block 存储到 Table::rep_.
+3. 根据已解析的 Footer, 解析出 meta block 存储到 Table::rep_.
+
+注意, `Open` 方法并未去解析 data block 部分, 仅仅是解析了它对应的 index block 部分 和 meta block(它包含的是过滤器, 用来快速确认 key 是否存在). 
+
+那什么时候才解析 data block 呢? 答案是调用 `InternalGet()` 时候:
+```c++
+// 在 table 中查找 k 对应的数据项. 
+// 如果 table 具有 filter, 则用 filter 找; 
+// 如果没有 filter 则去 data block 里面查找, 
+// 并且在找到后通过 saver 保存 key/value. 
+Status Table::InternalGet(const ReadOptions& options, const Slice& k,
+                          void* arg,
+                          void (*saver)(void*, const Slice&, const Slice&)) {
+  Status s;
+  // 针对 data index block 构造 iterator
+  Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
+  // 在 data index block 中寻找第一个大于等于 k 的数据项, 这个数据项
+  // 就是目标 data block 的 handle.
+  iiter->Seek(k);
+  if (iiter->Valid()) {
+    // 取出对应的 data block 的 BlockHandle
+    Slice handle_value = iiter->value(); 
+    FilterBlockReader* filter = rep_->filter;
+    BlockHandle handle;
+    // 如果有 filter 找起来就快了, 如果确定
+    // 不存在就可以直接反悔了.
+    if (filter != nullptr &&
+        handle.DecodeFrom(&handle_value).ok() &&
+        !filter->KeyMayMatch(handle.offset(), k)) {
+      // 没在该 data block 对应的过滤器找到这个 key, 肯定不存在
+    } else { 
+      // 如果没有 filter, 或者在 filter 中查询时无法笃定
+      // key 不存在, 就需要在 block 中进行查找.
+      // 看到了没? Open() 方法没有解析任何 data block, 解析
+      // 是在这里进行的, 因为这里要查询数据了.
+      Iterator* block_iter = BlockReader(this, options, iiter->value());
+      block_iter->Seek(k);
+      if (block_iter->Valid()) {
+        // 将找到的 key/value 保存到输出型参数 arg 中, 
+        // 因为后面会将迭代器释放掉.
+        (*saver)(arg, block_iter->key(), block_iter->value()); 
+      }
+      s = block_iter->status();
+      delete block_iter;
+    }
+  }
+  if (s.ok()) {
+    s = iiter->status();
+  }
+  delete iiter;
+  return s;
+}
+```
+
+`Open()` 方法会读取 block 构造 Block 然后放到 `Table::Rep` 中, 解析过程也用到了 `Block` 类. 在分别介绍各个组成部分读取解析之前先说一下这两个类.
+
+#### 2.2.1.1 Table 类的小助手之一 Rep
+
+该类负责存储 sstable 反序列化后的各个部分内容:
+
+```c++
+// 存储 table 中各个元素的结构
+struct Table::Rep {
+  ~Rep() {
+    delete filter;
+    delete [] filter_data;
+    delete index_block;
+  }
+
+  // 控制 Table 的一些选项, 比如是否进行缓存等.
+  Options options;
+  Status status;
+  // table 对应的 sstable 文件
+  RandomAccessFile* file; 
+  // 如果该 table 具备对应的 block_cache, 
+  // 该值与 block 在 table 中的起始偏移量一起构成 key, value 为 block
+  uint64_t cache_id; 
+  // 解析出来的 filter block
+  FilterBlockReader* filter; 
+  // filter block 原始数据
+  const char* filter_data; 
+
+  // 从 table Footer 取出来的, 指向 table 的 metaindex block
+  BlockHandle metaindex_handle;
+  // index block 原始数据, 保存的是每个 data block 的 BlockHandle
+  Block* index_block;
+};
+```
+
+#### 2.2.1.2 Table 类的小助手之二 Block
+
+`class leveldb::Block` 定义在 `table/block.h` 和 `table/block.cc` 文件, sstable 中的每个 block 都会被反序列化为一个 `Block` 对象. 具体类定义如下:
+
+```c++
+class Block {
+ public:
+  // 使用特定的 contents 来构造一个 Block
+  explicit Block(const BlockContents& contents);
+
+  ~Block();
+
+  size_t size() const { return size_; }
+  // 根据用户定制的 comparator 构造该 block 的一个迭代器
+  Iterator* NewIterator(const Comparator* comparator);
+
+ private:
+  uint32_t NumRestarts() const;
+
+  // block 全部数据(数据项 + restart array + restart number)
+  const char* data_;
+  // block 总大小 
+  size_t size_; 
+  // block 的 restart array 在 block 中的起始偏移量
+  uint32_t restart_offset_;
+  // 如果 data_ 指向的空间是在堆上分配的, 
+  // 那么该 block 对象销毁时需要释放该处空间, 该成员使用见析构方法.
+  bool owned_;                  
+
+  // 不允许拷贝 block 
+  Block(const Block&);
+  void operator=(const Block&);
+
+  // 为迭代 block 内容服务的迭代器, block 相当于迭代器的数据源.
+  class Iter;
+};
+```
+
+构造 `Block` 对象只有一种方式, 就是先读取文件内容构造 `BlockContents`, 然后基于 `BlockContents` 构造 `Block`, 这个在 `Table::Open()` 中解析 data-index block 和 meta-index block 时多次用到. 
+
+```c++
+Block::Block(const BlockContents& contents)
+    : data_(contents.data.data()),
+      size_(contents.data.size()),
+      owned_(contents.heap_allocated) { 
+  //　当数据存储在堆上的时候 owned_ 才为 true
+  if (size_ < sizeof(uint32_t)) { 
+    // block 最后 4 字节用于存储 restart 个数, 
+    // 所以 block 长度最小为 4 字节长度.
+    size_ = 0;  // Error marker
+  } else {
+    // 该 Block 最多可以分配的 restart 的个数, 其中每个 restart 
+    // 为 4 字节偏移量.
+    // 在构建 block 的时候会每隔一段设置一个 restart point(用于前缀压缩), 
+    // 位于 restart point 的数据项的 key 保留原样, 此项之后
+    // 的数据项会相对于前一个数据项进行前缀压缩直至下一个 restart  point. 
+    // block 最后 4 字节用于存储 restart 个数, 所以计算时不能算在内. 
+    size_t max_restarts_allowed = (size_-sizeof(uint32_t)) / sizeof(uint32_t);
+    if (NumRestarts() > max_restarts_allowed) {
+      // 如果实际的 restart 总数超过了上面计算的最大值, 
+      // 那该 Block 空间太小了, 肯定有问题
+      size_ = 0; 
+    } else {
+      // 最后一个 uint_32 存的是 restart 个数, 不能用于存放 restart; 
+      // 全部 restart 占用字节数为 NumRestarts() * sizeof(uint32_t); 
+      // 所以 restart array 的起始 offset 为下面的值. 
+      restart_offset_ = size_ - (1 + NumRestarts()) * sizeof(uint32_t);
+    }
+  }
+}
+```
+
+### 2.2.2 读 footer
+
+footer 解析比较简单, 主要就是获取 meta-index block 和 data-index block 分别在文件中的地址和大小:
+
+```c++
+// 从 input 指向内存解码出一个 Footer, 
+// 先解码最后 8 字节的魔数(按照小端模式), 
+// 然后一次解码两个 BlockHandle. 
+Status Footer::DecodeFrom(Slice* input) {
+  // 1 按照小端模式解析末尾 8 字节的魔数
+  const char* magic_ptr = input->data() + kEncodedLength - 8;
+  const uint32_t magic_lo = DecodeFixed32(magic_ptr);
+  const uint32_t magic_hi = DecodeFixed32(magic_ptr + 4);
+  const uint64_t magic = ((static_cast<uint64_t>(magic_hi) << 32) |
+                          (static_cast<uint64_t>(magic_lo)));
+  if (magic != kTableMagicNumber) {
+    return Status::Corruption("not an sstable (bad magic number)");
+  }
+
+  // 2 解析 meta-index block 的 handle
+  // (包含 meta index block 起始偏移量及其长度)
+  Status result = metaindex_handle_.DecodeFrom(input);
+  if (result.ok()) {
+    // 3 解析 index block 的 handle
+    // (包含 index block 起始偏移量及其长度)
+    result = index_handle_.DecodeFrom(input);
+  }
+  if (result.ok()) { 
+    // 4 跳过 padding
+    // meta-index handle + data-index handle + padding + 魔数.
+    // 此时 input 包含的数据只剩下可能的 padding 0 了, 跳过.
+    // end 为 footer 尾部
+    const char* end = magic_ptr + 8;
+    // 第二个参数为值为 0. 生成下面这个 slice 后面没有使用. 
+    *input = Slice(end, input->data() + input->size() - end); 
+  }
+  return result;
+}
+```
+
+### 2.2.3 读 data-index block
+
+拿到 data-index block 地址和大小后就可以解析它了:
+
+```c++
+/**
+  * 2 解析 data-index block:
+  * 根据已解析的 Footer, 解析出 index block(它保存了指向全部 data blocks 的索引) 
+  * 存储到 index_block_contents.
+  */
+BlockContents index_block_contents;
+if (s.ok()) {
+  ReadOptions opt;
+  if (options.paranoid_checks) {
+    opt.verify_checksums = true;
+  }
+  // 读取 index block, 它对应的 BlockHandle 存储在 footer 里面
+  s = ReadBlock(file, opt, footer.index_handle(), &index_block_contents);
+}
+```
+
+上面 `ReadBlock()` 最后一个输出型参数即为 data-index block 内容, 可以将其反序列化为 `Block` 对象:
+
+```c++
+Block* index_block = new Block(index_block_contents);
+```
+
+### 2.2.4 读 meta-index block
+
+解析出来的 meta-index block handle 放到了 footer 对象中, 根据它就可以解析 meta-index block 和 meta block 了:
+
+```c++
+/**
+  * 3 解析 meta-index block 和 meta block:
+  * 根据已解析的 Footer 所包含的 metaindex block 指针, 
+  * 解析出 metaindex block, 再基于此解析出 mate block 
+  * 存储到 Table::rep_.
+  */
+// 读取并解析 filter block 到 table::rep_, 
+// 它一般为布隆过滤器, 可以加速数据查询过程.
+(*table)->ReadMeta(footer);
+```
+
+这个过程统一在 `ReadMeta()` 完成, 具体读取 meta block 会有专用的 `ReadFilter()` 完成:
+
+```c++
+// 解析 table 的 metaindex block(需要先解析 table 的 footer);
+// 然后根据解析出来的 metaindex block 解析 meta block(目前 meta block
+// 仅有 filter block 一种). 
+// 这就是我们要的元数据, 解析出来的元数据会被放到 Table::rep_ 中. 
+void Table::ReadMeta(const Footer& footer) {
+  // 如果压根就没配置过滤策略, 那么无序解析元数据
+  if (rep_->options.filter_policy == nullptr) {
+    return;
+  }
+
+  /**
+   * 根据 Footer 保存的 metaindex BlockHandle 
+   * 解析对应的 metaindex block 到 meta 中
+   */
+  ReadOptions opt;
+  if (rep_->options.paranoid_checks) {
+    // 如果开启了偏执检查, 则校验每个 block 的 crc
+    opt.verify_checksums = true; 
+  }
+  BlockContents contents;
+  // 1 根据 handle 读取 metaindex block (从 rep_ 到 contents)
+  if (!ReadBlock(rep_->file, opt, footer.metaindex_handle(), &contents).ok()) {
+    // 由于 filter block 不是必须的, 没有 filter 最多就是读得慢一些;
+    // 所以出错也不再继续传播, 而是直接返回.
+    return;
+  }
+
+  // 这个变量叫 metaindex 更合适
+  Block* meta = new Block(contents);
+
+  // 为 metaindex block 创建一个迭代器
+  Iterator* iter = meta->NewIterator(BytewiseComparator()); 
+  // 具体见 table_format.md
+  // metaindex block 有一个 entry 包含了 FilterPolicy name 
+  // 到其对应的 filter block 的映射
+  std::string key = "filter.";
+  // filter-policy name 在调用方传进来的配置项中
+  key.append(rep_->options.filter_policy->Name());
+  // 在 metaindex block 搜寻 key 对应的 meta block 的 handle
+  iter->Seek(key); 
+  if (iter->Valid() && iter->key() == Slice(key)) {
+    // 2 找到了, 迭代器对应的 value 即为 meta block handle,
+    // 根据其解析对应的 filter block(就是 meta block), 解析出来的
+    // 内容会放到 rep_ 中.
+    ReadFilter(iter->value()); 
+  }
+  delete iter;
+  delete meta;
+}
+```
+
+### 2.2.5 读 meta block
+
+前一节提到了读取 meta(filter) block 读取:
+```c++
+// 2 找到了, 则解析对应的 filter block, 解析出来的
+// 内容会放到 rep_ 中.
+ReadFilter(iter->value()); 
+```    
+
+具体读取由 `ReadFilter()` 方法完成:
+
+```c++
+// 解析 table 的 filter block(需要先解析 table 的 metaindex block)
+// 解析出的数据放到了 table.rep.filter
+void Table::ReadFilter(const Slice& filter_handle_value) {
+  Slice v = filter_handle_value;
+  BlockHandle filter_handle;
+  // 解析出 filter block 对应的 blockhandle, 它包含 filter block 
+  // 在 sstable 中的偏移量和大小
+  if (!filter_handle.DecodeFrom(&v).ok()) {
+    return;
+  }
+
+  ReadOptions opt;
+  if (rep_->options.paranoid_checks) {
+    opt.verify_checksums = true;
+  }
+  BlockContents block;
+  // 读取 filter block(从 rep_ 到 block)
+  if (!ReadBlock(rep_->file, opt, filter_handle, &block).ok()) {
+    return;
+  }
+
+  // 如果 blockcontents 中的内存是从堆分配的, 
+  // 需要将其地址赋值给 rep_->filter_data 以方便后续释放(见 ~Rep())
+  if (block.heap_allocated) {
+    rep_->filter_data = block.data.data();
+  }
+  // 反序列化 filter block (从 block.data 到 FilterBlockReader)
+  rep_->filter = new FilterBlockReader(rep_->options.filter_policy, block.data);
+}
+```
+
+### 2.2.6 读 block 内容的通用方法
+
+每个 block(data block, meta block, meta-index block, data-index block 四类) 在写入 sstable 后都会紧接着追加一字节长的压缩类型和四字节长的 crc(它是 block + 压缩类型一起算出来的), 负责读取解析 block + 压缩类型 + crc 的方法为位于 `table/format.cc` 中的 `ReadBlock()` 方法:
+
+```c++
+// 从 file 去读 handle 指向的 block:
+// - 读取整个块, 包含数据+压缩类型(1 字节)+crc(4 字节)
+// - 校验 crc: 重新计算 crc 并与保存 crc 比较
+// - 解析压缩类型, 根据压缩类型对数据进行解压缩
+// - 将 block 数据部分保存到 BlockContents 中
+// 失败返回 non-OK; 成功则将数据填充到 *result 并返回 OK. 
+Status ReadBlock(RandomAccessFile* file,
+                 const ReadOptions& options,
+                 const BlockHandle& handle,
+                 BlockContents* result) {
+  result->data = Slice();
+  result->cachable = false;
+  result->heap_allocated = false;
+
+  /**
+   * 解析 block.
+   * 读取 block 内容以及 type 和 crc. 
+   * 具体见 table_builder.cc 中构造这个结构的代码.
+   */
+  // 要读取的 block 的大小
+  size_t n = static_cast<size_t>(handle.size()); 
+  // 每个 block 后面紧跟着它的压缩类型 type (1 字节)和 crc (4 字节)
+  char* buf = new char[n + kBlockTrailerSize]; 
+  Slice contents;
+  // handle.offset() 指向对应 block 在文件里的起始偏移量
+  Status s = file->Read(handle.offset(), n + kBlockTrailerSize, &contents, buf);
+  if (!s.ok()) {
+    delete[] buf;
+    return s;
+  }
+  if (contents.size() != n + kBlockTrailerSize) {
+    delete[] buf;
+    return Status::Corruption("truncated block read");
+  }
+
+  /**
+   * 校验 type 和 block 内容加在一起对应的 crc
+   */
+  const char* data = contents.data();
+  if (options.verify_checksums) {
+    // 读取 block 末尾的 crc(始于第 n+1 字节)
+    const uint32_t crc = crc32c::Unmask(DecodeFixed32(data + n + 1));
+    // 计算 block 前 n+1 字节的 crc
+    const uint32_t actual = crc32c::Value(data, n + 1);
+    // 比较保存的 crc 和实际计算的 crc 是否一致
+    if (actual != crc) {
+      delete[] buf;
+      s = Status::Corruption("block checksum mismatch");
+      return s;
+    }
+  }
+
+  /**
+   * 解析 type, 并根据 type 解析 block data
+   */
+  // type 表示 block 的压缩状态
+  switch (data[n]) {
+    case kNoCompression:
+      if (data != buf) {
+        delete[] buf;
+        result->data = Slice(data, n);
+        result->heap_allocated = false;
+        result->cachable = false;  // Do not double-cache
+      } else {
+        result->data = Slice(buf, n);
+        result->heap_allocated = true;
+        result->cachable = true;
+      }
+
+      // Ok
+      break;
+    case kSnappyCompression: {
+      size_t ulength = 0;
+      // 获取 snappy 压缩前的数据的大小以分配内存
+      if (!port::Snappy_GetUncompressedLength(data, n, &ulength)) {
+        delete[] buf;
+        return Status::Corruption("corrupted compressed block contents");
+      }
+      char* ubuf = new char[ulength];
+      // 将 snappy 压缩过的数据解压缩到上面分配的内存中
+      if (!port::Snappy_Uncompress(data, n, ubuf)) {
+        delete[] buf;
+        delete[] ubuf;
+        return Status::Corruption("corrupted compressed block contents");
+      }
+      delete[] buf;
+      result->data = Slice(ubuf, ulength);
+      result->heap_allocated = true;
+      result->cachable = true;
+      break;
+    }
+    default:
+      delete[] buf;
+      return Status::Corruption("bad block type");
+  }
+
+  return Status::OK();
+}
+```
+
+
+## 2.3 Table 和两级迭代器的结合
+
+前面讲过了, 打开 sstable 文件后会生成对应的 Table 对象, 该对象会被放到 TableCache 缓存中. 如果要访问其内容, 需要一个迭代器, 该工作通过 `leveldb::Iterator *leveldb::Table::NewIterator` 完成:
+
+```c++
+// 先为 data-index block 数据项构造一个迭代器 index_iter, 
+// 然后基于 index_iter 查询时, 为其指向的具体 data block 
+// 构造一个迭代器 data_iter, 进而可以迭代该 data block 里
+// 的全部数据项.
+// 这样就构成了一个两级迭代器, 从而实现遍历全部 data blocks 的数据项. 
+Iterator* Table::NewIterator(const ReadOptions& options) const {
+  return NewTwoLevelIterator(
+      rep_->index_block->NewIterator(rep_->options.comparator),
+      &Table::BlockReader, const_cast<Table*>(this), options);
+}
+```
+
+返回的迭代器为一个 `leveldb::<unnamed>::TwoLevelIterator`, 该迭代器处于匿名的命名空间所以未直接对外暴露, 仅能通过返回的指针访问其从 `class leveldb::Iterator` 继承的方法. 
+
+每个 sstable 文件对应一个两级迭代器, 然后将全部 sstable 对应的两级迭代器级联起来, 就相当于为整个 leveldb 构造了一个迭代器(见 `leveldb::Version::AddIterators()`, 后续会详解该类), 从而实现在整个 leveldb 上轻松实现迭代或者查询.
+
+--End--
