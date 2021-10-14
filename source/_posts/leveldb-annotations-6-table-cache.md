@@ -7,6 +7,8 @@ tags:
   - db
 ---
 
+<!-- toc -->
+
 上一篇讲了 leveldb 中 `Table` 的设计和实现, 它是磁盘 sstable 文件的内存形式, 但是 `Table` 在实际中不会被用户直接用到, 而是借助 `TableCache`.
 
 # 1 TableCache: leveldb 的磁盘文件缓存结构  
