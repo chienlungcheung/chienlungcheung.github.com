@@ -2,13 +2,13 @@
 
 目前，通过 pull 或下载新的 release 版本来更新 NexT 主题的体验并不平滑。当用户使用 `git pull` 更新 NexT 主题时经常需要解决冲突问题，而在手动下载 release 版本时也经常需要手动合并配置。
 
-现在来说，NexT 推荐用户存储部分配置在 Hexo 站点配置文件（`/_config.yml`），而另一部分在主题配置文件（`/themes/next/_config.yml`）。这一方式固然可用，但也有一些缺点: 
+现在来说，NexT 推荐用户存储部分配置在 Hexo 站点配置文件（`/_config.yml`），而另一部分在主题配置文件（`/themes/next/_config.yml`）。这一方式固然可用，但也有一些缺点：
 1. 配置项被分裂为两部分；
 2. 用户难以弄清何处存放配置选项。
 
 为了解决这一问题，NexT 提供了以下两种方案。
 
-<h2 align="center">选择 1: Hexo 方式</h2>
+<h2 align="center">选择 1：Hexo 方式</h2>
 
 使用这一方式，你的全部配置都将置于 Hexo 站点配置文件（`/_config.yml`），并且不需要修改 `/themes/next/_config.yml`，或者创建什么其他的文件。但是所有用到的主题选项必须放置在 `theme_config` 后，并全部增加两个空格的缩进。
 
@@ -18,7 +18,7 @@
 
 1. 请确认不存在 `/source/_data/next.yml` 文件（如果已存在，请删除）
 2. 从主题的 `/themes/next/_config.yml` 文件中复制你需要的 NexT 配置项到 `/_config.yml` 中，然后\
-   2.1. 所有这些配置项右移两个空格（在 Visual Studio Code 中: 选中这些文字，<kbd>CTRL</kbd> + <kbd>]</kbd>）。\
+   2.1. 所有这些配置项右移两个空格（在 Visual Studio Code 中：选中这些文字，<kbd>CTRL</kbd> + <kbd>]</kbd>）。\
    2.2. 在这些参数最上方添加一行 `theme_config:`。
 
 ### 相关链接
@@ -42,13 +42,13 @@
 
 <p align="center">以上步骤之后有 <b>两种选择</b>，请<b>任选其一</b>然后<b>继续后面的步骤</b>。</p>
 
-* **选择 1: `override: false`（默认）**: 
+* **选择 1：`override: false`（默认）**：
 
   1. 检查默认 NexT 配置中的 `override` 选项，必须设置为 `false`。\
      在 `next.yml` 文件中，也要设置为 `false`，或者不定义此选项。
   2. 从站点配置文件（`/_config.yml`）与主题配置文件（`/themes/next/_config.yml`）中复制你需要的选项到 `/source/_data/next.yml` 中。
 
-* **选择 2: `override: true`**: 
+* **选择 2：`override: true`**：
 
   1. 在 `next.yml` 中设置 `override` 选项为 `true`。
   2. 从 `/themes/next/_config.yml` 配置文件中复制**所有**的 NexT 主题选项到 `/source/_data/next.yml` 中。

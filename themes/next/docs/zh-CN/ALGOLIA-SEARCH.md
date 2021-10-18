@@ -10,7 +10,7 @@ NexT 内部提供 Algolia 的搜索功能，要使用此功能请确保所使用
 
     ![](https://user-images.githubusercontent.com/16272760/73673895-693b3180-46ea-11ea-8f50-8bae850b50d0.png)
 
-1. 编辑 `站点配置文件`，新增以下配置，除了 `chunkSize` 字段，替换成在 Algolia 获取到的值: 
+1. 编辑 `站点配置文件`，新增以下配置，除了 `chunkSize` 字段，替换成在 Algolia 获取到的值：
 
     ```yml
     algolia:
@@ -25,7 +25,7 @@ NexT 内部提供 Algolia 的搜索功能，要使用此功能请确保所使用
     ![](https://user-images.githubusercontent.com/16272760/73673902-6b04f500-46ea-11ea-9c80-4e5c5002e07b.png)
     ![](https://user-images.githubusercontent.com/16272760/73673905-6b9d8b80-46ea-11ea-9e01-702ec2a8a297.png)
 
-1. 在 Index 和 API Key 创建完成后，此时这个 Index 里未包含任何数据。接下来需要安装 [Hexo Algolia](https://github.com/oncletom/hexo-algolia) 扩展，这个扩展的功能是搜集站点的内容并通过 API 发送给 Algolia。前往站点根目录，执行命令安装: 
+1. 在 Index 和 API Key 创建完成后，此时这个 Index 里未包含任何数据。接下来需要安装 [Hexo Algolia](https://github.com/oncletom/hexo-algolia) 扩展，这个扩展的功能是搜集站点的内容并通过 API 发送给 Algolia。前往站点根目录，执行命令安装：
 
     ```
     $ cd hexo
@@ -43,7 +43,7 @@ NexT 内部提供 Algolia 的搜索功能，要使用此功能请确保所使用
 
     ![](http://theme-next.iissnan.com/uploads/algolia/algolia-step-4.png)
 
-1. 更改`主题配置文件`，找到 Algolia Search 配置部分，将 `enable` 改为 `true`。同时你需要**关闭**其他搜索插件，如 Local Search 等。你也可以根据需要调整 `labels` 中的文本: 
+1. 更改`主题配置文件`，找到 Algolia Search 配置部分，将 `enable` 改为 `true`。同时你需要**关闭**其他搜索插件，如 Local Search 等。你也可以根据需要调整 `labels` 中的文本：
 
     ```yml
     # Algolia Search
@@ -59,7 +59,7 @@ NexT 内部提供 Algolia 的搜索功能，要使用此功能请确保所使用
 
 1. 如果你需要通过 CDN 使用其它版本的 algolia-instant-search ，请根据以下步骤操作。
 
-    你需要在`主题配置文件`中的 vendors 字段进行设置: 
+    你需要在`主题配置文件`中的 vendors 字段进行设置：
 
     ```yml
     vendors:

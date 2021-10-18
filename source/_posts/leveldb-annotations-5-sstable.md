@@ -21,7 +21,7 @@ SSTable 即 sorted string table, 是一个有序文件格式.
 - 一个 metaindex block, 包含指向 meta blocks 的索引.
 - 一个 index block, 包含指向 data blocks 的索引. 
 - 一个 footer, sstable 文件入口, 保存着指向 metaindex block 和 index block 的索引, 相当于一个二级指针.
-
+<!--more-->
 不像 kafka 文件存储结构的数据文件和索引文件是各自独立的(在查询时根据具体 key 先在索引文件确定是哪个数据文件), sstable 把索引和数据保存到了同一个文件中. 每次从文件查询数据时会先查询索引, 索引是指向数据的指针, 具体叫做 BlockHandle, 包含着下述信息: 
 
     // 目标 block 起始位置在文件中的偏移量

@@ -35,7 +35,7 @@
 
 ## 安装
 
-最简单的安装方式是直接克隆整个仓库: 
+最简单的安装方式是直接克隆整个仓库：
 
 ```sh
 $ cd hexo
@@ -48,7 +48,7 @@ $ git clone https://github.com/theme-next/hexo-theme-next themes/next
 
 NexT 支持大量的第三方插件，它们可以被轻松地配置。
 
-例如，你想要在你的站点中使用 `pjax` 插件，请进入 NexT 配置文件，启用 `pjax` 配置项: 
+例如，你想要在你的站点中使用 `pjax` 插件，请进入 NexT 配置文件，启用 `pjax` 配置项：
 
 ```yml
 # Easily enable fast Ajax navigation on your website.
@@ -62,7 +62,7 @@ pjax: true
 
 如果你想要通过 CDN 来加载插件脚本，那么需要设置相关的 CDN 链接。
 
-例如，你想要使用 `mediumzoom` 插件并通过 CDN 加载，进入 Next 配置文件并找到如下内容: 
+例如，你想要使用 `mediumzoom` 插件并通过 CDN 加载，进入 Next 配置文件并找到如下内容：
 
 ```yml
 vendors:
@@ -74,7 +74,7 @@ vendors:
 
 ## 更新
 
-NexT 每个月都会发布新版本。你可以通过如下命令更新到最新的 master 分支: 
+NexT 每个月都会发布新版本。你可以通过如下命令更新到最新的 master 分支：
 
 ```sh
 $ cd themes/next
@@ -108,7 +108,7 @@ $ git pull
 ## 鸣谢
 
 <p align="center">
-  «NexT» 特别感谢这些支持我们核心基础设施的优质服务: 
+  «NexT» 特别感谢这些支持我们核心基础设施的优质服务：
 <br>
 <br>
   <a href="https://github.com"><img align="center" width="100" src="https://github.githubassets.com/images/modules/logos_page/GitHub-Logo.png"></a>

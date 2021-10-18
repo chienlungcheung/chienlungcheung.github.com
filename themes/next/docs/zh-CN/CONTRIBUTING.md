@@ -1,5 +1,5 @@
 <div align="right">
-  语言: 
+  语言：
   <a title="英语" href="../../.github/CONTRIBUTING.md">:us:</a>
   :cn:
   <a title="俄语" href="../ru/CONTRIBUTING.md">:ru:</a>
@@ -41,7 +41,7 @@
 
 #### 快速调试指南
 
-在 GitHub 上提交 Issue 前，请先通过以下方法 debug: 
+在 GitHub 上提交 Issue 前，请先通过以下方法 debug：
 
 * 执行`hexo clean`，清除浏览器缓存，并禁用 CDN 服务（例如 Cloudflare Rocket Loader）；
 * 切换到其它主题并检查 bug 是否仍然存在（例如使用默认主题 landscape）。换言之，证明这是 NexT 主题而非来自 Hexo 的 bug；
@@ -61,7 +61,7 @@
 请认真遵守如下指南，这样我们才能更好地理解问题，重现问题和解决问题。
 
 * 在标题中清晰准确地描述你的问题。
-* 参照如下问题尽可能多的提供信息: 
+* 参照如下问题尽可能多的提供信息：
     * Bug 是否能够重现？是一直出现还是偶尔出现？
     * Bug 是从什么时候开始发生的？
     * 如果 Bug 突然发生，使用 [旧版本主题](https://github.com/theme-next/hexo-theme-next/releases) 是否能够重现 Bug？又是从哪个版本开始出现 Bug？
@@ -82,7 +82,7 @@
 
 提交功能需求前，请再次确认您已经查看了 [你需要了解的](#你需要了解的) 内容，避免提交重复的 Issue。确定相关仓库后，创建 Issue 并按照 [模板](../../.github/ISSUE_TEMPLATE.md) 尽可能的详细填写相关信息。
 
-请认真遵守如下指南，这样我们才能更好地理解和开发功能需求:pencil:: 
+请认真遵守如下指南，这样我们才能更好地理解和开发功能需求:pencil:：
 
 * 在标题中清晰准确地描述你的功能需求。
 * 详细描述目前所具有的功能和你所期待的功能，并解释为什么需要该功能。
@@ -92,7 +92,7 @@
 
 提交合并请求前，请再次确认您已经查看了 [你需要了解的](#你需要了解的) 内容，避免提交重复的合并请求。确定相关仓库后，创建合并请求。更多详细操作过程可以查看 [帮助文档](https://help.github.com/articles/creating-a-pull-request/)。
 
-请认真遵守如下指南，这样我们才能更好地理解你的合并请求: 
+请认真遵守如下指南，这样我们才能更好地理解你的合并请求：
 
 * 创建合并请求时，请遵守 [编码规范](#编码规范) 和 [提交信息规范](#提交信息规范)。
 * 在标题中清晰准确地描述你的合并请求，不要加入 Issue 编号。
@@ -130,7 +130,7 @@
 
 如果您不确定某个标签的含义，或者不知道将哪些标签应用于 PR 或 issue，千万别错过这个。
 
-Issue 的标签: 
+Issue 的标签：
 
 - 类型
     - `Bug`: 检测到需要进行确认的 Bug
@@ -150,7 +150,7 @@ Issue 的标签:
     - `Backlog`: 待解决的 Issue
     - `Stale`: 由于长期无人回应被封存的 Issue
 
-Pull Request 的标签: 
+Pull Request 的标签：
 
 - `Breaking Change`: 产生重大变动的 Pull Request
 - `Bug Fix`: 修复相关 Bug 的 Pull Request
@@ -160,7 +160,7 @@ Pull Request 的标签:
 - `Work in Progress`: 仍在进行改动和完善的 Pull Request
 - `Skip Release`: 无需在 Release Note 中展现的 Pull Request
 
-两者兼有: 
+两者兼有：
 
 - `Roadmap`: 与 NexT 主题发展相关的 Issue 或者 Pull Request
 - `Help Wanted`: 需要帮助的 Issue 或者 Pull Request
@@ -180,17 +180,17 @@ Pull Request 的标签:
 
 我们对项目的 git 提交信息格式进行统一格式约定，每条提交信息由 `type`+`subject` 组成，这将提升项目日志的可读性。
 
-- `type` 用于表述此次提交信息的意义，首写字母大写，包括但不局限于如下类型: 
-    * `Build`: 基础构建系统或依赖库的变化
-    * `Ci`: CI 构建系统及其脚本变化
-    * `Docs`: 文档内容变化
-    * `Feat`: 新功能
-    * `Fix`: Bug 修复
-    * `Perf`: 性能优化
-    * `Refactor`: 重构（即不是新增功能，也不是修改 Bug 的代码变动）
-    * `Style`: 格式（不影响代码运行的变动）
-    * `Revert`: 代码回滚
-    * `Release`: 版本发布
+- `type` 用于表述此次提交信息的意义，首写字母大写，包括但不局限于如下类型：
+    * `Build`：基础构建系统或依赖库的变化
+    * `Ci`：CI 构建系统及其脚本变化
+    * `Docs`：文档内容变化
+    * `Feat`：新功能
+    * `Fix`：Bug 修复
+    * `Perf`：性能优化
+    * `Refactor`：重构（即不是新增功能，也不是修改 Bug 的代码变动）
+    * `Style`：格式（不影响代码运行的变动）
+    * `Revert`：代码回滚
+    * `Release`：版本发布
 - `subject` 用于简要描述修改变更的内容，如 `Update code highlighting in readme.md`。
     * 句尾不要使用符号。
     * 使用现在时、祈使句语气。

@@ -7,11 +7,10 @@ tags:
   - db
 ---
 
-<!-- toc -->
-
 **Leveldb** 是一个高速 KV 数据库, 它提供了一个持久性的 KV 存储. 其中 keys 和 values 都是随机字节数组, 并且存储时根据用户指定的比较函数对 keys 进行排序. 
 
 它由 Google 开发的, 其作者为大名鼎鼎的 Sanjay Ghemawat (sanjay@google.com) 和 Jeff Dean (jeff@google.com). 感谢他们对人类的贡献.
+<!--more-->
 
 # 基本介绍
 

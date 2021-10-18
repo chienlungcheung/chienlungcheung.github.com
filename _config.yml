@@ -116,3 +116,10 @@ deploy:
 #     position: after
 #     symbol: '#'
 #     style: header-anchor
+
+
+feed:
+  enable: true
+  type: atom
+  path: atom.xml
+  limit: false

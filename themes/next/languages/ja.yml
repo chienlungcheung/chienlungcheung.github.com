@@ -69,7 +69,7 @@ keep_on: もっと書こう！
 symbol:
   comma: "、"
   period: "。"
-  colon: ": "
+  colon: "："
 reward:
   donate: 寄付
   wechatpay: WeChat 支払う

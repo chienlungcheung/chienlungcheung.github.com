@@ -8,8 +8,9 @@ branches:
     - master # build master branch only
 before_script:
   - npm install hexo-toc --save    
+  - npm install hexo-generator-feed --save   
 script:
-  - hexo generate # generate static files
+  - hexo clean && hexo generate # generate static files
 deploy:
   provider: pages
   skip-cleanup: true

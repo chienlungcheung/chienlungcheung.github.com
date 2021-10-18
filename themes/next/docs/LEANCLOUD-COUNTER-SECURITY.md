@@ -81,7 +81,7 @@ Please note the difference between **site config file** and **theme config file*
 
   ![13](https://lc-cqha0xyi.cn-n1.lcfile.com/ca56bf2e5fc2a1343565.jpg)
 
-- Click `1` in the pop up: 
+- Click `1` in the pop up：
 
   ![14](https://lc-cqha0xyi.cn-n1.lcfile.com/17548c13b3b23c71d845.jpg)
 

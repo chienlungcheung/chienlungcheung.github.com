@@ -131,7 +131,7 @@ hexo clean && hexo g -d
 
 #### If you use hexo-renderer-markdown-it
 
-If you use `hexo-renderer-markdown-it`，you also need to add `markdown-it-katex` as its plugin: 
+If you use `hexo-renderer-markdown-it`，you also need to add `markdown-it-katex` as its plugin：
 
 ```
 npm install markdown-it-katex

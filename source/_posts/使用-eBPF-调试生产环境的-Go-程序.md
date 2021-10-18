@@ -6,11 +6,10 @@ tags:
   - golang
 ---
 
-<!-- toc -->
-
 最新的 Go Weekly 推送了[这篇文章](https://blog.pixielabs.ai/blog/ebpf-function-tracing/post/), eBPF 作为新时代的剖析工具正在如火如荼发展, 读完感觉用来入门很好, 就根据自己理解编译了这篇文章. 做实验过程遇到一些问题, 在最后加了一个番外章节可参考.
 
 下面正式开始.
+<!--more-->
 
 不用重新编译/部署线上程序而是借助 eBPF 即可实现对程序进行调试, 接下来我们会用一个系列文章介绍我们是怎么做的, 这是开篇. 本篇描述了如何使用 [gobpf](https://github.com/iovisor/gobpf) 和 uprobe 来构建一个跟踪 Go 程序函数入口参数变化的应用. 这里介绍的技术可以扩展到其它编译型语言, 如 C++, Rust 等等. 本系列文章后续将会讨论如何使用 eBPF 来跟踪 HTTP/gRPC 数据和 SSL 等等.
 

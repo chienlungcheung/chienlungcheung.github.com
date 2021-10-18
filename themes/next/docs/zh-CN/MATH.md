@@ -13,7 +13,7 @@ NexT 内部提供数学公式渲染的引擎，这样你就不需要自己手动
 
 如果你选择使用 MathJax 进行数学公式渲染，你需要使用 [hexo-renderer-pandoc](https://github.com/wzpan/hexo-renderer-pandoc) 或者 [hexo-renderer-kramed](https://github.com/sun11/hexo-renderer-kramed) （不推荐）作为 Hexo 的 Markdown 渲染器。
 
-首先，卸载原有的渲染器 `hexo-renderer-marked`，并安装这两种渲染器的**其中一个**: 
+首先，卸载原有的渲染器 `hexo-renderer-marked`，并安装这两种渲染器的**其中一个**：
 
 ```sh
 npm uninstall hexo-renderer-marked
@@ -29,7 +29,7 @@ math:
     enable: true
 ```
 
-执行 Hexo 生成，部署，或者启动服务器: 
+执行 Hexo 生成，部署，或者启动服务器：
 
 ```sh
 hexo clean && hexo g -d
@@ -50,7 +50,7 @@ e=mc^2
 \end{equation}$$
 ```
 
-然后，在正文中，你可以轻松引用上述公式，一个简单的例子如下: 
+然后，在正文中，你可以轻松引用上述公式，一个简单的例子如下：
 
 ```
 著名的质能方程 $\eqref{eq1}$ 由爱因斯坦提出 ...
@@ -68,7 +68,7 @@ a &= b + c \\
 \end{equation}$$
 ```
 
-要对齐多个公式，我们需要使用 `align` 环境。align 环境中的每个公式都有自己的编号: 
+要对齐多个公式，我们需要使用 `align` 环境。align 环境中的每个公式都有自己的编号：
 
 ```
 $$\begin{align}
@@ -78,7 +78,7 @@ l &= m - n \label{eq5}
 \end{align}$$
 ```
 
-在 `align` 环境中，如果你不想给某个或某几个公式编号，那么在这些公式后面使用 [`\nonumber`](https://tex.stackexchange.com/questions/17528/show-equation-number-only-once-in-align-environment) 命令即可。例如: 
+在 `align` 环境中，如果你不想给某个或某几个公式编号，那么在这些公式后面使用 [`\nonumber`](https://tex.stackexchange.com/questions/17528/show-equation-number-only-once-in-align-environment) 命令即可。例如：
 
 ```latex
 $$\begin{align}
@@ -88,7 +88,7 @@ $$\begin{align}
 \end{align}$$
 ```
 
-有时，你可能会希望采用更加奇特的方式来标记和引用你的公式，你可以通过使用 `\tag{}` 命令来实现，例如: 
+有时，你可能会希望采用更加奇特的方式来标记和引用你的公式，你可以通过使用 `\tag{}` 命令来实现，例如：
 
 ```latex
 $$x+1\over\sqrt{1-x^2} \tag{i}\label{eq_tag}$$
@@ -104,7 +104,7 @@ Katex 渲染引擎相对于 MathJax 来说**大大提高了速度**，而且在�
 
 如果你选择使用 Katex 进行数学公式渲染，你需要使用 [hexo-renderer-markdown-it-plus](https://github.com/CHENXCHEN/hexo-renderer-markdown-it-plus) 或者 [hexo-renderer-markdown-it](https://github.com/hexojs/hexo-renderer-markdown-it) 这两种渲染器的其中一个。
 
-首先，卸载原有的渲染器 `hexo-renderer-marked`，并安装这两种渲染器的**其中一个**: 
+首先，卸载原有的渲染器 `hexo-renderer-marked`，并安装这两种渲染器的**其中一个**：
 
 ```sh
 npm uninstall hexo-renderer-marked
@@ -121,7 +121,7 @@ math:
     enable: true
 ```
 
-执行 Hexo 生成，部署，或者启动服务器: 
+执行 Hexo 生成，部署，或者启动服务器：
 
 ```sh
 hexo clean && hexo g -d
@@ -130,13 +130,13 @@ hexo clean && hexo g -d
 
 #### 如果你使用 hexo-renderer-markdown-it
 
-如果你使用 `hexo-renderer-markdown-it`，你还需要为其加上 `markdown-it-katex` 作为插件: 
+如果你使用 `hexo-renderer-markdown-it`，你还需要为其加上 `markdown-it-katex` 作为插件：
 
 ```
 npm install markdown-it-katex
 ```
 
-然后在 `hexo/_config.yml` 中将 `markdown-it-katex` 作为插件写入 `hexo-renderer-markdown-it` 的配置中: 
+然后在 `hexo/_config.yml` 中将 `markdown-it-katex` 作为插件写入 `hexo-renderer-markdown-it` 的配置中：
 
 ```yml
 markdown:
@@ -212,7 +212,7 @@ math:
 
 如果 Front-matter 中不含有 `mathjax: true`，或者 `mathjax: false`，那么 NexT 将不会对这些文章进行数学公式渲染。
 
-例如: 
+例如：
 
 ```md
 <!-- 这篇文章会渲染数学公式 -->

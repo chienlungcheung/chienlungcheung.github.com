@@ -7,9 +7,8 @@ tags:
   - db
 ---
 
-<!-- toc -->
-
 memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable(所以可能同时有两个 memtable 存在) 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList.
+<!--more-->
 
 # 1 核心文件和核心类
 

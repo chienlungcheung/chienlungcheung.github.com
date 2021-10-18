@@ -7,11 +7,10 @@ tags:
   - paper
 ---
 
-<!-- toc -->
-
 本文基于内部分享 <"抄"能力养成系列 -- MapReduce: 分布式计算系统设计与实现> 整理.
 
 2003 年开始 Google 陆续放出三套系统的设计(GFS/MapReduce/Bigtable), 在互联网届掀起云计算狂潮一直影响至今. MapReduce 作为老二出场, 因为它的实现依赖于之前分享的 GFS 作为存储. 该论文一出, 便直接催生了 Hadoop 另一个重量级同名框架 MapReduce 的诞生. 时光荏苒, 虽然后面又出现了 spark/flink, 但是 MapReduce 在批处理领域的地位至今牢固. 下面就让我们一起看看 MapReduce 的设计, 希望为各位后续系统研发提供灵感. (Salute to Jeff).
+<!--more-->
 
 # 1 简要介绍
 

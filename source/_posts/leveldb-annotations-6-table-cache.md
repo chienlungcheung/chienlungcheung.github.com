@@ -5,11 +5,11 @@ tags:
   - leveldb
   - LSM-Tree
   - db
+toc: true
 ---
 
-<!-- toc -->
-
 上一篇讲了 leveldb 中 `Table` 的设计和实现, 它是磁盘 sstable 文件的内存形式, 但是 `Table` 在实际中不会被用户直接用到, 而是借助 `TableCache`.
+<!--more-->
 
 # 1 TableCache: leveldb 的磁盘文件缓存结构  
 
@@ -22,7 +22,6 @@ tags:
 目前在用的缓存策略是 LRU 以防内存占用过大. 
 
 每个 db 实例都会持有一个 `TableCache` 实例, 对该缓存的的填充是通过副作用实现的, 即当外部调用 `DBImpl::Get()->Version::Get()->VersionSet::table_cache_::Get()` 进行查询的时候, 如果发现 sstable 对应 `Table` 实例不在缓存就会将其填充进来.
-
 ## 1.1 概览
 
 下面是 `TableCache` 类构成: 
