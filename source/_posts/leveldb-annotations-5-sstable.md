@@ -7,8 +7,6 @@ tags:
   - db
 ---
 
-<!-- toc -->
-
 leveldb, leveldb, 每个 level 保存的内容就是一组 sorted string table (简称 sstable) 文件.
 
 # 1 sstable 文件布局
