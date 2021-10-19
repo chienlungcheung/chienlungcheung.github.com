@@ -7,7 +7,7 @@ branches:
   only:
     - master # build master branch only
 before_script:
-  - npm install hexo-toc --save    
+  # - npm install hexo-toc --save    
   - npm install hexo-generator-feed --save   
 script:
   - hexo clean && hexo generate # generate static files
