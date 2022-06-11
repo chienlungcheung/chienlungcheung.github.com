@@ -2,6 +2,7 @@
 title: "LSM-Tree 论文阅读笔记"
 date: 2022-05-16T20:26:17+08:00
 tags: ["LSM-Tree", "db", "paper"]
+toc: true
 ---
 
 梳理 leveldb 压实逻辑的时候, 看代码逆向逻辑太难了, 非常零碎, 很难搞清楚作者为何那么实现, 想起来 LSM-Tree 论文还没读过, 于是找了读了一下, 可是 [原始论文](https://cs.umb.edu/~poneil/lsmtree.pdf) 太晦涩了, 读不懂, 可以参考这篇[博客](http://www.benstopford.com/2015/02/14/log-structured-merge-trees/)来读论文.
