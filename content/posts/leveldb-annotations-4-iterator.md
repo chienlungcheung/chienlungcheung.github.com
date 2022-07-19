@@ -6,7 +6,7 @@ tags: ["leveldb", "LSM-Tree", "db", "kv"]
 
 迭代器的设计和实现是 leveldb 的精华之一. 前几篇文章都多少提到了迭代器的使用, 本篇让我们深入一下迭代器的设计实现, 也为接下来的几篇剖析打下基础.
 <!--more-->
-# 1 迭代器接口设计
+## 1 迭代器接口设计
 
 迭代器接口类为 `leveldb::Iterator`, 位于 `include/leveldb/iterator.h` 和 `table/iterator.cc`. (实现位于 table 目录, 是因为接下来要介绍的 sstable 是迭代器重度用户.)
 
@@ -137,7 +137,7 @@ void Iterator::RegisterCleanup(CleanupFunction func, void* arg1, void* arg2) {
 }
 ```
 
-## 1.1 迭代器实现一例
+### 1.1 迭代器实现一例
 
 下面以 sstable 的 block 为例示意一下迭代器的实现. 关键部分就是将 block 作为迭代器数据源, 基于 block 构造和查询原理实现迭代器的前后移动, 定位等操作. 里面涉及了一些成员看不懂也不用管, 在介绍 sstable 时会解释.
 
@@ -432,7 +432,7 @@ Iterator* Block::NewIterator(const Comparator* cmp) {
 
 从上面代码可以看出, 跟底层数据源相关的成员和方法都是 private 的, 迭代器接口方法实现都在 public 部分. 实现迭代器时依赖依赖两个重要的 private 方法, 一个是 `SeekToRestartPoint()` 一个是 `ParseNextKey()` 分别用于在迭代时实现先粗粒度后细粒度的目标定位.
 
-# 2 双层迭代器设计
+## 2 双层迭代器设计
 
 双层迭代器, 对应的类为 `class leveldb::<unnamed>::TwoLevelIterator`, 位于 `table/two_level_iterator.cc` 文件. 它的父类为 `leveldb::Iterator`, 所以表现出来的性质是一样的.
 

@@ -1,13 +1,12 @@
 ---
 title: "Leveldb 源码详解系列之七: 压实(Compaction)"
 date: 2021-10-27T22:27:17+08:00
-tags: ["LSM-Tree", "db", "paper"]
-toc: false
+tags: ["leveldb", "LSM-Tree", "db", "kv"]
 ---
 
 Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merge, 压实就是 merge 具体实现. 该算法在 [LSM-Tree 论文阅读笔记]({{<relref "lsmtree-paper.md">}}) 里有介绍, 如果不了解建议先读下这篇小文.
 
-# 1. 压实介绍
+## 1. 压实介绍
 
 当 level-L 大小超过了上限, 具体来说就是 level-0 文件数超过 4 个, level-L(L>=1) 文件总大小超过 $10^L$ MB, 就会触后台线程的压实操作. 
 
@@ -21,7 +20,7 @@ Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merg
 
 压实会丢弃某个 key 对应的被覆盖过的 values(只保留时间线上最新的那个 value), 也会在没有更高的 level 包含该 key 的时候丢弃针对这个 key 的删除标记(level 越高数据越老, 所以如果某个 key 被在下层标记为删除, 在合并全部上层针对该 key 的操作之前该标记不能移除否则会被查询过程感知到老数据). 
 
-# 2. 压实目的
+## 2. 压实目的
 
 ![leveldb-level-architecture](../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png)
 
@@ -36,7 +35,7 @@ Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merg
 2. sstable 文件从 level-i 直接搬到 level-(i+1), 因为没有重叠所以不做任何合并.
 3. level-i 与 level-(i+1) 之间重叠的文件合并, 生成新的 level-(i+1) 文件. 这种情况是我们重点关注的.
 
-# 3. leveldb 的数据重复
+## 3. leveldb 的数据重复
 
 leveldb 存在多个层面的数据重复:
 - 同一个 level 内, 后追加的比先追加的数据更新(newer).
@@ -58,11 +57,11 @@ leveldb 存在多个层面的数据重复:
 
 上面这个例子还只是同一个文件, 不同文件也可能存在 key 重复(如 level-0 的文件之间存在重叠), 不同 level 之间也可能存在 key 重复. 这些情况都可以通过 leveldb 的压实来处理.
 
-# 4. 压实实现
+## 4. 压实实现
 
 下面具体说明一下压实具体实现.
 
-## 4.1. 压实触发时机
+### 4.1. 压实触发时机
 
 不得不说, 压实可能是 leveldb 里面最零散的一个功能, 不管是读操作还是写操作, 还是啥也不干, 都可能触发压实. 具体触发压实的时机如下:
 
@@ -80,7 +79,7 @@ leveldb 有个后台线程池, 在上述任何一个条件满足的条件下 `DB
 
 下面简单介绍下 leveldb 执行后台任务的线程池的实现.
 
-## 4.2. 后台压实线程池实现
+### 4.2. 后台压实线程池实现
 
 `leveldb::PosixEnv` 类实现了后台线程池. 
 
@@ -121,7 +120,7 @@ void PosixEnv::Schedule(
 }
 ```
 
-## 4.3. 压实过程
+### 4.3. 压实过程
 
 整个压实实现过程, 大体如下:
 1. 先压实已满的 memtable
@@ -190,7 +189,7 @@ void DBImpl::BackgroundCompaction() {
 
 下面逐个讲解下上面的核心流程.
 
-### 4.3.1. memtable 压实
+#### 4.3.1. memtable 压实
 
 memtable 压实本质就是将内存中的 memtable 转换为 sstable 文件并写入到磁盘中. 当且仅当该方法执行成功后, leveldb 会切换到一组新的 log-file/memtable 组合. 在这个过程中, 会计算触发压实的条件, 具体在 `versions_->LogAndApply()` 中.
 
@@ -223,7 +222,7 @@ void DBImpl::CompactMemTable() {
 1. 将 memetable 转换为 sstable 文件落盘并为其选则一个合适的 level, 这是 `WriteLevel0Table` 负责的, 这种转换前面文章讲过了, 后面会重点说下应该把新生成的 sstable 文件放到哪个 level 的决策逻辑.
 2. 将本次落盘导致的 level 架构信息改变更新一下, 这是 `versions_->LogAndApply` 负责的, 这里与压实相关的是它会调用确定下个待压实 level 的方法, 下面会进行描述.
 
-#### 4.3.1.1. 基于 memtable 生成的 sstable 应该放到哪个 level
+##### 4.3.1.1. 基于 memtable 生成的 sstable 应该放到哪个 level
 
 这个逻辑是由 `Version::PickLevelForMemTableOutput()` 负责的, 该方法会在 `WriteLevel0Table` 中调用.
 
@@ -325,9 +324,9 @@ int Version::PickLevelForMemTableOutput(
 }
 ```
 
-### 4.3.2. sstables 压实
+#### 4.3.2. sstables 压实
 
-#### 4.3.2.1. Compaction 构造
+##### 4.3.2.1. Compaction 构造
 
 `Compaction` 包含了一次压实所需要的全部信息. 
 
@@ -496,7 +495,7 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
 
 有了 `Compaction` 就可以进行压实了.
 
-#### 4.3.2.2. 基于 `Compaction` 的压实
+##### 4.3.2.2. 基于 `Compaction` 的压实
 
 具体压实就做一件事情:
 
@@ -605,7 +604,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 ```
 
 
-# 5. 总结
+## 5. 总结
 
 leveldb 作为一个典型的 LSM-Tree 实现, 压实是不可或缺的. 本文围绕压实目的、时机、实现等几个维度比较详细地介绍了 leveldb 的压实实现. 
 

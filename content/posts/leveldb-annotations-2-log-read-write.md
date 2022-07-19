@@ -8,7 +8,7 @@ tags: ["leveldb", "LSM-Tree", "db", "kv"]
 log 文件(*.log)保存着数据库最近一系列更新操作, 它相当于 leveldb 的 WAL([write-ahead logging](https://en.wikipedia.org/wiki/Write-ahead_logging)). 当前在用的 log 文件内容同时也会被记录到一个内存数据结构中(即 `memtable` ). 每个更新操作都被追加到当前的 log 文件和 `memtable` 中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件对应的 `memtable` 就会被转换为一个 sorted string table 文件落盘然后一个新的 log 文件就会被创建以保存未来的更新操作. 
 <!--more-->
 
-# log 文件结构
+## log 文件结构
 
 log 文件内容是一系列 blocks, 每个 block 大小为 32KB(有时候最后一个 block 可能装不满). 每个 block 由一系列 records 构成, 具体定义如下(熟悉编译原理的应该对下述写法不陌生): 
 
@@ -38,11 +38,11 @@ FIRST、MIDDLE、LAST 这三个类型用于被分割成多个 fragments 的用�
 
 如果当前 block 恰好剩余 7 个字节(正好可以容纳 record 中的 checksum + length + type), 并且一个新的非 0 长度的 record 要被写入, 那么 writer 必须在此处写入一个 FIRST 类型的 record(但是 length 字段值为 0, data 字段为空. 用户数据 data 部分需要写入下个 block, 而且下个 block 起始还是要写入一个 header 不过其 type 为 middle)来填满该 block 尾部的 7 个字节, 然后在接下来的 blocks 中写入全部用户数据.
 
-# 读 log
+## 读 log
 
 下面分析读 log 相关的类和方法.
 
-## 核心文件与核心类
+### 核心文件与核心类
 
 与读 log 相关的代码定义在下面两个文件中:
 
@@ -51,7 +51,7 @@ FIRST、MIDDLE、LAST 这三个类型用于被分割成多个 fragments 的用�
 
 核心类为 `class leveldb::log::Reader`. 下面针对这个类核心方法进行分析.
 
-## Reader 构造方法
+### Reader 构造方法
 
 ```c++
 // 创建一个 Reader 来从 file 中读取和解析 records, 
@@ -62,7 +62,7 @@ FIRST、MIDDLE、LAST 这三个类型用于被分割成多个 fragments 的用�
 Reader(SequentialFile* file, Reporter* reporter, bool checksum, uint64_t initial_offset)
 ```
 
-## Reader 读取方法
+### Reader 读取方法
 
 `bool ReadRecord(Slice* record, std::string* scratch)` 方法负责从 log 文件读取内容并反序列化为 Record. 该方法会在 db 的 `Open` 方法中调用, 负责将磁盘上的 log 文件转换为内存中 memtable. 其它数据库恢复场景也会用到该方法.
 
@@ -391,11 +391,11 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
 ```
 
 
-# 写 log
+## 写 log
 
 下面分析写 log 相关的类和方法.
 
-## 核心文件与核心类
+### 核心文件与核心类
 
 与写 log 相关的代码定义在下面两个文件中:
 
@@ -404,7 +404,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
 
 核心类为 `class leveldb::log::Writer`. 下面针对这个类核心方法进行分析.    
 
-## Writer 构造方法
+### Writer 构造方法
 
 ```c++
 // 创建一个 writer 用于追加数据到 dest 指向的文件.
@@ -416,7 +416,7 @@ explicit Writer(WritableFile *dest);
 Writer(WritableFile *dest, uint64_t dest_length);
 ```
 
-## Writer 写方法
+### Writer 写方法
 
 如果用户想把数据写入 log, 则需要将这些数据封装为 `Slice`, 然后调用 `Writer::AddRecord` 将其写入 log 文件. 
 

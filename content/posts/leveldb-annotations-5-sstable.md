@@ -6,7 +6,7 @@ tags: ["leveldb", "LSM-Tree", "db", "kv"]
 
 leveldb, leveldb, 每个 level 保存的内容就是一组 sorted string table (简称 sstable) 文件.
 <!--more-->
-# 1 sstable 文件布局
+## 1 sstable 文件布局
 
 SSTable 即 sorted string table, 是一个有序文件格式.
 
@@ -41,7 +41,7 @@ SSTable 即 sorted string table, 是一个有序文件格式.
 
 下面具体讲一下每个段的具体布局.
 
-## 1.1 data block 布局
+### 1.1 data block 布局
 
 每个 block 包含的数据笼统地讲, 包含 `<一系列数据项 + restart array + restart number>` ". 
 
@@ -61,21 +61,21 @@ block 结尾处有个 trailer, 格式如下:
 - num_restarts: uint32(restart points 偏移量数组大小)
 restarts[i] 保存的是第 i 个 restart point 在 block 内的偏移量.
 
-## 1.2 meta block 布局
+### 1.2 meta block 布局
 
 它由 `<一系列 filters + filter-offset 数组 + filters 部分的结束偏移量(4 字节) + base log 值(1 字节)>` 构成. 注意该 block 最后 5 字节内容是固定的, 这也是该部分的解析入口.
 
 该部分在写入文件时不进行压缩.
 
-## 1.3 meta-index block 布局
+### 1.3 meta-index block 布局
 
 只有一个数据项, key 为 `"filter."+过滤器名`, value 为 meta block 的 handle.
 
-## 1.4 index block 布局
+### 1.4 index block 布局
 
 同 data block, 每个数据项的 key 是某个 data block 的最后一个 key, 每个数据项的 value 是这个 data block 的 handle. 注意, 由于该 block 数据项数和 data blocks 个数一样, 相对来说非常少, 所以就没做前缀压缩(具体实现就是将 restart point interval 设置为 1).
 
-## 1.5 footer 布局
+### 1.5 footer 布局
 
 Footer 虽然位于 sstable 文件尾部, 但它是名副其实的文件入口, 它的**长度固定**, 很容易从文件尾定位到, 它包含:
 - 一个指向 metaindex block 的 BlockHandle 
@@ -100,14 +100,14 @@ Footer 具体格式如下:
 
 了解了布局, 下面让我们来看看针对 sstable 的读写实现.
 
-# 2 sstable 文件的序列化与反序列化
+## 2 sstable 文件的序列化与反序列化
 
 sstable 文件集合保存着 leveldb 实例的数据, 定义在 `db/version_set.h` 中的 `class leveldb::Version` 跟踪每个 level 及其文件, 可以将这个类看做是对 leveldb 全部层级文件架构的抽象. 
 
 下面说明一下针对 sstable 文件的序列化和反序列化.
 
 
-## 2.1 sstable 文件序列化
+### 2.1 sstable 文件序列化
 
 完成该工作的是 `class leveldb::TableBuilder`, 该类负责构造 sstable 文件. 
 
@@ -120,7 +120,7 @@ sstable 文件集合保存着 leveldb 实例的数据, 定义在 `db/version_set
 
 每个分段也都有类似 XXBuilder 的类, 具体构造时会被 TableBuilder 调用. 除此之外, 还有一个类似的地方, 就是每个 XXBuilder 主要干活的基本都叫做 `Add()` 和 `Finish()` , 前者负责将具体数据添加到自己分段中, 后者负责将本段的元数据追加到自己分段尾部从而完成分段构造. 具体执行过程中, 各个 XXBuilder 有交叉的地方. 典型地, BlockBuilder 构造 data block 时会将自己的 BlockHandle 保存到 index block, 同时会将自己的 key 添加到 filter block 的相关状态里. 具体下面详述.
 
-### 2.1.1 总干事 TableBuilder
+#### 2.1.1 总干事 TableBuilder
 
 该类是构造 sstable 的入口, 外部(如 `leveldb::BuildTable()` 方法在被 `leveldb::DBImpl::WriteLevel0Table()` 方法调用将 memtable 转为 sstable 的时候)直接循环调用该类的 `Add()` 方法来向 sstable 追加 k,v 数据, 追加完毕后调用该类 `Finish()` 方法做收尾工作.
 
@@ -267,7 +267,7 @@ void TableBuilder::Flush() {
 }
 ```
 
-#### 2.1.1.1 TableBuilder 的存储小助手 Rep
+##### 2.1.1.1 TableBuilder 的存储小助手 Rep
 
 从 TableBuilder 定义可以看到, private 部分有一个 Rep, 这是 TableBuilder 用于存放构造中的 sstable 的地方. 因为它太重要, 所以单独拿出来说一下:
 
@@ -334,7 +334,7 @@ struct TableBuilder::Rep {
   }
 };
 ```
-### 2.1.2 写 data blocks
+#### 2.1.2 写 data blocks
 
 BlockBuilder 被 TableBuilder 使用来构造 sstable 文件里的 block, 注意, 该类用于构造 block 的序列化形式, 也就是构造 sstable 时候使用; 反序列化用的是 Block 类.
 
@@ -454,7 +454,7 @@ Slice BlockBuilder::Finish() {
 }
 ```
 
-### 2.1.3 写 meta(filter) block
+#### 2.1.3 写 meta(filter) block
 
 不同于 data block 和 data index block, filter block 有专用的 builder, 叫做 `FilterBlockBuilder`. 它的核心方法是 `AddKey()` 和 `Finish()`.
 
@@ -697,7 +697,7 @@ if (ok() && r->filter_block != nullptr) {
                 &filter_block_handle); 
 }
 ```
-### 2.1.4 写 meta-index block
+#### 2.1.4 写 meta-index block
 
 这部分比较简单, 其在 TableBuilder 的 Finish() 方法里完成:
 ```c++
@@ -723,7 +723,7 @@ if (ok()) {
   WriteBlock(&meta_index_block, &metaindex_block_handle); 
 }
 ```
-### 2.1.5 写 data-index block
+#### 2.1.5 写 data-index block
 
 这部分比较简单, 其在 TableBuilder 的 Finish() 方法里完成:
 
@@ -743,7 +743,7 @@ if (ok()) {
   WriteBlock(&r->index_block, &index_block_handle);
 }
 ```
-### 2.1.6 写 footer
+#### 2.1.6 写 footer
 
 footer 是 sstable 文件的入口, 结构比较简单:
 
@@ -789,13 +789,13 @@ if (ok()) {
 }
 ```
 
-## 2.2 sstable 文件反序列化
+### 2.2 sstable 文件反序列化
 
 `class leveldb::Table` 可以看做是 sstable 文件的反序列化表示. 它负责对 sstable 进行反序列化并解析其内容, 该类是对 sstable 文件的抽象, 具体底层存储由 Table 的 helper 类 `struct leveldb::Table::Rep` 负责.
 
 该类并不直接被客户代码调用, 用户调用 `DBImpl::Get()` 查询某个 key 的时候, 如果不在 memtable, 则会查询 sstable 文件, 此时会调用 `VersionSet::current_::Get()`, 并进而调用 `leveldb::TableCache::Get()` 查询被缓存的 Table 对象, 如果还没缓存文件对应的 Table 对象, 则会先读取然后将其加入缓存, 这里的读取操作就是 `Table::Open()` 方法提供的反序列化功能. 拿到 Table 对象后, 会调用其 `InternalGet()` 查询数据.
 
-### 2.2.1 总干事 Table 类
+#### 2.2.1 总干事 Table 类
 
 `Table` 是 sstable 文件反序列化后的内存形式, 包括 data blocks, data-index block, filter block 等, 核心成员如下:
 
@@ -993,7 +993,7 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
 
 `Open()` 方法会读取 block 构造 Block 然后放到 `Table::Rep` 中, 解析过程也用到了 `Block` 类. 在分别介绍各个组成部分读取解析之前先说一下这两个类.
 
-#### 2.2.1.1 Table 类的小助手之一 Rep
+##### 2.2.1.1 Table 类的小助手之一 Rep
 
 该类负责存储 sstable 反序列化后的各个部分内容:
 
@@ -1026,7 +1026,7 @@ struct Table::Rep {
 };
 ```
 
-#### 2.2.1.2 Table 类的小助手之二 Block
+##### 2.2.1.2 Table 类的小助手之二 Block
 
 `class leveldb::Block` 定义在 `table/block.h` 和 `table/block.cc` 文件, sstable 中的每个 block 都会被反序列化为一个 `Block` 对象. 具体类定义如下:
 
@@ -1098,7 +1098,7 @@ Block::Block(const BlockContents& contents)
 }
 ```
 
-### 2.2.2 读 footer
+#### 2.2.2 读 footer
 
 footer 解析比较简单, 主要就是获取 meta-index block 和 data-index block 分别在文件中的地址和大小:
 
@@ -1138,7 +1138,7 @@ Status Footer::DecodeFrom(Slice* input) {
 }
 ```
 
-### 2.2.3 读 data-index block
+#### 2.2.3 读 data-index block
 
 拿到 data-index block 地址和大小后就可以解析它了:
 
@@ -1165,7 +1165,7 @@ if (s.ok()) {
 Block* index_block = new Block(index_block_contents);
 ```
 
-### 2.2.4 读 meta-index block
+#### 2.2.4 读 meta-index block
 
 解析出来的 meta-index block handle 放到了 footer 对象中, 根据它就可以解析 meta-index block 和 meta block 了:
 
@@ -1235,7 +1235,7 @@ void Table::ReadMeta(const Footer& footer) {
 }
 ```
 
-### 2.2.5 读 meta block
+#### 2.2.5 读 meta block
 
 前一节提到了读取 meta(filter) block 读取:
 ```c++
@@ -1278,7 +1278,7 @@ void Table::ReadFilter(const Slice& filter_handle_value) {
 }
 ```
 
-### 2.2.6 读 block 内容的通用方法
+#### 2.2.6 读 block 内容的通用方法
 
 每个 block(data block, meta block, meta-index block, data-index block 四类) 在写入 sstable 后都会紧接着追加一字节长的压缩类型和四字节长的 crc(它是 block + 压缩类型一起算出来的), 负责读取解析 block + 压缩类型 + crc 的方法为位于 `table/format.cc` 中的 `ReadBlock()` 方法:
 
@@ -1384,7 +1384,7 @@ Status ReadBlock(RandomAccessFile* file,
 ```
 
 
-## 2.3 Table 和两级迭代器的结合
+### 2.3 Table 和两级迭代器的结合
 
 前面讲过了, 打开 sstable 文件后会生成对应的 Table 对象, 该对象会被放到 TableCache 缓存中. 如果要访问其内容, 需要一个迭代器, 该工作通过 `leveldb::Iterator *leveldb::Table::NewIterator` 完成:
 

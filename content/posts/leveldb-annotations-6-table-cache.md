@@ -7,7 +7,7 @@ tags: ["leveldb", "LSM-Tree", "db", "kv"]
 上一篇讲了 leveldb 中 `Table` 的设计和实现, 它是磁盘 sstable 文件的内存形式, 但是 `Table` 在实际中不会被用户直接用到, 而是借助 `TableCache`.
 <!--more-->
 
-# 1 TableCache: leveldb 的磁盘文件缓存结构  
+## 1 TableCache: leveldb 的磁盘文件缓存结构  
 
 (代码位于 `db/table_cache.h`)
 
@@ -18,7 +18,7 @@ tags: ["leveldb", "LSM-Tree", "db", "kv"]
 目前在用的缓存策略是 LRU 以防内存占用过大. 
 
 每个 db 实例都会持有一个 `TableCache` 实例, 对该缓存的的填充是通过副作用实现的, 即当外部调用 `DBImpl::Get()->Version::Get()->VersionSet::table_cache_::Get()` 进行查询的时候, 如果发现 sstable 对应 `Table` 实例不在缓存就会将其填充进来.
-## 1.1 概览
+### 1.1 概览
 
 下面是 `TableCache` 类构成: 
 
@@ -46,15 +46,15 @@ class TableCache {
 };
 ```
 
-## 1.2 数据成员
+### 1.2 数据成员
 
 `TableCache` 的核心数据成员就是 `Cache`(实际使用的是 `ShardedLRUCache`, 这里不展开, 后文详述).
 
-## 1.3 方法成员
+### 1.3 方法成员
 
 `TableCache` 的核心方法有三个.
 
-### 1.3.1 查询
+#### 1.3.1 查询
 
 `Get()` 方法负责实现从缓存中查找指定 key 的数据项. 
 
@@ -62,7 +62,7 @@ class TableCache {
 
 针对该方法的调用链为: `DBImpl::Get()->Version::Get()->VersionSet::table_cache_::Get()`.
 
-### 1.3.2 遍历
+#### 1.3.2 遍历
 
 遍历就要有迭代器, `NewIterator()` 方法负责生成指定 sstable 文件内容对应的迭代器. 
 
@@ -72,18 +72,18 @@ class TableCache {
 
 注意, 如果 `NewIterator()` 方法的 `tableptr` 参数非空, 则设置 `*tableptr` 指向返回的 iterator 底下的 `Table` 对象. 返回的 `*tableptr` 对象由 `TableCache` 所拥有, 所以用户不要删除它; 只要 iterator 还活着, 该对象就有效. 
 
-### 1.3.3 删除
+#### 1.3.3 删除
 
 `Evict()` 方法负责驱逐某个 sstable 文件对应的 `Table` 缓存, 它会在 `DBImpl::DeleteObsoleteFiles()` 删除过期文件时候执行.
 
 
 这三个方法的具体实现比较简单, 不再详列. 下面重点说一下其最重要的数据成员 -- `Cache`.
 
-### 1.3.4 修改
+#### 1.3.4 修改
 
 嘿, 没有这个接口. 由于 leveldb 是一个 append 类型数据库, 它不会做 inplace 修改, 这同时也避免了解决复杂的数据一致性问题.
 
-# 2 Cache 接口
+## 2 Cache 接口
 
 (代码位于 `include/leveldb/cache.h`)
 
@@ -92,7 +92,7 @@ class TableCache {
 该接口的设计还有很重要的一点, 也是 leveldb 设计中很重要的一点, 就是引用计数. `Cache` 中保存的数据项类型为 `Cache::Handle`, 具体实现中存在一个数据成员表示计数, 这样可以根据计数进行内存复用或回收. 这一点贯穿了各个重要方法的实现.
 
 
-## 2.1 增
+### 2.1 增
 
 ```c++
 // 插入一对 <key, value> 到 cache 中.
@@ -117,7 +117,7 @@ static void DeleteEntry(const Slice& key, void* value) {
 
 注意, `Insert` 的时候, 会给新的数据项设置引用计数.
 
-## 2.2 删
+### 2.2 删
 
 ```c++
 // 如果 cache 包含了 key 对应的映射, 删除之.
@@ -126,7 +126,7 @@ virtual void Erase(const Slice& key) = 0;
  
 注意, 因为引用计数的存在, `Erase` 可能不会发生物理删除, 除非数据项对应引用计数变为 0.
 
-## 2.3 查
+### 2.3 查
 
 ```c++
 // 如果 cache 中没有针对 key 的映射, 返回 nullptr. 
@@ -136,13 +136,13 @@ virtual Handle* Lookup(const Slice& key) = 0;
 
 查询本身没有什么可讲的, 要重点说的还是引用计数相关, 针对查询到的数据项, 要递增其引用计数防止被其它客户端删除. 而这也引申出另一个需求, 就是当调用 `Lookup` 调用方不再使用数据项的时候, 需要主动调用 `Release(handle)` 来将引用计数减一. 
 
-## 2.4 其它
+### 2.4 其它
 
 除了上面三个核心方法. `Cache` 还涉及下面几点:
 - `Cache` 对象不支持任何拷贝(用技术语言讲就是它的拷贝构造和赋值构造都被禁掉了), 一个实例只能有一个副本存在, 这样做就省掉了维护各个 `Cache` 副本一致性的问题.
 - 除了显式地删除, `Cache` 还有一个 `Prune()` 方法, 用于移除缓存中全部不再活跃的数据项, 具体取决于 `Cache` 具体实现, 以 `LRUCache` 为例就是将不在 `in_use_` 链表中的数据项删除.
   
-# 3 ShardedLRUCache 实现
+## 3 ShardedLRUCache 实现
 
 (代码位于 `util/cache.cc`)
 
@@ -164,7 +164,7 @@ Cache* NewLRUCache(size_t capacity) {
 
 下面从顶向下来描述相关设计与实现.
 
-## 3.1 Sharding
+### 3.1 Sharding
 
 Sharding 算法一般有两种, 基于 hash 的或者基于 range 的, 这里是基于 hash 的. 
 
@@ -175,7 +175,7 @@ Sharding 算法一般有两种, 基于 hash 的或者基于 range 的, 这里是
 Sharding 最明显的目的就是分摊压力到各个 shard, 要么是分摊存储压力(多节点, 每个节点不承担一部分存储), 要么是分摊计算压力(多节点, 每个节点承担一部分计算), 总之这个在分布式环境下比较容易理解. 这里如此设计目的我认为是后者, 即计算压力, 更明确地讲是避免针对 `ShardedLRUCache` 锁粒度过大导致访问变为串行. 每个 shard 持有各自的锁, 这样可以尽可能地实现并行处理. 这里的 sharding 实质上是实现了 Java 里的 [Lock Striping](https://www.geeksforgeeks.org/what-is-lock-striping-in-java-concurrency/).
 
 
-### 3.1.1 sharding 存储
+#### 3.1.1 sharding 存储
 
 `ShardedLRUCache` 有一个成员, 它包含一个 shard 数组, 每个 shard 就是一个 `LRUCache`:
 
@@ -185,7 +185,7 @@ LRUCache shard_[kNumShards];
 
 每个 cache 默认 16 个 shards.
 
-### 3.1.2 增
+#### 3.1.2 增
 
 插入数据的时候, 先计算 hash, 然后基于 hash 寻找对应 shard(即 LRUCache) 做真正插入操作:
 
@@ -201,7 +201,7 @@ virtual Handle* Insert(const Slice& key,
 }
 ```
 
-### 3.1.3 删
+#### 3.1.3 删
 
 和插入数据类似, 先计算 hash, 定位到所在 shard, 然后再做具体删除操作:
 
@@ -212,7 +212,7 @@ virtual void Erase(const Slice& key) {
 }
 ```
 
-### 3.1.4 查
+#### 3.1.4 查
 
 与插入数据类似, 先计算 hash, 定位到可能所在的 shard, 然后再做具体查询操作:
 
@@ -223,11 +223,11 @@ virtual Handle* Lookup(const Slice& key) {
 }
 ```
 
-## 3.2 LRUCache
+### 3.2 LRUCache
 
 前面介绍 sharding 的时候提到了 `LRUCache`, 它是每个 shard 的实际形态. 虽然它叫 *XXCache*, 但该类并不是 `Cache` 接口的实现(虽然干的活其实差不多)但也无所谓. 由于它是 `ShardedLRUCache` 的实际存储, 所以相关增删查方法都有, 这些根据字面就基本知道干啥了, 不再细说, 我们要特别说说跟 LRU 相关的部分.
 
-### 3.2.1 存储成员
+#### 3.2.1 存储成员
 
 该类包括两个循环链表, 一个是 `in_use_` 链表, 一个是 `lru_` 链表, 同时还有一个用于快速查询数据项是否存在的哈希表 `table_`. 其中:
 - `in_use_` 存的是在用的数据项
@@ -274,7 +274,7 @@ struct LRUHandle {
 - 为啥单独保存 key? 变长部分就是保存 key 的 `key_data`. 这里有个疑问, 为啥 value 用的指针, 而这里要搞个变长结构单独保存一遍 key? 通过查看 `Cache::Lookup(key)` 的调用可以发现, 外部传入的 key 都是栈上维护的临时变量, 插入 cache 的时候就需要保存, 于是就有了这里的节省内存的变长结构.
 - 引用计数 `refs`, 它的重要意义前面讲过了, 引用计数设计贯穿了整个 leveldb 的实现, 不再说了.
 
-### 3.2.2 LRU 算法如何生效的
+#### 3.2.2 LRU 算法如何生效的
 
 `LRUCache` 的 `prune()` 方法会直接清除 `lru_` 链表内容, 无差别地清除, 所以这里未体现 LRU 思想, 那在哪儿体现的呢? 在 `insert()` 方法里.
 
@@ -309,7 +309,7 @@ LRUHandle* old = lru_.next;
 
 就是这么简单.
 
-# 4 总结
+## 4 总结
 
 本文介绍了 leveldb 的缓存相关设计和实现, 缓存用于保存 sstable 文件的内存形式, 可加速用户查询过程. Leveldb 缓存基于 hash 做 sharding 同时支持 LRU 淘汰机制, 前者减小了锁粒度提升了并发性, 后者在内存占用和缓存命中之间实现了折中.
 

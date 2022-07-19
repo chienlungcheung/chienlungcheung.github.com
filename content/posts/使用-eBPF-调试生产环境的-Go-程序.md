@@ -13,7 +13,7 @@ tags: ["eBPF", "golang"]
 
 不用重新编译/部署线上程序而是借助 eBPF 即可实现对程序进行调试, 接下来我们会用一个系列文章介绍我们是怎么做的, 这是开篇. 本篇描述了如何使用 [gobpf](https://github.com/iovisor/gobpf) 和 uprobe 来构建一个跟踪 Go 程序函数入口参数变化的应用. 这里介绍的技术可以扩展到其它编译型语言, 如 C++, Rust 等等. 本系列文章后续将会讨论如何使用 eBPF 来跟踪 HTTP/gRPC 数据和 SSL 等等.
 
-# 介绍
+## 介绍
 
 当调试程序时, 我们一般对捕获程序的运行时状态非常感兴趣. 因为这可以让我们检查程序在干什么, 并能让我们确定 bug 出现在程序的哪一块. 观察运行时状态的一个简单方式是使用调试器. 比如针对 Go 程序, 我们可以使用 Delve 和 gdb.
 
@@ -21,7 +21,7 @@ Delve 和 gdb 在开发环境中做调试表现没得说, 但是我们一般不�
 
 为了让线上调试过程的侵入和影响更小, 我们将会探索使用增强版的 BPF([eBPF](https://ebpf.io/), Linux 4.x+ 内核可用)和更高级的 Go 库 [gobpf](https://github.com/iovisor/gobpf) 来达成目标.
 
-# 什么是 eBPF
+## 什么是 eBPF
 
 扩展型 BPF(eBPF) 是一项在 Linux 4.x+ 内核可用的技术. 你可以把它看作一个轻量级的沙箱 VM, 它运行在 Linux 内核中并且提供了针对内核内存的可信访问.
 
@@ -29,7 +29,7 @@ Delve 和 gdb 在开发环境中做调试表现没得说, 但是我们一般不�
 
 从功能上说, eBPF 允许你针对某些事件(如定时器事件, 网络事件或是函数调用事件)运行受限的 C 代码. 当因为一个函数调用事件被触发时, 我们把这些 eBPF 代码叫做探针. 这些探针既可以针对内核函数调用事件被触发(这时叫 kprobe, k 即 kernelspace), 也可以针对用户空间的函数调用事件被触发(这时叫 uprobe, u 即 userspace). 本篇文章讲解如何通过 uprobe 实现函数参数的动态追踪.
 
-# Uprobes
+## Uprobes
 
 Uprobes 允许我们通过插入一个 debug trap 指令(在 x86 上就是 `int3`)触发一个软中断从而实现对运行在用户空间的程序进行拦截. 这也是调试器的工作原理. uprobe 运行过程本质上与其它 BPF 程序一样, 可以总结为下面图示:
 ![BPF for tracing(from Brendan Gregg)](http://www.brendangregg.com/eBPF/linux_ebpf_internals.png)
@@ -71,9 +71,9 @@ $ go build  -gcflags "-N -l" app.go
 为了理解 uprobe 如何工作的, 我们看看可执行文件中要追踪的符号. 既然 uprobes 通过插入一个 debug trap 指令到可执行文件来实现, 我们先要确定要追踪的函数地址是什么. Go 程序在 Linux 上的二进制采用 ELF 格式存储 debug 信息, 该信息甚至在优化过的二进制中也是存在的, 除非 debug 数据被裁剪掉了. 我们可以使用命令 `objdump` 来检查二进制文件中的符号:
 
 ```bash
-# 执行下面命令之前需要你先将上面 go 程序编译为名为 app 的二进制文件.
-# objdump --syms 可以从可执行程序中导出全部符号, 然后通过 grep 查找 computeE.
-# 具体输出可能与你机器上不同, 这没什么问题.
+## 执行下面命令之前需要你先将上面 go 程序编译为名为 app 的二进制文件.
+## objdump --syms 可以从可执行程序中导出全部符号, 然后通过 grep 查找 computeE.
+## 具体输出可能与你机器上不同, 这没什么问题.
 $ objdump --syms app | grep computeE
 00000000000x6600e0 g     F .text  000000000000004b             main.computeE
 ```
@@ -90,7 +90,7 @@ $ objdump -d app | grep -A 1 0x6600e0
 
 好了, 记住上面提到的信息, 我们来看看如何实现针对 `computeE` 方法的参数追踪.
 
-# 构建追踪程序
+## 构建追踪程序
 
 我们给这个追踪程序起个名叫 Tracer. 为了捕获前面提到的事件, 我们需要注册一个 uprobe 函数, 并且还得有个用户态函数负责去读 uprobe 的输出, 具体如下图所示:
 
@@ -153,11 +153,11 @@ $ gdb ./app
  
 看到了吗? `0x6600e0` 插入了 `int3` 指令.
 
-# 番外
+## 番外
 
 下面说一下实验过程遇到的问题以及解决办法.
 
-## 安装 BCC
+### 安装 BCC
 
 编译前文提到的 `trace` 应用之前需要安装 bcc. 以 Ubuntu 16.04 为例(其它系统请参考[这里](https://github.com/iovisor/bcc/blob/master/INSTALL.md)):
 
@@ -170,10 +170,10 @@ sudo apt-get install bcc-tools libbcc-examples linux-headers-$(uname -r)
 
 如果安装速度慢, 而且你设置了 http_proxy/https_proxy, 请编辑 `/etc/sudoers` 新增一行 `Defaults env_keep = "http_proxy https_proxy"`, 这样速度至少会有百倍提升.
 
-## too many arguments 编译错误
+### too many arguments 编译错误
 
 ```go
-# github.com/iovisor/gobpf/bcc
+## github.com/iovisor/gobpf/bcc
 ../../../../go/pkg/mod/github.com/iovisor/gobpf@v0.0.0-20200614202714-e6b321d32103/bcc/module.go:98:40: too many arguments in call to _Cfunc_bpf_module_create_c_from_string
         have (*_Ctype_char, number, **_Ctype_char, _Ctype_int, _Ctype__Bool, nil)
         want (*_Ctype_char, _Ctype_uint, **_Ctype_char, _Ctype_int, _Ctype__Bool)
