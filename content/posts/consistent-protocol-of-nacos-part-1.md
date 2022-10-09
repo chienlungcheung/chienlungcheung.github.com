@@ -6,7 +6,7 @@ tags: ["consistent", "raft", "distro", "nacos"]
 
 作为一个服务发现和配置管理基础设施, 一致性协议可以在集群内保证各类元数据的一致性. Nacos 提供了两个等级的一致性, CP 用于配置管理, AP 用于服务发现. 该系列分析基于源码 1.1.3 版本. 从 1.1.4 开始用 JRaft 替换了原生的 private-raft, 但我只对后者感兴趣所以延续使用 1.1.3 版本代码进行分析. 
 
-**文章里涉及代码不多, 主要解释原理, 如果看注释可以[点这里](https://github.com/chienlungcheung/nacos-annotation).**
+**文章里涉及代码不多, 主要解释原理, 如果看注释可以[点这里](https://github.com/chienlungcheung/nacos-with-annotation).**
 
 ## 1 开始之前
 
