@@ -532,7 +532,7 @@ theme = "DoIt"
   [params.sponsor]
     enable = false
     bio = "如果你觉得这篇文章对你有所帮助，欢迎赞赏~"
-    link = "https://www.buymeacoffee.com" # 你的赞赏页面的地址
+    link = "https://www.buymeacoffee.com/haricheung" # 你的赞赏页面的地址
     custom = "" # 自定义 HTML 
 
   #  TypeIt 配置
@@ -568,7 +568,7 @@ theme = "DoIt"
     enable = false
     # Google Analytics
     [params.analytics.google]
-      id = "358891703"
+      id = "G-KX1H47N2PR"
       # 是否匿名化用户 IP
       anonymizeIP = false
     # Fathom Analytics
