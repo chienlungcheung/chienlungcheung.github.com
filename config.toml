@@ -247,7 +247,7 @@ theme = "DoIt"
     ORCID = ""
     Liberapay = ""
     Ko-Fi = ""
-    BuyMeACoffee = "https://www.buymeacoffee.com/haricheung"
+    BuyMeACoffee = ""
     Linktree = ""
     QQ = ""
     QQGroup = ""
@@ -568,9 +568,9 @@ theme = "DoIt"
     enable = false
     # Google Analytics
     [params.analytics.google]
-      id = "358891703"
+      id = ""
       # 是否匿名化用户 IP
-      anonymizeIP = false
+      anonymizeIP = true
     # Fathom Analytics
     [params.analytics.fathom]
       id = ""
