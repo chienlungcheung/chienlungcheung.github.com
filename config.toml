@@ -568,7 +568,7 @@ theme = "DoIt"
     enable = false
     # Google Analytics
     [params.analytics.google]
-      id = "G-KX1H47N2PR"
+      id = "UA-177829579-1"
       # 是否匿名化用户 IP
       anonymizeIP = false
     # Fathom Analytics
