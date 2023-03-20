@@ -4,8 +4,6 @@ date: 2021-05-29 14:02:43
 tags: ["leveldb", "LSM-Tree", "db", "kv"]
 ---
 
-[TOC]
-
 leveldb, leveldb, 每个 level 保存的内容就是一组 sorted string table (简称 sstable) 文件.
 <!--more-->
 ## 1 sstable 文件布局
