@@ -1,6 +1,6 @@
 ---
 title: 'Gorilla: 一个快速, 可扩展的, 内存式时序数据库'
-date: 2020-12-05 10:19:30
+date: 2020-12-05T10:19:30+08:00
 tags: ["Gorilla", "tsdb", "distributed system", "paper"]
 ---
 

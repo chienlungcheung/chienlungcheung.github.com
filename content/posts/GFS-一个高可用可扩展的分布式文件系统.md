@@ -1,6 +1,6 @@
 ---
 title: 'GFS: 一个高可用可扩展的分布式文件系统'
-date: 2020-12-11 21:44:47
+date: 2020-12-11T21:44:47+08:00
 tags: ["gfs", "distributed system", "paper"]
 ---
 
