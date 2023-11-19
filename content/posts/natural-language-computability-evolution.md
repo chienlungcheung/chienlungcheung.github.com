@@ -2,6 +2,7 @@
 title: "自然语言的可计算性：从 N-gram 到 BERT"
 date: 2023-11-19T12:11:15+08:00
 draft: false
+tags: ["NLP", "embedding", "computability"]
 ---
 
 [toc]
@@ -71,23 +72,23 @@ N-gram 是自然语言处理和语言建模中的经典技术，以下是 N-gram
 
 ## 2 CNN：图像预训练的启示
 
-![Alt text](image.png)
+![Alt text](/images/natural-language-computability/image.png)
 
 自从深度学习爆火，预训练过程就成为图像领域的常规方法了，而且这种做法很有效，能明显促进应用的效果。
 
-![参考：https://pyimagesearch.com/2019/06/03/fine-tuning-with-keras-and-deep-learning/](image-1.png)
+![](/images/natural-language-computability/image-1.png)
 
-上图展示图像领域的预训练过程。我们设计好网络结构以后，对于图像来说一般是 CNN 的多层叠加网络结构。可以先用某个训练集合（一般是通用型数据，如 imagenet）对这个网络进行预训练，在对应任务上学会网络参数，然后存起来以备后用。假设我们面临另一个任务，网络结构采取相同的网络结构。在较低的 CNN 层，网络参数初始化的时候可以加载前述在通用数据上学习好的参数；在较高的 CNN 层，参数仍然随机初始化。参数设置好后用新任务的数据来训练网络。
+上图展示图像领域的预训练过程。我们设计好网络结构以后，对于图像来说一般是 CNN 的多层叠加网络结构。可以先用某个训练集合（一般是通用型数据，如 /images/natural-language-computability/imagenet）对这个网络进行预训练，在对应任务上学会网络参数，然后存起来以备后用。假设我们面临另一个任务，网络结构采取相同的网络结构。在较低的 CNN 层，网络参数初始化的时候可以加载前述在通用数据上学习好的参数；在较高的 CNN 层，参数仍然随机初始化。参数设置好后用新任务的数据来训练网络。
 
 在新任务上训练数据时，针对参数迭代有两种做法。一种是“frozen”（参数冻结），即之前从通用任务引入的浅层参数在训练新任务过程中不变;另外一种是“Fine-Tuning”（参数微调），即全量参数在新任务训练过程中会被改变，但这种改变是在预训练参数技术上进行的相比从零训练全量参数要简单很多。不管采用哪种做法都有一个很大的好处，即使得过去因为数据量太少而无法训练的任务变得可达。
 
-针对动辄上亿参数的网络结构如 Resnet、Densenet 等，少量的训练数据很难训练好如此复杂的网络。但是如果其中大量参数预先通过大的训练集合（如 ImageNet）进行训练，然后将训练好的参数直接拿来初始化新任务的大部分网络结构参数，再在新任务比较少的数据量上进行训练，就容易多了。此外，即使新任务可用训练数据量很大，前置预训练过程也能极大加快新任务训练的收敛速度。
+针对动辄上亿参数的网络结构如 Resnet、Densenet 等，少量的训练数据很难训练好如此复杂的网络。但是如果其中大量参数预先通过大的训练集合（如 /images/natural-language-computability/imageNet）进行训练，然后将训练好的参数直接拿来初始化新任务的大部分网络结构参数，再在新任务比较少的数据量上进行训练，就容易多了。此外，即使新任务可用训练数据量很大，前置预训练过程也能极大加快新任务训练的收敛速度。
 
 预训练为什么可行？
 
 CNN 的设计在某种程度上受到了动物视觉系统的启发，尤其是猫和猴子的视觉皮层。在 20 世纪 60 年代，两位神经生物学家 David Hubel 和 Torsten Wiesel 对猫的视觉皮层进行了实验，发现存在专门对特定方向的边缘或线条响应的神经元，这与 CNN 中的边缘检测器有相似之处。
 
-![参考：https://medium.com/analytics-vidhya/the-world-through-the-eyes-of-cnn-5a52c034dbeb](image-2.png)
+![参考：https://medium.com/analytics-vidhya/the-world-through-the-eyes-of-cnn-5a52c034dbeb](/images/natural-language-computability/image-2.png)
 
 CNN 的层级结构使其能从浅到深抽象不同层次的特征：
 • 浅层（例如第一、第二层）： 主要捕捉基本的视觉特征，如边缘、颜色和纹理。这些特征通常是局部的和简单的。
@@ -127,7 +128,7 @@ Word embedding 诞生于 2003 年，我们可以将它看作 NLP 领域的预训
 
 那我们如何设计一个神经网络来实现一个语言模型呢？我们期望针对训练好的神经网络，输入一句话前面若干单词，它能正确输出后面紧跟的单词。
 
-![参考：《A Neural Probabilistic Language Model》https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf](image-3.png)
+![参考：《A Neural Probabilistic Language Model》https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf](/images/natural-language-computability/image-3.png)
 
 我们可以设计如上图的网络结构，这其实就是大名鼎鼎的“神经网络语言模型”。2003 年，Bengio 发表在 JMLR 上的论文《A Neural Probabilistic Language Model》创造了该模型。2013 年，当深度学习开始渗透到 NLP 领域的时候，该设计重新焕发光彩。
 
@@ -143,13 +144,13 @@ Word embedding 诞生于 2003 年，我们可以将它看作 NLP 领域的预训
 
 我们重点谈一下 $C(W_i)$ 的学习过程。
 
-![Alt text](image-17.png)
+![Alt text](/images/natural-language-computability/image-17.png)
 
 前面提到 $C(W_i)$  就是单词对应的 Word Embedding 值。矩阵 $C$ 包含 $V$ 行，$V$ 代表词典的大小，每一行内容代表对应单词的 Word embedding 值。当然，矩阵 $C$ 需要通过学习获得的网络参数；训练初试可以用随机值初始化矩阵 $C$；当这个网络训练好后，矩阵 $C$ 的内容就会被正确赋值，每一行代表一个单词对应的 Word embedding 值。因此，通过这个神经网络学习任务，我们不仅自己能够根据上文预测后接单词是什么，同时获得一个副产品矩阵 $C$，即每个单词的 Word Embedding。
 
 2013 年，NLP 领域最振奋人心的工作就是 Word2Vec，它可以更好地计算出 word embedding。Word2Vec 工作原理如下图：
 
-![Alt text](image-4.png)
+![Alt text](/images/natural-language-computability/image-4.png)
 
 Word2Vec 的网络结构与前述 Bengio 设计的网络结构基本类似。不过这里需要指出：尽管网络结构相近，而且也是做语言模型任务，但是其训练方法不太一样。
 
@@ -159,7 +160,7 @@ Word2Vec 有两种训练方法。第一种叫 CBOW，其核心思想是从一个
 
 Word2Vec 发明的 CBOW 的训练方法与后来的 BERT 关系莫大，同时它也是典型的预训练过程，可以在其之后接上具体的语言模型任务，如下图所示。
 
-![Alt text](image-5.png)
+![Alt text](/images/natural-language-computability/image-5.png)
 
 它的使用方法与前面 Bengio 设计的网络是一样的：句子中每个单词以 Onehot 形式作为输入，每个 onehot 向量乘以学好的 Word Embedding 矩阵 $C$，获得单词对应的 Word Embedding。
 
@@ -183,7 +184,7 @@ Bengio 和后来的 word2vec 开启了 NLP 领域的预训练，但是这�
 
 如下图所示，ELMo 采用了一个两层双向 LSTM（长短期记忆网络） 网络架构很好地解决了这个挑战。
 
-![参考：https://www.researchgate.net/figure/Bi-directional-LSTM-based-ELMo-language-model_fig5_351572119](image-6.png)
+![参考：https://www.researchgate.net/figure/Bi-directional-LSTM-based-ELMo-language-model_fig5_351572119](/images/natural-language-computability/image-6.png)
 
 两层双向 LSTM 的设计，其每个方面都扮演着重要的角色：
 
@@ -200,11 +201,11 @@ Bengio 和后来的 word2vec 开启了 NLP 领域的预训练，但是这�
 
 
 1. 在已知前序序列 $（t_1,t_2,...,t_N）$ 前提下 $t_k$ 出现概率为 $p(t_k|t_1,t_2,...,t_{k-1})$，则整个序列的联合概率分布为：
-![Alt text](image-7.png)
+![Alt text](/images/natural-language-computability/image-7.png)
 2. 在已知后续序列 $（t_1,t_2,...,t_N）$ 前提下 $t_k$ 出现概率为 $p(t_k|t_{k+1},t_{k+2},...,t_N)$，则整个序列的联合概率分布为：
-![Alt text](image-8.png)
+![Alt text](/images/natural-language-computability/image-8.png)
 3. 综合两个方向，我们的预训练目标为最大化下述前向和后向的联合似然函数（概率取对数后由相乘改为相加，计算更方便）：
-![Alt text](image-9.png)
+![Alt text](/images/natural-language-computability/image-9.png)
 其中 $Θ_x$、$Θ_{LSTM}$、$Θ_s$ 分别是输入层、LSTM 层以及 Softmax 层待学习的参数。预训练目的即为求解使得上述联合概率分布最大时前述参数的值。
 
 ### 4.2 ELMo 预训练模型用于下游任务
@@ -215,13 +216,13 @@ ELMo 在用于下游任务时会冻结参数，也就是相关参数期间不�
 
 预训练结束后，针对每个 token $k$，ELMo 模型训练出了大小为 $2L+1$ 的表示（representation）集合，记为 $R_k$，具体为：
 
-![Alt text](image-10.png)
+![Alt text](/images/natural-language-computability/image-10.png)
 
 其中 $x_k^{LM}$、$\overrightarrow{h_{k,j}^{LM}}$、$\overleftarrow{h_{k,j}^{LM}}$ 分别为输入层的词嵌入表示（具体实现通过字符级 CNN 得到，这里不做重点讨论，作为默认即可）、第 $j$ 层前向 LSTM 输出、第 $j$ 层后向 LSTM 输出。
 
 在用于下游任务时，针对 token $k$ 需要基于 $R_k$ 调整生成新的 embedding，记为 $ELMo_k^{task}$，这是 ELMo 相比以往模型最大的创新点，既保留了预训练过程的知识，又针对具体下游任务学到了新的组合方式。 的学习过程如下：
 
-![Alt text](image-11.png)
+![Alt text](/images/natural-language-computability/image-11.png)
 
 上述公式各参数含义如下：
 - $\overrightarrow{h_{k,j}^{LM}}$：这是对于第 $k$ 个 token，经过特定任务调整的 ELMo 表示。
@@ -234,7 +235,7 @@ ELMo 在用于下游任务时会冻结参数，也就是相关参数期间不�
 
 上述过程图形化表示如下：
 
-![参考：https://naturale0.github.io/2021/02/24/Understanding-ELMo](image-12.png)
+![参考：https://naturale0.github.io/2021/02/24/Understanding-ELMo](/images/natural-language-computability/image-12.png)
 
 针对输入的每个 token，都会为具体下游任务学习生成对应的 embedding。
 
@@ -252,7 +253,7 @@ GPT采用的 Transformer 架构，但仅包含 Decoder 部分。
 
 下图展示了 GPT 基于 Transformer 模型的神经网络架构，用于处理不同类型的文本理解任务。图中的上半部分是一个高级的分类器，它包括多个任务特定的结构。下半部分是Transformer模型的标准架构，显示了一个12层的堆叠结构，每一层由三个主要部分组成：自注意力机制、前馈网络和层归一化。
 
-![Alt text](image-13.png)
+![Alt text](/images/natural-language-computability/image-13.png)
 
 Transformer 核心架构:
 - 文本和位置嵌入（Text & Position Embed）: 输入文本被转换为嵌入向量，同时加上位置信息，以保留单词的顺序。
@@ -283,7 +284,7 @@ Transformer 核心架构:
 
 这也意味着在微调过程中，模型的损失函数将包括两部分：一部分针对下游任务（如分类的损失），另一部分是语言模型的损失（如基于预测下一个单词的交叉熵损失）。
 
-![Alt text](image-14.png)
+![Alt text](/images/natural-language-computability/image-14.png)
 
 在GPT论文中，上述公式表示的是总损失函数 $L_3(C)$，它是由两部分组成的：下游任务的损失函数 $L_2(C)$ 和语言模型的损失函数 $L_1(C)$ 的加权和。这个组合损失函数被用来在微调 GPT 模型时同时优化两个目标：
 
@@ -305,7 +306,7 @@ Transformer 核心架构:
 
 BERT 预训练与微调架构如下图所示，它将预训练和微调的架构统一了起来。
 
-![《BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding》](image-15.png)
+![《BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding》](/images/natural-language-computability/image-15.png)
 
 客观地讲， BERT 在网络架构上没有创新，它与 GPT 类似都是沿用了 Transformer，它的效果拔群源自其在预训练期间采用的两个无监督任务：MLM（masked language model，掩码语言模型）与 NSP（next sentence prediction，下个句子预测）。前者用于挖掘句子内单词间的关系，后者用于挖掘句子间的关系。
 
@@ -332,7 +333,7 @@ BERT 预训练与微调架构如下图所示，它将预训练和微调的架�
 
 在传统语言模型中，处理文本对通常分为两个阶段：先独立处理每个句子，然后在某种形式上合并它们的信息。而 BERT 通过自注意力机制在一个统一框架下处理合并后的句子对。这意味着模型不仅能够在每个句子内部进行注意力分配，还能跨越两个句子进行注意力分配，即实现句子间的双向交叉注意力。这种机制使得模型能够更深入地理解两个句子之间的关系。这种统一框架使得 BERT 很容易和下游任务结合进行端到端全参数微调。
 
-![Alt text](image-16.png)
+![Alt text](/images/natural-language-computability/image-16.png)
 
 在输入阶段，预训练中的句子A和句子B类似于：(1) 在释义任务中的句子对，(2) 在蕴含关系判断任务中的假设-前提对，(3) 在问答任务中的问题-段落对，以及(4) 在文本分类或序列标记任务中的退化的文本-空对（即只有一个文本输入而没有第二个输入）。在输出阶段，标记的表示被送入一个输出层来处理标记级别的任务，如序列标记或问答；而[CLS]标记的表示则被送入另一个输出层来处理分类任务，如蕴含关系判断或情感分析。
 
