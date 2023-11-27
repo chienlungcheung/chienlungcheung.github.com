@@ -1,0 +1,902 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Leveldb 源码详解系列之三: MemTable 设计与实现 - 二手知识</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3CREWXCLR7"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date),gtag("config","G-3CREWXCLR7")</script><meta name=Description content><meta property="og:title" content="Leveldb 源码详解系列之三: MemTable 设计与实现"><meta property="og:description" content="memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable(所以可能同时有两个 memtable 存在) 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList."><meta property="og:type" content="article"><meta property="og:url" content="https://chienlungcheung.github.io/leveldb-annotations-3-memtable/"><meta property="og:image" content="https://chienlungcheung.github.io/logo.png"><meta property="article:section" content="posts"><meta property="article:published_time" content="2020-10-01T21:47:36+08:00"><meta property="article:modified_time" content="2020-10-01T21:47:36+08:00"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://chienlungcheung.github.io/logo.png"><meta name=twitter:title content="Leveldb 源码详解系列之三: MemTable 设计与实现"><meta name=twitter:description content="memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable(所以可能同时有两个 memtable 存在) 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList."><meta name=twitter:site content="@haricheung"><meta name=application-name content="DoIt"><meta name=apple-mobile-web-app-title content="DoIt"><meta name=theme-color content="#f8f8f8"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=canonical href=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/><link rel=prev href=https://chienlungcheung.github.io/leveldb-annotations-2-log-read-write/><link rel=next href=https://chienlungcheung.github.io/gorilla-%E4%B8%80%E4%B8%AA%E5%BF%AB%E9%80%9F-%E5%8F%AF%E6%89%A9%E5%B1%95%E7%9A%84-%E5%86%85%E5%AD%98%E5%BC%8F%E6%97%B6%E5%BA%8F%E6%95%B0%E6%8D%AE%E5%BA%93/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/css/color.css><link rel=stylesheet href=/css/style.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/fontawesome-free/all.min.css><noscript><link rel=stylesheet href=/lib/fontawesome-free/all.min.css></noscript><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/animate/animate.min.css><noscript><link rel=stylesheet href=/lib/animate/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Leveldb 源码详解系列之三: MemTable 设计与实现","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-3-memtable\/"},"genre":"posts","keywords":"leveldb, LSM-Tree, db, kv","wordcount":11166,"url":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-3-memtable\/","datePublished":"2020-10-01T21:47:36+08:00","dateModified":"2020-10-01T21:47:36+08:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"Hari"},"description":""}</script><script src=//instant.page/5.1.1 defer type=module integrity=sha384-MWfCL6g1OTGsbSwfuMHc8+8J2u71/LA8dzlIN3ycajckxuZZmF+DNjdm7O6H3PSq></script></head><body header-desktop=fixed header-mobile=auto><script type=text/javascript>function setTheme(e){document.body.setAttribute("theme",e),document.documentElement.style.setProperty("color-scheme",e==="light"?"light":"dark"),window.theme=e}function saveTheme(e){window.localStorage&&localStorage.setItem("theme",e)}function getMeta(e){const t=document.getElementsByTagName("meta");for(let n=0;n<t.length;n++)if(t[n].getAttribute("name")===e)return t[n];return""}if(window.localStorage&&localStorage.getItem("theme")){let e=localStorage.getItem("theme");e==="light"||e==="dark"||e==="black"?setTheme(e):setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}else"auto"==="light"||"auto"==="dark"||"auto"==="black"?(setTheme("auto"),saveTheme("auto")):(saveTheme("auto"),setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));let metaColors={light:"#f8f8f8",dark:"#252627",black:"#000000"};getMeta("theme-color").content=metaColors[document.body.getAttribute("theme")]</script><div id=back-to-top></div><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><span class="menu-item search" id=search-desktop>
+<input type=text placeholder=搜索文章标题或内容... id=search-input-desktop>
+<a href=# class="search-button search-toggle" id=search-toggle-desktop title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-desktop title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-desktop><i class="fas fa-spinner fa-fw fa-spin"></i>
+</span></span><a href=# class="menu-item theme-select" title=切换主题><i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-desktop title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><div class=search-wrapper><div class="search mobile" id=search-mobile><input type=text placeholder=搜索文章标题或内容... id=search-input-mobile>
+<a href=# class="search-button search-toggle" id=search-toggle-mobile title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-mobile title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-mobile><i class="fas fa-spinner fa-fw fa-spin"></i></span></div><a href=# class=search-cancel id=search-cancel-mobile>取消</a></div><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=# class="menu-item theme-select" title=切换主题>
+<i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-mobile title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>目录</h2><div class=toc-content id=toc-content-auto><nav id=TableOfContents><ul><li><a href=#1-核心文件和核心类>1 核心文件和核心类</a></li><li><a href=#2-memtable-核心成员变量>2 MemTable 核心成员变量</a></li><li><a href=#3-memtable-核心方法>3 MemTable 核心方法</a><ul><li><a href=#31-memtable-写方法>3.1 MemTable 写方法</a></li><li><a href=#32-memtable-读方法>3.2 MemTable 读方法</a></li><li><a href=#33-memtable-迭代器>3.3 MemTable 迭代器</a></li><li><a href=#34-memtable-内存估计>3.4 MemTable 内存估计</a></li></ul></li><li><a href=#4-memtable-比较器之-keycomparator>4 MemTable 比较器之 KeyComparator</a></li><li><a href=#5-memtable-内存管理之-arena>5 MemTable 内存管理之 Arena</a><ul><li><a href=#51-如何向-arena-申请指定大小的内存>5.1 如何向 Arena 申请指定大小的内存</a></li><li><a href=#52-如何向-arena-申请对齐后的内存>5.2 如何向 Arena 申请对齐后的内存</a></li></ul></li><li><a href=#6-memtable-底层存储之-skiplist>6 MemTable 底层存储之 SkipList</a><ul><li><a href=#61-skiplist-原理简介>6.1 SkipList 原理简介</a></li><li><a href=#62-skiplist-实现>6.2 SkipList 实现</a><ul><li><a href=#621-skiplist-核心数据成员>6.2.1 SkipList 核心数据成员</a></li><li><a href=#622-skiplist-核心方法>6.2.2 SkipList 核心方法</a><ul><li><a href=#6223-辅助数据结构-node>6.2.2.3 辅助数据结构 Node</a></li><li><a href=#6224-用于为新数据分配存储的-newnode-方法>6.2.2.4 用于为新数据分配存储的 NewNode 方法</a></li><li><a href=#6225-用于确定某个节点索引层数的-randomheight-方法>6.2.2.5 用于确定某个节点索引层数的 RandomHeight 方法</a></li><li><a href=#6226-用于插入数据的-insert-方法>6.2.2.6 用于插入数据的 Insert 方法</a></li><li><a href=#6226-用于查找数据是否存在的-contains-方法>6.2.2.6 用于查找数据是否存在的 Contains 方法</a></li><li><a href=#6227-读写都要依赖的辅助方法-findgreaterorequal>6.2.2.7 读写都要依赖的辅助方法 FindGreaterOrEqual</a></li><li><a href=#6228-辅助数据结构-iterator>6.2.2.8 辅助数据结构 Iterator</a></li></ul></li></ul></li></ul></li><li><a href=#7-番外-c-的内存排序>7 番外: C++ 的内存排序</a></li></ul></nav></div></div><script>document.getElementsByTagName("main")[0].setAttribute("autoTOC","true")</script><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Leveldb 源码详解系列之三: MemTable 设计与实现</h1><div class=post-meta><div class=post-meta-line><span class=post-author><i class="author fas fa-user-circle fa-fw"></i><a href=/ title=Author rel=author class=author>Hari</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime=2020-10-01>2020-10-01</time>&nbsp;<i class="far fa-edit fa-fw"></i>&nbsp;<time datetime=2020-10-01>2020-10-01</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 11166 字&nbsp;
+<i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 23 分钟&nbsp;</div></div><div class="details toc" id=toc-static kept><div class="details-summary toc-title"><span>目录</span>
+<span><i class="details-icon fas fa-angle-right"></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#1-核心文件和核心类>1 核心文件和核心类</a></li><li><a href=#2-memtable-核心成员变量>2 MemTable 核心成员变量</a></li><li><a href=#3-memtable-核心方法>3 MemTable 核心方法</a><ul><li><a href=#31-memtable-写方法>3.1 MemTable 写方法</a></li><li><a href=#32-memtable-读方法>3.2 MemTable 读方法</a></li><li><a href=#33-memtable-迭代器>3.3 MemTable 迭代器</a></li><li><a href=#34-memtable-内存估计>3.4 MemTable 内存估计</a></li></ul></li><li><a href=#4-memtable-比较器之-keycomparator>4 MemTable 比较器之 KeyComparator</a></li><li><a href=#5-memtable-内存管理之-arena>5 MemTable 内存管理之 Arena</a><ul><li><a href=#51-如何向-arena-申请指定大小的内存>5.1 如何向 Arena 申请指定大小的内存</a></li><li><a href=#52-如何向-arena-申请对齐后的内存>5.2 如何向 Arena 申请对齐后的内存</a></li></ul></li><li><a href=#6-memtable-底层存储之-skiplist>6 MemTable 底层存储之 SkipList</a><ul><li><a href=#61-skiplist-原理简介>6.1 SkipList 原理简介</a></li><li><a href=#62-skiplist-实现>6.2 SkipList 实现</a><ul><li><a href=#621-skiplist-核心数据成员>6.2.1 SkipList 核心数据成员</a></li><li><a href=#622-skiplist-核心方法>6.2.2 SkipList 核心方法</a><ul><li><a href=#6223-辅助数据结构-node>6.2.2.3 辅助数据结构 Node</a></li><li><a href=#6224-用于为新数据分配存储的-newnode-方法>6.2.2.4 用于为新数据分配存储的 NewNode 方法</a></li><li><a href=#6225-用于确定某个节点索引层数的-randomheight-方法>6.2.2.5 用于确定某个节点索引层数的 RandomHeight 方法</a></li><li><a href=#6226-用于插入数据的-insert-方法>6.2.2.6 用于插入数据的 Insert 方法</a></li><li><a href=#6226-用于查找数据是否存在的-contains-方法>6.2.2.6 用于查找数据是否存在的 Contains 方法</a></li><li><a href=#6227-读写都要依赖的辅助方法-findgreaterorequal>6.2.2.7 读写都要依赖的辅助方法 FindGreaterOrEqual</a></li><li><a href=#6228-辅助数据结构-iterator>6.2.2.8 辅助数据结构 Iterator</a></li></ul></li></ul></li></ul></li><li><a href=#7-番外-c-的内存排序>7 番外: C++ 的内存排序</a></li></ul></nav></div></div><div class=content id=content><p>memtable 可以看作是 log 文件的内存形式, 但是格式不同. 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable(所以可能同时有两个 memtable 存在) 以及磁盘上的各个 level 包含的文件构成了数据全集. memtable 的本质就是一个 SkipList.</p><h2 id=1-核心文件和核心类 class=headerLink><a href=#1-%e6%a0%b8%e5%bf%83%e6%96%87%e4%bb%b6%e5%92%8c%e6%a0%b8%e5%bf%83%e7%b1%bb class=header-mark></a>1 核心文件和核心类</h2><table><thead><tr><th style=text-align:center>核心类</th><th style=text-align:center>所在文件</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>leveldb::MemTable</td><td style=text-align:center>db/memtable.cc; db/memtable.h</td><td style=text-align:center>本文主角</td></tr><tr><td style=text-align:center>leveldb::Arena</td><td style=text-align:center>util/arena.cc; util/arena.h</td><td style=text-align:center>负责内存管理(仅分配和释放, 无回收)</td></tr><tr><td style=text-align:center>leveldb::SkipList&lt;Key, Comparator></td><td style=text-align:center>db/skiplist.h</td><td style=text-align:center>作为 MemTable 类底层存储(基于内存)</td></tr></tbody></table><h2 id=2-memtable-核心成员变量 class=headerLink><a href=#2-memtable-%e6%a0%b8%e5%bf%83%e6%88%90%e5%91%98%e5%8f%98%e9%87%8f class=header-mark></a>2 MemTable 核心成员变量</h2><table><thead><tr><th style=text-align:center>字段</th><th style=text-align:center>类型</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>comparator_</td><td style=text-align:center>struct leveldb::MemTable::KeyComparator</td><td style=text-align:center>用于 SkipList 比较 key</td></tr><tr><td style=text-align:center>refs_</td><td style=text-align:center>int</td><td style=text-align:center>该 memtable 引用计数, memtable 的拷贝构造和赋值构造都是禁用的, 只能通过增加引用计数复用</td></tr><tr><td style=text-align:center>arena_</td><td style=text-align:center>class leveldb::Arena</td><td style=text-align:center>内存池, 给 SkipList 分配 Node 时候使用</td></tr><tr><td style=text-align:center>table_</td><td style=text-align:center>typedef leveldb::SkipList&lt;const char *, leveldb::MemTable::KeyComparator> leveldb::MemTable::Table</td><td style=text-align:center>SkipList, 存储 memtable 里的数据</td></tr></tbody></table><h2 id=3-memtable-核心方法 class=headerLink><a href=#3-memtable-%e6%a0%b8%e5%bf%83%e6%96%b9%e6%b3%95 class=header-mark></a>3 MemTable 核心方法</h2><table><thead><tr><th style=text-align:center>方法</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>explicit MemTable(const InternalKeyComparator& comparator)</td><td style=text-align:center>传入一个自定义或数据库提供的比较器, 生成一个 MemTable 实例.</td></tr><tr><td style=text-align:center>void Ref()</td><td style=text-align:center>递增引用计数, MemTable 是基于引用计数的, 每个 MemTable 实例初始引用计数为 0, 调用者必须至少调用一次 Ref() 方法.</td></tr><tr><td style=text-align:center>void Unref()</td><td style=text-align:center>递减引用计数, 计数变为 0 后删除该 MemTable 实例.</td></tr><tr><td style=text-align:center>size_t ApproximateMemoryUsage()</td><td style=text-align:center>返回当前 memtable 中数据字节数的估计值, 当 memtable 被修改时调用该方法也是安全的, 该方法底层实现直接用的 arena_ 持有内存的字节数.</td></tr><tr><td style=text-align:center>Iterator* NewIterator()</td><td style=text-align:center>返回一个迭代器, 该迭代器可以用来遍历整个 memtable 的内容.</td></tr><tr><td style=text-align:center>void Add(SequenceNumber seq, ValueType type, const Slice& key, const Slice& value)</td><td style=text-align:center>根据指定的序列号和操作类型将 user_key 转换为 internal_key 然后和 value 一起向 memtable 新增一个数据项. 该数据项是 key 到 value 的映射, 如果操作类型 type==kTypeDeletion 则 value 为空. 最后数据项写入了底层的 SkipList 中. 每个数据项编码格式为 [varint32 类型的 internal_key_size, internal_key, varint32 类型的 value_size, value] internal_key 由 [user_key, tag] 构成.</td></tr><tr><td style=text-align:center>bool Get(const LookupKey& key, std::string* value, Status* s)</td><td style=text-align:center>如果 memtable 包含 key 对应的 value, 则将 value 保存在 *value 并返回 true. 如果 memtable 包含 key 对应的 deletion, 则将 NotFound 错误存在 *status, 并返回 true; 其它情况返回 false.</td></tr></tbody></table><h3 id=31-memtable-写方法 class=headerLink><a href=#31-memtable-%e5%86%99%e6%96%b9%e6%b3%95 class=header-mark></a>3.1 MemTable 写方法</h3><p>当需要向 memtable 加入一个 &lt;key, value> 时, 可以调用 <code>void Add(SequenceNumber seq, ValueType type, const Slice& key, const Slice& value)</code> 达成目标.</p><p>该方法负责将用户 key 转换为一个 InternalKey, 然后连同 value 一起进行编码, 组成一个形如下述的数据项:</p><pre><code>+------------------------------+---------+--------+--------+---------------+-----+
+|     internal key size        | seq num |op type |user key|  value size   |value|
+|      (varint32 type)         |(7 bytes)|(1 byte)|        |(varint32 type)|     |
+|(user key + seq num + op type)|         |        |        |               |     |
++------------------------------+---------+--------+--------+---------------+-----+
+</code></pre><p>其中该数据项前四个部分构成了 InternalKey, 该结构是 MemTable 做排序的依据. 最后将该数据项插入到底层的 SkipList 中. 具体处理流程见下面代码注释:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=n>MemTable</span><span class=o>::</span><span class=n>Add</span><span class=p>(</span><span class=n>SequenceNumber</span> <span class=n>s</span><span class=p>,</span> <span class=n>ValueType</span> <span class=n>type</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                   <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                   <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>value</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 插入到 memtable 的数据项的数据格式为
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// (注意, memtable key 的构成与 LookupKey 一样, 即 user_key + 序列号 + 操作类型):
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// [varint32 类型的 internal_key_size, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>//  user_key, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>//  序列号 + 操作类型, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>//  varint32 类型的 value_size, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>//  value]
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 其中, internal_key_size = user_key size + 8
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>size_t</span> <span class=n>key_size</span> <span class=o>=</span> <span class=n>key</span><span class=p>.</span><span class=n>size</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=n>size_t</span> <span class=n>val_size</span> <span class=o>=</span> <span class=n>value</span><span class=p>.</span><span class=n>size</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=n>size_t</span> <span class=n>internal_key_size</span> <span class=o>=</span> <span class=n>key_size</span> <span class=o>+</span> <span class=mi>8</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 编码后的数据项总长度
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>const</span> <span class=n>size_t</span> <span class=n>encoded_len</span> <span class=o>=</span>
+</span></span><span class=line><span class=cl>      <span class=n>VarintLength</span><span class=p>(</span><span class=n>internal_key_size</span><span class=p>)</span> <span class=o>+</span> <span class=n>internal_key_size</span> <span class=o>+</span>
+</span></span><span class=line><span class=cl>      <span class=n>VarintLength</span><span class=p>(</span><span class=n>val_size</span><span class=p>)</span> <span class=o>+</span> <span class=n>val_size</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>  <span class=c1>// 分配用来存储数据项的内存    
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>char</span><span class=o>*</span> <span class=n>buf</span> <span class=o>=</span> <span class=n>arena_</span><span class=p>.</span><span class=n>Allocate</span><span class=p>(</span><span class=n>encoded_len</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=c1>// 将编码为 varint32 格式的 internal_key_size 写入内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>char</span><span class=o>*</span> <span class=n>p</span> <span class=o>=</span> <span class=n>EncodeVarint32</span><span class=p>(</span><span class=n>buf</span><span class=p>,</span> <span class=n>internal_key_size</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 user_key 写入内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>memcpy</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=n>key</span><span class=p>.</span><span class=n>data</span><span class=p>(),</span> <span class=n>key_size</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=n>p</span> <span class=o>+=</span> <span class=n>key_size</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将序列号和操作类型写入内存.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 注意, 序列号为高 7 个字节;  
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 将序列号左移 8 位, 空出最低 1 个字节写入操作类型 type. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>EncodeFixed64</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=p>(</span><span class=n>s</span> <span class=o>&lt;&lt;</span> <span class=mi>8</span><span class=p>)</span> <span class=o>|</span> <span class=n>type</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=n>p</span> <span class=o>+=</span> <span class=mi>8</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将编码为 varint32 格式的 value_size 写入内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>p</span> <span class=o>=</span> <span class=n>EncodeVarint32</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=n>val_size</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 value 写入内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>memcpy</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=n>value</span><span class=p>.</span><span class=n>data</span><span class=p>(),</span> <span class=n>val_size</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>p</span> <span class=o>+</span> <span class=n>val_size</span> <span class=o>==</span> <span class=n>buf</span> <span class=o>+</span> <span class=n>encoded_len</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将数据项插入跳跃表
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>table_</span><span class=p>.</span><span class=n>Insert</span><span class=p>(</span><span class=n>buf</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>可以看到由于模块化抽象做得好, 整体来说还是比较简单的. 后面章节会重点说一下上述处理中有关内存分配(<code>arena_.Allocate()</code>)和数据项插入到 SkipList (<code>table_.Insert()</code>) 的相关操作.</p><h3 id=32-memtable-读方法 class=headerLink><a href=#32-memtable-%e8%af%bb%e6%96%b9%e6%b3%95 class=header-mark></a>3.2 MemTable 读方法</h3><p><code>bool Get(const LookupKey& key, std::string* value, Status* s)</code> 用于实现针对 memtable 的读操作.</p><p>当用户调用 DB 的 <code>Get</code> 方法查询某个 key 的时候, 具体步骤是这样的(具体实现位于 <code>leveldb::Status leveldb::Version::Get(const leveldb::ReadOptions &amp;options, const leveldb::LookupKey &amp;k, string *value, leveldb::Version::GetStats *stats)</code>, DB 的 <code>Get</code> 方法会调用前述实现.):</p><ul><li>1 先查询当前在用的 memtable, 查到返回, 未查到下一步</li><li>2 查询正在转换为 sorted string table 的 memtable 中寻找, 查到返回, 未查到下一步</li><li>3 在磁盘上采用从底向上 level-by-level 的寻找目标 key.<ul><li>由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.</li><li>由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key; 针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.</li></ul></li></ul><p>其中上面 1,2 两步骤查询 memtable 使用的即为本节开头提到的 Get 方法.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span><span class=lnt>64
+</span><span class=lnt>65
+</span><span class=lnt>66
+</span><span class=lnt>67
+</span><span class=lnt>68
+</span><span class=lnt>69
+</span><span class=lnt>70
+</span><span class=lnt>71
+</span><span class=lnt>72
+</span><span class=lnt>73
+</span><span class=lnt>74
+</span><span class=lnt>75
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 如果 memtable 包含 key 对应的 value, 则将 value 保存在 *value 并返回 true. 
+</span></span></span><span class=line><span class=cl><span class=c1>// 如果 memtable 包含 key 对应的 deletion(memtable 的删除不是真的删除, 而是一个带有删除标记的 Add 操作, 
+</span></span></span><span class=line><span class=cl><span class=c1>// 而且 key 对应的 value 为空), 则将 NotFound 错误存在 *status, 并返回 true; 
+</span></span></span><span class=line><span class=cl><span class=c1>// 其它情况返回 false. 
+</span></span></span><span class=line><span class=cl><span class=c1>// LookupKey 就是 memtable 数据项的前半部分, 布局同 internal key. 
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>bool</span> <span class=n>MemTable</span><span class=o>::</span><span class=n>Get</span><span class=p>(</span><span class=k>const</span> <span class=n>LookupKey</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>*</span> <span class=n>value</span><span class=p>,</span> <span class=n>Status</span><span class=o>*</span> <span class=n>s</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// LookupKey 结构同 internal key.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 注意由于比较时, 当 userkey 一样时会继续比较序列号, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 而且序列号越大对应 key 越小, 所以外部调用 Get()
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 方法前用户组装 LookupKey 的时候, 传入的序列号不能小于
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// MemTable 每个 key 的序列号. 外部具体实现是采用 DB 记录的最大
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 序列号.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Slice</span> <span class=n>memkey</span> <span class=o>=</span> <span class=n>key</span><span class=p>.</span><span class=n>memtable_key</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 为底层的 skiplist 创建一个临时的迭代器
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Table</span><span class=o>::</span><span class=n>Iterator</span> <span class=n>iter</span><span class=p>(</span><span class=o>&amp;</span><span class=n>table_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 返回第一个大于等于 memkey 的数据项(数据项在 iter 内部存着),
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 这里的第一个很关键, 当 userkey 相同但是序列号不同时, 序列号
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 大的那个 key 对应的数据更新, 同时由于 internal key 比较规则
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 是, userkey 相同序列号越大对应 key 越小, 所以 userkey 相同时
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 序列号最大的那个 key 肯定是第一个.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>iter</span><span class=p>.</span><span class=n>Seek</span><span class=p>(</span><span class=n>memkey</span><span class=p>.</span><span class=n>data</span><span class=p>());</span> 
+</span></span><span class=line><span class=cl>  <span class=c1>// iter 指向有效 node, 即 node 不为 nullptr
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>iter</span><span class=p>.</span><span class=n>Valid</span><span class=p>())</span> <span class=p>{</span> 
+</span></span><span class=line><span class=cl>    <span class=c1>// 每个数据项格式如下:
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    klength  varint32
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    userkey  char[klength-8] // 源码注释这里有误, 应该是 klength - 8
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    tag      uint64
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    vlength  varint32
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    value    char[vlength]
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 通过比较 user_key 部分和 ValueType 部分来确认是否是我们要找的数据项. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 不去比较序列号的原因是上面调用 Seek() 的时候已经跳过了非常大的序列号
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// (internal_key 比较逻辑是序列号越大 internal_key 越小, 而我们
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 通过 Seek() 寻找的是第一个大于等于某个 internal_key 的节点).  
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 注意, memtable 将底层的 SkipList 的 key(确切应该说是数据项)
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 声明为了 char* 类型. 这里的 entry 是 SkipList.Node 里包含的整个数据项. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>entry</span> <span class=o>=</span> <span class=n>iter</span><span class=p>.</span><span class=n>key</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=kt>uint32_t</span> <span class=n>key_length</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 解析 internal_key 长度
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>key_ptr</span> <span class=o>=</span> <span class=n>GetVarint32Ptr</span><span class=p>(</span><span class=n>entry</span><span class=p>,</span> <span class=n>entry</span><span class=o>+</span><span class=mi>5</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>key_length</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>    <span class=c1>// 比较 user_key. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 因为 internal_key 包含了 tag 所以任意两个 internal_key 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 肯定是不一样的, 而我们真正在意的是 user_key, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 所以这里调用 user_comparator 比较 user_key. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>comparator_</span><span class=p>.</span><span class=n>comparator</span><span class=p>.</span><span class=n>user_comparator</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>Compare</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>            <span class=n>Slice</span><span class=p>(</span><span class=n>key_ptr</span><span class=p>,</span> <span class=n>key_length</span> <span class=o>-</span> <span class=mi>8</span><span class=p>),</span>
+</span></span><span class=line><span class=cl>            <span class=n>key</span><span class=p>.</span><span class=n>user_key</span><span class=p>())</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 解析 tag, 包含 7 字节序列号和 1 字节操作类型(新增/删除)
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>const</span> <span class=kt>uint64_t</span> <span class=n>tag</span> <span class=o>=</span> <span class=n>DecodeFixed64</span><span class=p>(</span><span class=n>key_ptr</span> <span class=o>+</span> <span class=n>key_length</span> <span class=o>-</span> <span class=mi>8</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 解析 tag 中的 ValueType. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// leveldb 删除某个 user_key 的时候不是通过一个插入墓碑消息实现的吗? 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 那怎么确保在 SkipList.Seek() 时候返回删除操作对应的数据项, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 而不是之前同样 user_key 对应的真正的插入操作对应的数据项呢? 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 机巧就在于 internal_key 的比较原理 user_key 相等的时候, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// tag 越大 internal_key 越小, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 这样后执行的删除操作的 tag(序列号递增了, 即使不递增, 但由于
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 删除对应的 ValueType 大于插入对应的 ValueType 也可以确保
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 后执行的删除操作的 tag 大于先执行的插入操作的 tag)
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 这里有个比较技巧的地方. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>switch</span> <span class=p>(</span><span class=k>static_cast</span><span class=o>&lt;</span><span class=n>ValueType</span><span class=o>&gt;</span><span class=p>(</span><span class=n>tag</span> <span class=o>&amp;</span> <span class=mh>0xff</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 找到了
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>case</span> <span class=nl>kTypeValue</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=n>Slice</span> <span class=n>v</span> <span class=o>=</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>key_ptr</span> <span class=o>+</span> <span class=n>key_length</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>          <span class=n>value</span><span class=o>-&gt;</span><span class=n>assign</span><span class=p>(</span><span class=n>v</span><span class=p>.</span><span class=n>data</span><span class=p>(),</span> <span class=n>v</span><span class=p>.</span><span class=n>size</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>          <span class=k>return</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 找到了, 但是已经被删除了
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>case</span> <span class=nl>kTypeDeletion</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>          <span class=o>*</span><span class=n>s</span> <span class=o>=</span> <span class=n>Status</span><span class=o>::</span><span class=n>NotFound</span><span class=p>(</span><span class=n>Slice</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>          <span class=k>return</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>以上代码重要地方有如下几点:</p><ul><li>参数 LookupKey 结构如 internal key, 前文介绍过具体结构不再赘述. 要强调的是, 构造其实例时, user key 部分采用用户传入的, 但是序列号要用数据库目前最大值, 这样可以确保作为比较环节的序列号不会影响我们的查找过程.</li><li>在底层 SkipList 查找之前, 构造了一个临时的迭代器, 迭代器结构体待后文介绍 SkipList 时详细介绍.</li><li>迭代器的 Seek 方法返回的是第一个大于等于目标 key 的节点, 这个第一个非常非常重要, 这也是为什么我们前面强调 LookupKey 的序列号必须足够达到不污染查找过程.</li><li>Leveldb 的删除会插入一个墓碑消息, 其标识记录到 key 的 tag 部分, 所以查到数据的时候先不要高兴太早, 需要确认下 tag 的操作类型字段值.</li></ul><h3 id=33-memtable-迭代器 class=headerLink><a href=#33-memtable-%e8%bf%ad%e4%bb%a3%e5%99%a8 class=header-mark></a>3.3 MemTable 迭代器</h3><p>我们知道, MemTable 和磁盘上的 sstables 文件一起构成了数据全集, 而且 leveldb 支持迭代整个数据库. 这就要求 MemTable 也是可迭代的, 这样才能和磁盘文件迭代器串联在一起构成一个超级迭代器供用户迭代.</p><p>从 MemTable 实例返回一个迭代器的方法为:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>Iterator</span><span class=o>*</span> <span class=n>MemTable</span><span class=o>::</span><span class=n>NewIterator</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=k>new</span> <span class=nf>MemTableIterator</span><span class=p>(</span><span class=o>&amp;</span><span class=n>table_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>MemTable 的迭代器实现很简单, 它提供了一个 <code>class leveldb::MemTableIterator</code>, 但整个类仅仅是一个 wrapper. 因为 MemTable 依赖的 SkipList 提供了一个完整的迭代器, MemTableIterator 仅仅在内部封装了一个 <code>leveldb::SkipList&lt;Key, Comparator>::Iterator</code> 实例即实现了对 MemTable 的迭代, 所以它的实现就很简单了:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 该类全部方法都是对 leveldb::SkipList&lt;Key, Comparator&gt;::Iterator 方法的二次封装
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>class</span> <span class=nc>MemTableIterator</span><span class=o>:</span> <span class=k>public</span> <span class=n>Iterator</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl> <span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>  <span class=k>explicit</span> <span class=n>MemTableIterator</span><span class=p>(</span><span class=n>MemTable</span><span class=o>::</span><span class=n>Table</span><span class=o>*</span> <span class=n>table</span><span class=p>)</span> <span class=o>:</span> <span class=n>iter_</span><span class=p>(</span><span class=n>table</span><span class=p>)</span> <span class=p>{</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>Valid</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=n>iter_</span><span class=p>.</span><span class=n>Valid</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>Seek</span><span class=p>(</span><span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>k</span><span class=p>)</span> <span class=p>{</span> <span class=n>iter_</span><span class=p>.</span><span class=n>Seek</span><span class=p>(</span><span class=n>EncodeKey</span><span class=p>(</span><span class=o>&amp;</span><span class=n>tmp_</span><span class=p>,</span> <span class=n>k</span><span class=p>));</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>SeekToFirst</span><span class=p>()</span> <span class=p>{</span> <span class=n>iter_</span><span class=p>.</span><span class=n>SeekToFirst</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>SeekToLast</span><span class=p>()</span> <span class=p>{</span> <span class=n>iter_</span><span class=p>.</span><span class=n>SeekToLast</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>Next</span><span class=p>()</span> <span class=p>{</span> <span class=n>iter_</span><span class=p>.</span><span class=n>Next</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>Prev</span><span class=p>()</span> <span class=p>{</span> <span class=n>iter_</span><span class=p>.</span><span class=n>Prev</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=n>Slice</span> <span class=nf>key</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>iter_</span><span class=p>.</span><span class=n>key</span><span class=p>());</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>virtual</span> <span class=n>Slice</span> <span class=nf>value</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>Slice</span> <span class=n>key_slice</span> <span class=o>=</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>iter_</span><span class=p>.</span><span class=n>key</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>key_slice</span><span class=p>.</span><span class=n>data</span><span class=p>()</span> <span class=o>+</span> <span class=n>key_slice</span><span class=p>.</span><span class=n>size</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 该迭代器默认返回 OK
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>virtual</span> <span class=n>Status</span> <span class=nf>status</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=n>Status</span><span class=o>::</span><span class=n>OK</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl> <span class=k>private</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 这个是真正干活的家伙
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>MemTable</span><span class=o>::</span><span class=n>Table</span><span class=o>::</span><span class=n>Iterator</span> <span class=n>iter_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 用于 EncodeKey 方法存储编码后的 internal_key
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>tmp_</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// No copying allowed
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>MemTableIterator</span><span class=p>(</span><span class=k>const</span> <span class=n>MemTableIterator</span><span class=o>&amp;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=kt>void</span> <span class=k>operator</span><span class=o>=</span><span class=p>(</span><span class=k>const</span> <span class=n>MemTableIterator</span><span class=o>&amp;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></td></tr></table></div></div><p>下文介绍 SkipList 时会着重介绍迭代器.</p><h3 id=34-memtable-内存估计 class=headerLink><a href=#34-memtable-%e5%86%85%e5%ad%98%e4%bc%b0%e8%ae%a1 class=header-mark></a>3.4 MemTable 内存估计</h3><p>MemTable 提供了一个方法 <code>ApproximateMemoryUsage()</code> 来返回当前 MemTable 占用的内存空间大小. 它的实现依托底层的 Arena, 实现很简单:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>size_t</span> <span class=n>MemTable</span><span class=o>::</span><span class=n>ApproximateMemoryUsage</span><span class=p>()</span> <span class=p>{</span> <span class=k>return</span> <span class=n>arena_</span><span class=p>.</span><span class=n>MemoryUsage</span><span class=p>();</span> <span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>Arena 每次分配内存的时候, 都会将分配的内存字节数累加到计数器上.</p><h2 id=4-memtable-比较器之-keycomparator class=headerLink><a href=#4-memtable-%e6%af%94%e8%be%83%e5%99%a8%e4%b9%8b-keycomparator class=header-mark></a>4 MemTable 比较器之 KeyComparator</h2><p>MemTable 既然是有序的, 那么任何操作就需要一个比较器. Memtable 内部定义了一个结构体 <code>struct leveldb::MemTable::KeyComparator</code>, 它封装了 MemTable 的比较逻辑, 具体如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 一个基于 internal_key 的比较器
+</span></span></span><span class=line><span class=cl><span class=c1>// 注意下它的函数调用运算符重载方法的参数类型, 都是 char*, 
+</span></span></span><span class=line><span class=cl><span class=c1>// 原因就是 memtable 底层的 SkipList 的 key 类型就是 char*, 
+</span></span></span><span class=line><span class=cl><span class=c1>// 而类 KeyComparator 对象会被传给 SkipList 作为 key 比较器. 
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>struct</span> <span class=nc>KeyComparator</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>const</span> <span class=n>InternalKeyComparator</span> <span class=n>comparator</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=k>explicit</span> <span class=nf>KeyComparator</span><span class=p>(</span><span class=k>const</span> <span class=n>InternalKeyComparator</span><span class=o>&amp;</span> <span class=n>c</span><span class=p>)</span> <span class=o>:</span> <span class=n>comparator</span><span class=p>(</span><span class=n>c</span><span class=p>)</span> <span class=p>{</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 注意, 这个操作符重载方法很关键, 该方法的会先从 char* 类型地址
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 获取 internal_key, 然后对 internal_key 进行比较. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 该方法未在 memtable 直接调用, 而是被底层的 SkipList 使用了.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=nf>operator</span><span class=p>()(</span><span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>a</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>b</span><span class=p>)</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></td></tr></table></div></div><p>该结构体除了在 <code>MemTable::Get()</code> 直接使用比较 user key 以外, 还会被用于构造 SkipList 实例.</p><p>其中函数调用运算符的定义如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=n>MemTable</span><span class=o>::</span><span class=n>KeyComparator</span><span class=o>::</span><span class=k>operator</span><span class=p>()(</span><span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>aptr</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>bptr</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 提取数据项的前半部分, 即 internal_key
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Slice</span> <span class=n>a</span> <span class=o>=</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>aptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>Slice</span> <span class=n>b</span> <span class=o>=</span> <span class=n>GetLengthPrefixedSlice</span><span class=p>(</span><span class=n>bptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 对 internal_key 进行比较
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>return</span> <span class=n>comparator</span><span class=p>.</span><span class=n>Compare</span><span class=p>(</span><span class=n>a</span><span class=p>,</span> <span class=n>b</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>代码注释中提到的 internal key 在前面章节介绍过了, 不再赘述. 该结构体真正干活的是其封装的 <code>comparator</code>, 它是一个 <code>class leveldb::InternalKeyComparator</code> 实例, 比较器很重要的有两点:</p><ul><li><ol><li>它有一个唯一的名字, 非后向兼容的比较器如果重名则会导致数据库混乱. 毕竟 leveldb 是有序数据库, 顺序至关重要, 一旦被破坏就会混乱.</li></ol></li><li><ol start=2><li>核心是 <code>Compare</code> 方法, 它决定了什么叫做顺序. <code>InternalKeyComparator</code> 用于比较 internal key, 而 internal key 包含 user key, 而 user key 是用户自己定义的所以比较器也由用户提供. 如果用户不提供, 则采用默认(见 <code>leveldb::Options::Options()</code> 定义)的 <code>class leveldb::&lt;unnamed>::BytewiseComparatorImpl</code>, 它是一个基于字典序进行逐字节比较的内置 comparator 实现. <code>InternalKeyComparator</code> 比较时采用如下处理:</li></ol><ul><li>如果 user_key 相等, 则序列号越小 internal_key 越大;</li><li>如果序列号也相等, 则操作类型(更新/删除)越小 internal_key 越大(因为 leveldb 可以确保序列号单调递增且唯一, 所以实际上用不到该字段).</li></ul></li></ul><h2 id=5-memtable-内存管理之-arena class=headerLink><a href=#5-memtable-%e5%86%85%e5%ad%98%e7%ae%a1%e7%90%86%e4%b9%8b-arena class=header-mark></a>5 MemTable 内存管理之 Arena</h2><p>Leveldb 专门为了管理内存定义了一个类 <code>class leveldb::Arena</code>, 可以把该类看作是 leveldb 的内存池实现, 但是它只负责对完分配, 并不会做回收重利用. 默认情况下, <code>Arena</code> 维护的内存块都是 4KB 大小.</p><p>注意, 同 <code>MemTable</code> 类一样, <code>Arena</code> 类全部操作需要调用者确保线程安全.</p><p>该类核心字段如下:</p><table><thead><tr><th style=text-align:center>字段</th><th style=text-align:center>类型</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>alloc_ptr_</td><td style=text-align:center>char*</td><td style=text-align:center>指向 arena 当前空闲字节起始地址</td></tr><tr><td style=text-align:center>alloc_bytes_remaining_</td><td style=text-align:center>size_t</td><td style=text-align:center>arena 当前空闲字节数</td></tr><tr><td style=text-align:center>blocks_</td><td style=text-align:center>std::vector&lt;char*></td><td style=text-align:center>存放通过 new[] 分配的全部内存块</td></tr><tr><td style=text-align:center>memory_usage_</td><td style=text-align:center>port::AtomicPointer</td><td style=text-align:center>arena 持有的全部内存字节数</td></tr></tbody></table><p>同 <code>MemTable</code>, <code>Arena</code> 也不支持拷贝构造和赋值构造.</p><p>该类核心方法如下:</p><table><thead><tr><th style=text-align:center>方法</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>Arena()</td><td style=text-align:center>默认构造方法, 无任何限制.</td></tr><tr><td style=text-align:center>char* Allocate(size_t bytes)</td><td style=text-align:center>从该 arena 返回一个指向大小为 bytes 的内存的指针. bytes 必须大于 0, 具体见实现.</td></tr><tr><td style=text-align:center>char* AllocateAligned(size_t bytes)</td><td style=text-align:center>返回一个对齐后的可用内存的地址. 具体对齐逻辑见实现.</td></tr><tr><td style=text-align:center>size_t MemoryUsage() const</td><td style=text-align:center>返回该 arena 持有的全部内存的字节数的估计值(未采用同步设施).</td></tr><tr><td style=text-align:center>size_t MemoryUsage() const</td><td style=text-align:center>返回该 arena 持有的全部内存的字节数的估计值(未采用同步设施).</td></tr></tbody></table><h3 id=51-如何向-arena-申请指定大小的内存 class=headerLink><a href=#51-%e5%a6%82%e4%bd%95%e5%90%91-arena-%e7%94%b3%e8%af%b7%e6%8c%87%e5%ae%9a%e5%a4%a7%e5%b0%8f%e7%9a%84%e5%86%85%e5%ad%98 class=header-mark></a>5.1 如何向 Arena 申请指定大小的内存</h3><p>可以通过方法 <code>Arena::Allocate</code> 申请指定大小的内存, 该方法会被 memtable 的 <code>Add()</code> 方法直接调用. 如果当前 <code>Arena</code> 内存池剩余内存足够则直接分配, 否则向操作系统进行申请.</p><p>具体处理流程如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kr>inline</span> <span class=kt>char</span><span class=o>*</span> <span class=n>Arena</span><span class=o>::</span><span class=n>Allocate</span><span class=p>(</span><span class=n>size_t</span> <span class=n>bytes</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果我们允许分配 0 字节内存, 那该方法返回什么的语义就有点乱, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 所以我们不允许返回 0 字节(我们内部也没这个需求). 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>assert</span><span class=p>(</span><span class=n>bytes</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// arena 剩余内存够则直接分配
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>bytes</span> <span class=o>&lt;=</span> <span class=n>alloc_bytes_remaining_</span><span class=p>)</span> <span class=p>{</span> 
+</span></span><span class=line><span class=cl>    <span class=kt>char</span><span class=o>*</span> <span class=n>result</span> <span class=o>=</span> <span class=n>alloc_ptr_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>alloc_ptr_</span> <span class=o>+=</span> <span class=n>bytes</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>alloc_bytes_remaining_</span> <span class=o>-=</span> <span class=n>bytes</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// arena 可用内存不能满足用户需求, 向系统申请新内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>return</span> <span class=nf>AllocateFallback</span><span class=p>(</span><span class=n>bytes</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上面的 <code>AllocateFallback()</code> 根据用户需求决定向系统申请的内存大小, 具体处理如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 当 arena 可用内存不够时调用该方法来申请新内存
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>char</span><span class=o>*</span> <span class=n>Arena</span><span class=o>::</span><span class=n>AllocateFallback</span><span class=p>(</span><span class=n>size_t</span> <span class=n>bytes</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果用户要申请的内存超过默认内存块大小(4KB)的 1/4, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 则单独按照用户指定大小分配一个内存块, 否则单独分配一个默认
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 大小(4KB)的内存块给用户会造成太多空间浪费. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 新分配的内存块会被加入 arena 然后将其起始地址返回给用户,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 所分配的内存不会纳入 Arena 管理, 但是占用空间会被纳入计数. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>bytes</span> <span class=o>&gt;</span> <span class=n>kBlockSize</span> <span class=o>/</span> <span class=mi>4</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span><span class=o>*</span> <span class=n>result</span> <span class=o>=</span> <span class=n>AllocateNewBlock</span><span class=p>(</span><span class=n>bytes</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 直接分配一个默认大小内存块给用户, 此处所分配
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 内存会被纳入 Arena 管理, 等待用户后续内存申请.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// alloc_ptr_ 被覆盖之前指向的空间被浪费了.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>alloc_ptr_</span> <span class=o>=</span> <span class=n>AllocateNewBlock</span><span class=p>(</span><span class=n>kBlockSize</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>alloc_bytes_remaining_</span> <span class=o>=</span> <span class=n>kBlockSize</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// result 是返回给用户的
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>char</span><span class=o>*</span> <span class=n>result</span> <span class=o>=</span> <span class=n>alloc_ptr_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 移动 alloc_ptr_ 指向未被占用内存
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>alloc_ptr_</span> <span class=o>+=</span> <span class=n>bytes</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>alloc_bytes_remaining_</span> <span class=o>-=</span> <span class=n>bytes</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上述处理中还涉及一个辅助方法 <code>AllocateNewBlock</code>, 它负责向系统申请固定大小内存并将其纳入 Arena 管理.</p><p>具体处理如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 分配一个大小为 block_bytes 的块并将其加入到 arena
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>char</span><span class=o>*</span> <span class=n>Arena</span><span class=o>::</span><span class=n>AllocateNewBlock</span><span class=p>(</span><span class=n>size_t</span> <span class=n>block_bytes</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>char</span><span class=o>*</span> <span class=n>result</span> <span class=o>=</span> <span class=k>new</span> <span class=kt>char</span><span class=p>[</span><span class=n>block_bytes</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>  <span class=n>blocks_</span><span class=p>.</span><span class=n>push_back</span><span class=p>(</span><span class=n>result</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 调用者确保线程安全, 这里无需强制同步.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>memory_usage_</span><span class=p>.</span><span class=n>NoBarrier_Store</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>      <span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=kt>void</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>MemoryUsage</span><span class=p>()</span> <span class=o>+</span> <span class=n>block_bytes</span> <span class=o>+</span> <span class=k>sizeof</span><span class=p>(</span><span class=kt>char</span><span class=o>*</span><span class=p>)));</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h3 id=52-如何向-arena-申请对齐后的内存 class=headerLink><a href=#52-%e5%a6%82%e4%bd%95%e5%90%91-arena-%e7%94%b3%e8%af%b7%e5%af%b9%e9%bd%90%e5%90%8e%e7%9a%84%e5%86%85%e5%ad%98 class=header-mark></a>5.2 如何向 Arena 申请对齐后的内存</h3><p>除了上面提到的 <code>Arena::Allocate(size_t bytes)</code> 方法, Arena 还提供另一个内存分配方法, 它支持按照特定字节大小将所分配的内存进行对齐, 它的签名为 <code>char* Arena::AllocateAligned(size_t bytes)</code>, 该方法没有被 memtable 代码直接调用, 而是由其底层依赖的 SkipList 所使用. 后面分析 SkipList 代码时还会再次说明.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 按照 8 字节或者指针长度进行内存对齐, 然后返回对齐后分配的内存起始地址
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>char</span><span class=o>*</span> <span class=n>Arena</span><span class=o>::</span><span class=n>AllocateAligned</span><span class=p>(</span><span class=n>size_t</span> <span class=n>bytes</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果机器指针的对齐方式超过 8 字节则按照指针的对齐方式进行对齐; 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 否则按照 8 字节进行对齐. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>const</span> <span class=kt>int</span> <span class=n>align</span> <span class=o>=</span> <span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=kt>void</span><span class=o>*</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>8</span><span class=p>)</span> <span class=o>?</span> <span class=k>sizeof</span><span class=p>(</span><span class=kt>void</span><span class=o>*</span><span class=p>)</span> <span class=o>:</span> <span class=mi>8</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 确保当按照指针大小对齐时, 机器的指针大小是 2 的幂
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>assert</span><span class=p>((</span><span class=n>align</span> <span class=o>&amp;</span> <span class=p>(</span><span class=n>align</span><span class=o>-</span><span class=mi>1</span><span class=p>))</span> <span class=o>==</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 求 alloc_ptr 与 align 的模运算的结果, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 以确认 alloc_ptr 是否恰好为 align 的整数倍. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>size_t</span> <span class=n>current_mod</span> <span class=o>=</span> <span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=n>uintptr_t</span><span class=o>&gt;</span><span class=p>(</span><span class=n>alloc_ptr_</span><span class=p>)</span> <span class=o>&amp;</span> <span class=p>(</span><span class=n>align</span><span class=o>-</span><span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果 alloc_ptr 的值恰好为 align 整数倍, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 则已经满足对齐要求, 可以从该地址直接进行分配; 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 否则, 需要进行手工对齐, 比如 align 为 8, alloc_ptr 等于 15, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 则需要将 alloc_ptr 增加 align - current_mod = 8 - 7 = 1 个字节. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>size_t</span> <span class=n>slop</span> <span class=o>=</span> <span class=p>(</span><span class=n>current_mod</span> <span class=o>==</span> <span class=mi>0</span> <span class=o>?</span> <span class=mi>0</span> <span class=o>:</span> <span class=n>align</span> <span class=o>-</span> <span class=n>current_mod</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 虽然用户申请 bytes 个字节, 但是因为对齐要求, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 实际消耗的内存大小为 bytes + slop
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>size_t</span> <span class=n>needed</span> <span class=o>=</span> <span class=n>bytes</span> <span class=o>+</span> <span class=n>slop</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>  <span class=kt>char</span><span class=o>*</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果 arena 空闲内存满足要求则直接分配
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>needed</span> <span class=o>&lt;=</span> <span class=n>alloc_bytes_remaining_</span><span class=p>)</span> <span class=p>{</span> 
+</span></span><span class=line><span class=cl>    <span class=c1>// 将 result 指向对齐后的地址(对齐会导致前 slop 个字节被浪费掉)
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>result</span> <span class=o>=</span> <span class=n>alloc_ptr_</span> <span class=o>+</span> <span class=n>slop</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>    <span class=n>alloc_ptr_</span> <span class=o>+=</span> <span class=n>needed</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>alloc_bytes_remaining_</span> <span class=o>-=</span> <span class=n>needed</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span> 
+</span></span><span class=line><span class=cl>    <span class=c1>// 否则从堆中申请新的内存块, 注意重新分配
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 内存块时 malloc 会保证对齐, 无序再如上做手工对齐.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>result</span> <span class=o>=</span> <span class=n>AllocateFallback</span><span class=p>(</span><span class=n>bytes</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>((</span><span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=n>uintptr_t</span><span class=o>&gt;</span><span class=p>(</span><span class=n>result</span><span class=p>)</span> <span class=o>&amp;</span> <span class=p>(</span><span class=n>align</span><span class=o>-</span><span class=mi>1</span><span class=p>))</span> <span class=o>==</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>result</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=6-memtable-底层存储之-skiplist class=headerLink><a href=#6-memtable-%e5%ba%95%e5%b1%82%e5%ad%98%e5%82%a8%e4%b9%8b-skiplist class=header-mark></a>6 MemTable 底层存储之 SkipList</h2><p>MemTable 是有序的, 为了确保查询和插入迅速, 它采用了 SkipList 作为存储结构.</p><h3 id=61-skiplist-原理简介 class=headerLink><a href=#61-skiplist-%e5%8e%9f%e7%90%86%e7%ae%80%e4%bb%8b class=header-mark></a>6.1 SkipList 原理简介</h3><p>开始之前先大体介绍下 SkipList 这个数据结构. 目前该数据结构在开源项目中用的越来越多代替红黑树等存在, 这里包括 Redis 都用到了该数据结构.</p><p>你在学校可能没学过这个数据结构, 但是你肯定在操作系统课上学过多级页表. SkipList 加速原理跟多级页表差不多, 当然后者如此设计也为了节省存储. 整个内存字节空间分成若干页面, 然后把全部页面分成若干组, 然后把上一步若干组进一步分为多个二级组 &mldr;; 查找时从最外层找起, 从外向里索引粒度逐渐减小, 最后一下子定位到内存空间某个字节位置, 这里虽然没说排序, 但是由于每个字节已经被编码所以其实也是有序的.</p><p>SkipList 与之类似, 每个元素所在节点在一个链表上按序排列, 如果我们把每个节点看作内存空间一个字节位置, 那么接下来我们就要为它们建索引了:</p><ul><li>第 0 级索引就是原始链表, 一个接一个, 共 $n$ 个节点</li><li>第 $1$ 级索引就是在上一级基础上间隔一个选取一个, 这样构成第 $1$ 级索引, 共 $\frac{n}{2}$ 个节点</li><li>第 $2$ 级索引也是在上一级基础设间隔一个取一个, 这样构成第 $2$ 级索引, 共 $\frac{n}{2^2}$ 个节点</li><li>&mldr; &mldr;</li><li>最后从上一级只能提取两个节点了, 这就是最后一级索引了因为没必要再往下分了, 假设共有 h 级, 那么这就是第 h-1 级索引, 该级索引共 $\frac{n}{2^{h-1}}$ 个节点</li></ul><p>我们调过头反着看, 每一层索引节点数都是其上一层索引的 $\frac{1}{2}$, 这不就是个平衡二叉树吗? 总的节点数为 $2n$ 个. 每次查询时, 从最外层索引向里找, 每次在每一层只需查询一次, 最多查询 h 次也就是 $\log_2^{2n} = 1 + \log_2^n \approx \log_2^n$ 即可找到或则确认不存在. 我们把最外层看作最高层, 最里层看作最底层, 则 SkipList 的高度为 h.</p><p>可以看出时间复杂度同平衡二叉树如红黑树是一样的, 只是空间复杂度要多一倍. 那为什么不用红黑树呢, 嘿嘿, 你手写一次就知道了. 那么 SkipList 是如何确保平衡的呢? 方法强大又朴素, 抛硬币, 五五分. 每次插入元素时, 自上而下定位到其插入位置, 在第 $0$ 级插入元素时, 通过抛硬币的办法决定是否将该元素拔擢到第 $1$ 级索引中, 如果拔擢成功则再次抛硬币决定是否将其继续拔擢到第 $2$ 级索引, 以此类推, 除非上一级拔擢成功则继续抛硬币, 否则停止拔擢过程, 索引插入的时间复杂度也是 $\log_2^n$. 删除类似, 从外层到内层, 查找到该元素后, 则从该层开始递进删除每一层中的该元素, 时间复杂度依然是 $\log_2^n$.</p><p>好了, 我们来看看 leveldb 是如何实现 SkipList 的.</p><h3 id=62-skiplist-实现 class=headerLink><a href=#62-skiplist-%e5%ae%9e%e7%8e%b0 class=header-mark></a>6.2 SkipList 实现</h3><p>下面详细说明 SkipList 实现时的细节以及一些辅助的数据结构.</p><h4 id=621-skiplist-核心数据成员 class=headerLink><a href=#621-skiplist-%e6%a0%b8%e5%bf%83%e6%95%b0%e6%8d%ae%e6%88%90%e5%91%98 class=header-mark></a>6.2.1 SkipList 核心数据成员</h4><p>该类核心字段如下:</p><table><thead><tr><th style=text-align:center>字段</th><th style=text-align:center>类型</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>compare_</td><td style=text-align:center>Comparator</td><td style=text-align:center>比较器, 用于比较 key, 初始化以后不可更改</td></tr><tr><td style=text-align:center>arena_</td><td style=text-align:center>Arena*</td><td style=text-align:center>用于分配 Node 所用的内存</td></tr><tr><td style=text-align:center>head_</td><td style=text-align:center>Node*</td><td style=text-align:center>dummy node</td></tr><tr><td style=text-align:center>max_height_</td><td style=text-align:center>port::AtomicPointer</td><td style=text-align:center>指向存储当前 skiplist 最大高度的变量的地址, max_height_ &lt;= kMaxHeight.</td></tr><tr><td style=text-align:center>rnd_</td><td style=text-align:center>Random</td><td style=text-align:center>指向存储当前 skiplist 最大高度的变量的地址, max_height_ &lt;= kMaxHeight.</td></tr></tbody></table><p>同 <code>MemTable</code>, <code>SkipList</code> 也不支持拷贝构造和赋值构造.</p><h4 id=622-skiplist-核心方法 class=headerLink><a href=#622-skiplist-%e6%a0%b8%e5%bf%83%e6%96%b9%e6%b3%95 class=header-mark></a>6.2.2 SkipList 核心方法</h4><p>该类核心方法如下:</p><table><thead><tr><th style=text-align:center>方法</th><th style=text-align:center>用途</th></tr></thead><tbody><tr><td style=text-align:center>explicit SkipList(Comparator cmp, Arena* arena)</td><td style=text-align:center>构造方法, cmp 用于比较 keys, arena 用做内存池.</td></tr><tr><td style=text-align:center>void Insert(const Key& key)</td><td style=text-align:center>将 key 插入到 SkipList 实例中.</td></tr><tr><td style=text-align:center>bool Contains(const Key& key) const</td><td style=text-align:center>当且仅当 sliplist 中存在与 key 相等的数据项时才返回 true.</td></tr></tbody></table><p>线程安全相关说明：</p><ul><li>写操作 <code>Insert</code> 需要外部同步设施, 比如 mutex.</li><li>读操作 <code>Contains</code> 需要一个保证, 即读操作执行期间, SkipList 不能被销毁; 只要保证这一点, 读操作不需要额外的同步措施.</li></ul><p>SkipList 运行不变式：</p><ul><li>(1) 已分配的 nodes 直到 SkipList 被销毁才能被删除. 这很容易保证, 因为我们不会删除任何 SkipList nodes.</li><li>(2) 一个 Node 一旦被链接到 SkipList 上, 那这个 Node 的内容, 除了 next/pre 指针以外, 都是 immutable 的.</li></ul><h5 id=6223-辅助数据结构-node class=headerLink><a href=#6223-%e8%be%85%e5%8a%a9%e6%95%b0%e6%8d%ae%e7%bb%93%e6%9e%84-node class=header-mark></a>6.2.2.3 辅助数据结构 Node</h5><p>SkipList 每个节点由类 <code>template&lt;class Key, class Comparator> struct leveldb::Node&lt;Key, Comparator></code> 表示, 它包含两数据成员:</p><ul><li><code>key</code>, 其实叫 entry 更符合实际. 因为该成员其实不只包含 key, 还包含 value 部分. 但是只要涉及查询, 比较时仅比较前半部分即 internal key.</li><li><code>next_</code>, 默认是一个长度为 1 的 <code>port::AtomicPointer</code> 数组(但是我估计作者们想分配长度为 0 的数组, 但是标准 C/++ 不允许). 这个数组的最大长度取决于当前节点最大要做第几级索引(从 0 开始计数). 一旦确定第几级, 后续调用 <code>leveldb::SkipList&lt;Key, Comparator>::NewNode(const Key &amp;key, int height)</code> 时就能把 Node 的 <code>key</code> 成员和当前数组分配到连续内存中, 这样对缓存友好, 而且释放时可以一次性释放. 如果 <code>next_</code> 是指向数组的指针则要分多次释放了.</li></ul><p>Node 的方法都比较简单, 共四个, 详细注释如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 自带 acquire 语义, 返回该 node 在第 n 级(计数从 0 开始) 索引层的后继节点的指针
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>Node</span><span class=o>*</span> <span class=nf>Next</span><span class=p>(</span><span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>n</span> <span class=o>&gt;=</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 采用 acquire 语义可以确保如下两点:
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// - 当前线程后续针对 next_[n] 节点的读写不会被重排序到此 load 之前;
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// - 其它线程在此 load 之前针对 next_[n] 节点的全部写操作此时均可见.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>return</span> <span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=n>Node</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>next_</span><span class=p>[</span><span class=n>n</span><span class=p>].</span><span class=n>Acquire_Load</span><span class=p>());</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 自带 release 语义, 设置该 node 在第 n 级(计数从 0 开始) 索引层的后继节点
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>void</span> <span class=nf>SetNext</span><span class=p>(</span><span class=kt>int</span> <span class=n>n</span><span class=p>,</span> <span class=n>Node</span><span class=o>*</span> <span class=n>x</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>n</span> <span class=o>&gt;=</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 采用 release 语义可以确保如下两点:
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// - 在此 store 之前, 当前线程针对 next_[n] 节点的读写不会被重排序到此 store 之后;
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// - 在此 store 之后, 其它线程针对 next_[n] 节点的读写看到的都是此 store 写入的值.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>next_</span><span class=p>[</span><span class=n>n</span><span class=p>].</span><span class=n>Release_Store</span><span class=p>(</span><span class=n>x</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 同 Next, 但无同步防护.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>Node</span><span class=o>*</span> <span class=nf>NoBarrier_Next</span><span class=p>(</span><span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>n</span> <span class=o>&gt;=</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=n>Node</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>next_</span><span class=p>[</span><span class=n>n</span><span class=p>].</span><span class=n>NoBarrier_Load</span><span class=p>());</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 同 SetNext, 但无同步防护.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>void</span> <span class=nf>NoBarrier_SetNext</span><span class=p>(</span><span class=kt>int</span> <span class=n>n</span><span class=p>,</span> <span class=n>Node</span><span class=o>*</span> <span class=n>x</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>n</span> <span class=o>&gt;=</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>next_</span><span class=p>[</span><span class=n>n</span><span class=p>].</span><span class=n>NoBarrier_Store</span><span class=p>(</span><span class=n>x</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上面提到的 acquire/release 语义, 将会在本文最后一节做详细介绍, 感兴趣可以阅读.</p><h5 id=6224-用于为新数据分配存储的-newnode-方法 class=headerLink><a href=#6224-%e7%94%a8%e4%ba%8e%e4%b8%ba%e6%96%b0%e6%95%b0%e6%8d%ae%e5%88%86%e9%85%8d%e5%ad%98%e5%82%a8%e7%9a%84-newnode-%e6%96%b9%e6%b3%95 class=header-mark></a>6.2.2.4 用于为新数据分配存储的 NewNode 方法</h5><p>该方法用于为 SkipList 执行 Insert 方法时为所插入数据分配一个节点. 传入的第一个参数为要存储的数据项(虽然它叫 key, 但只有前半截是所谓的 internal key, 后半截是 value size 和 value); 第二个参数是通过 <code>RandomHeight()</code> 方法预先计算的索引层数, 即该节点最多可以做第几级(从 0 开始计数)索引.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>typename</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Node</span><span class=o>*</span>
+</span></span><span class=line><span class=cl><span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>NewNode</span><span class=p>(</span><span class=k>const</span> <span class=n>Key</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span> <span class=kt>int</span> <span class=n>height</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 要分配的空间存储的是用户数据和当前节点在 SkipList 各个索引层的后向指针, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 其中后者是现算出来的.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>char</span><span class=o>*</span> <span class=n>mem</span> <span class=o>=</span> <span class=n>arena_</span><span class=o>-&gt;</span><span class=n>AllocateAligned</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 为啥减 1? 因为 Node.next_ 已默认分配了一项
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>sizeof</span><span class=p>(</span><span class=n>Node</span><span class=p>)</span> <span class=o>+</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>port</span><span class=o>::</span><span class=n>AtomicPointer</span><span class=p>)</span> <span class=o>*</span> <span class=p>(</span><span class=n>height</span> <span class=o>-</span> <span class=mi>1</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 此乃定位 new, 即在 mem 指向内存位置创建 Node 对象
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>return</span> <span class=nf>new</span> <span class=p>(</span><span class=n>mem</span><span class=p>)</span> <span class=n>Node</span><span class=p>(</span><span class=n>key</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这里分配内存用到了我们前面介绍 <code>Arena</code> 类时分析的 <code>AllocateAligned</code> 方法. 该方法针对指针类型做了内存对齐(<code>AtomicPointer</code> 本身仅一个 <code>void*</code> 指针类型数据成员).</p><h5 id=6225-用于确定某个节点索引层数的-randomheight-方法 class=headerLink><a href=#6225-%e7%94%a8%e4%ba%8e%e7%a1%ae%e5%ae%9a%e6%9f%90%e4%b8%aa%e8%8a%82%e7%82%b9%e7%b4%a2%e5%bc%95%e5%b1%82%e6%95%b0%e7%9a%84-randomheight-%e6%96%b9%e6%b3%95 class=header-mark></a>6.2.2.5 用于确定某个节点索引层数的 RandomHeight 方法</h5><p>该方法对应前面讲述 SkipList 原理时如何确定一个节点要被拔擢到最高第几层. 那里说是抛硬币, 五五分. Leveldb 实现 SkipList 时采用更为保守的拔擢策略, 每次递进概率仅为 1/4.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 返回一个高度值, 返回值落于 [1, kMaxHeight], 
+</span></span></span><span class=line><span class=cl><span class=c1>// SkipList 实现默认索引层最多 12 个.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>RandomHeight</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 以 1/kBranching 概率循环递增 height. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 每次拔擢都是在前一次拔擢成功的前提下再进行, 如果前一次失败则停止拔擢. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 假设 kBranching == 4, 则返回 1 概率为 1/4, 返回 2 概率为 1/16, .... 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>static</span> <span class=k>const</span> <span class=kt>unsigned</span> <span class=kt>int</span> <span class=n>kBranching</span> <span class=o>=</span> <span class=mi>4</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 每个节点最少有一层索引(就是原始链表)
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=n>height</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=k>while</span> <span class=p>(</span><span class=n>height</span> <span class=o>&lt;</span> <span class=n>kMaxHeight</span> <span class=o>&amp;&amp;</span> <span class=p>((</span><span class=n>rnd_</span><span class=p>.</span><span class=n>Next</span><span class=p>()</span> <span class=o>%</span> <span class=n>kBranching</span><span class=p>)</span> <span class=o>==</span> <span class=mi>0</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>height</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>height</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>height</span> <span class=o>&lt;=</span> <span class=n>kMaxHeight</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>height</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h5 id=6226-用于插入数据的-insert-方法 class=headerLink><a href=#6226-%e7%94%a8%e4%ba%8e%e6%8f%92%e5%85%a5%e6%95%b0%e6%8d%ae%e7%9a%84-insert-%e6%96%b9%e6%b3%95 class=header-mark></a>6.2.2.6 用于插入数据的 Insert 方法</h5><p>插入过程说起来也比较简单:</p><ol><li>查找待插入数据的前驱节点, 这个是通过从 SkipList 查找第一个不小于待插入数据的节点来做到的.</li><li>确定待插入节点的索引层数, 这个就是随机大法.</li><li>更新 SkipList 当前索引层数最大值</li><li>为待插入数据生成一个新节点</li><li>将新节点插入到前驱和后驱之间, 每一个索引层都要插入一遍.</li></ol><p>具体代码如下:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 该方法非线程安全, 需要外部同步设施. 
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Insert</span><span class=p>(</span><span class=k>const</span> <span class=n>Key</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// pre 将用于存储 key 对应的各个索引层的前驱节点
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Node</span><span class=o>*</span> <span class=n>prev</span><span class=p>[</span><span class=n>kMaxHeight</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 找到第一个大约等于目标 key 的节点, 一会会把 key
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 插到这个节点前面.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 如果为 nullptr 表示当前 SkipList 节点都比 key 小.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Node</span><span class=o>*</span> <span class=n>x</span> <span class=o>=</span> <span class=n>FindGreaterOrEqual</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>prev</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 虽然 x 是我们找到的第一个大于等于目标 key 的节点, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 但是 leveldb 不允许重复插入 key 相等的数据项.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>assert</span><span class=p>(</span><span class=n>x</span> <span class=o>==</span> <span class=k>nullptr</span> <span class=o>||</span> <span class=o>!</span><span class=n>Equal</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>x</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 确定待插入节点的最大索引层数
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=n>height</span> <span class=o>=</span> <span class=n>RandomHeight</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 更新 SkipList 实例维护的最大索引层数
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>height</span> <span class=o>&gt;</span> <span class=n>GetMaxHeight</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果最大索引层数有变, 则当前节点将是索引层数最多的节点,
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 需要将前面求得的待插入节点的前驱节点高度补齐.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=n>GetMaxHeight</span><span class=p>();</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>height</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 新生成了几个 level, key 对应的前驱节点肯定都是 dummy head
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>prev</span><span class=p>[</span><span class=n>i</span><span class=p>]</span> <span class=o>=</span> <span class=n>head_</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>//fprintf(stderr, &#34;Change height from %d to %d\n&#34;, max_height_, height);
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 这里在修改 max_height_ 无需同步, 哪怕同时有多个并发读线程. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 其它并发读线程如果观察到新的 max_height_ 值, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 那它们将会要么看到 dummy head 新的索引层(注意 SkipList 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 初始化时会把 dummy head 的索引高度直接初始化为最大, 默认是 12, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 所以不存在越界问题)的值都为 nullptr, 要么看到的是
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 下面循环将要赋值的新节点 x. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>max_height_</span><span class=p>.</span><span class=n>NoBarrier_Store</span><span class=p>(</span><span class=k>reinterpret_cast</span><span class=o>&lt;</span><span class=kt>void</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>height</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 为待插入数据创建一个新节点
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>x</span> <span class=o>=</span> <span class=n>NewNode</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>height</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 x 插入到每一层前后节点之间, 注意是每一层, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 插入的时候都是先采用 no barrier 方式为 x 后继赋值, 此时 x 还不会被其它线程看到; 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 然后插入一个 barrier, 则上面 no barrier 的修改针对全部线程都可见了(其中也包括
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 了 NewNode 时可能发生的通过 NoBarrier_Store 方式修改的 arena_.memory_usage_), 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 最后修改 x 前驱的后继为自己. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>height</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 注意该循环就下面两步, 而且只有第二步采用了同步设施, 尽管如此,
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 第一步的写操作对其它线程也是可见的. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 这是 Release-Acquire ordering 语义所保证的. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>x</span><span class=o>-&gt;</span><span class=n>NoBarrier_SetNext</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=n>prev</span><span class=p>[</span><span class=n>i</span><span class=p>]</span><span class=o>-&gt;</span><span class=n>NoBarrier_Next</span><span class=p>(</span><span class=n>i</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>    <span class=n>prev</span><span class=p>[</span><span class=n>i</span><span class=p>]</span><span class=o>-&gt;</span><span class=n>SetNext</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=n>x</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h5 id=6226-用于查找数据是否存在的-contains-方法 class=headerLink><a href=#6226-%e7%94%a8%e4%ba%8e%e6%9f%a5%e6%89%be%e6%95%b0%e6%8d%ae%e6%98%af%e5%90%a6%e5%ad%98%e5%9c%a8%e7%9a%84-contains-%e6%96%b9%e6%b3%95 class=header-mark></a>6.2.2.6 用于查找数据是否存在的 Contains 方法</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kt>bool</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Contains</span><span class=p>(</span><span class=k>const</span> <span class=n>Key</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>Node</span><span class=o>*</span> <span class=n>x</span> <span class=o>=</span> <span class=n>FindGreaterOrEqual</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>x</span> <span class=o>!=</span> <span class=k>nullptr</span> <span class=o>&amp;&amp;</span> <span class=n>Equal</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>x</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>很简单有没有? 只需检查 <code>FindGreaterOrEqual</code> 返回的节点包含的 key 是否与目标 key 一致即可确认.</p><h5 id=6227-读写都要依赖的辅助方法-findgreaterorequal class=headerLink><a href=#6227-%e8%af%bb%e5%86%99%e9%83%bd%e8%a6%81%e4%be%9d%e8%b5%96%e7%9a%84%e8%be%85%e5%8a%a9%e6%96%b9%e6%b3%95-findgreaterorequal class=header-mark></a>6.2.2.7 读写都要依赖的辅助方法 FindGreaterOrEqual</h5><p>上面提到的 <code>Insert()</code> 方法和 <code>Contains()</code> 方法都用到了 <code>FindGreaterOrEqual()</code> 方法, 下面马上要介绍的迭代器而用到了该方法. 有必要单独介绍一下.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 返回第一个大于等于目标 key 的 node 的指针; 
+</span></span></span><span class=line><span class=cl><span class=c1>// 返回 nullptr 意味着全部 nodes 的 key 都小于参数 key.
+</span></span></span><span class=line><span class=cl><span class=c1>//
+</span></span></span><span class=line><span class=cl><span class=c1>// 如果想获取目标节点的前驱, 则令参数 pre 非空, 
+</span></span></span><span class=line><span class=cl><span class=c1>// 所找到的 node 所在索引层的前驱节点将被保存到 pre[] 对应层.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>typename</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Node</span><span class=o>*</span> 
+</span></span><span class=line><span class=cl><span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>FindGreaterOrEqual</span><span class=p>(</span><span class=k>const</span> <span class=n>Key</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span> <span class=n>Node</span><span class=o>**</span> <span class=n>prev</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// head_ 为 SkipList 原始数据链表的起始节点,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 该节点不存储用户数据, 仅用作哨兵.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Node</span><span class=o>*</span> <span class=n>x</span> <span class=o>=</span> <span class=n>head_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 每次查找都是从最高索引层开始查找, 只要确认可能存在
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 才会降到下一级更细致索引层继续查找.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 索引层计数从 0 开始, 所以这里减一才是最高层.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=n>level</span> <span class=o>=</span> <span class=n>GetMaxHeight</span><span class=p>()</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>  <span class=k>while</span> <span class=p>(</span><span class=nb>true</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 下面用的 Next 方法是带同步设施的, 其实由于 SkipList 对外开放的操作
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 需要调用者自己提供同步, 所以这里可以直接用 NoBarrier_Next.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>Node</span><span class=o>*</span> <span class=n>next</span> <span class=o>=</span> <span class=n>x</span><span class=o>-&gt;</span><span class=n>Next</span><span class=p>(</span><span class=n>level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>KeyIsAfterNode</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>next</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// key 大于 next, 在该索引层继续向后找
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>x</span> <span class=o>=</span> <span class=n>next</span><span class=p>;</span> 
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// key 可能存在.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>//
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 如果 key 比 SkipList 中每个 node 的 key 都小, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 那么最后返回的 node 为 head_-&gt;Next(0), 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 同时 pre 里面存的都是 dummy head; 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 调用者需要使用返回的 node 与自己持有 key进一步进行对比,
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 以确定是否找到目标节点. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>prev</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=n>prev</span><span class=p>[</span><span class=n>level</span><span class=p>]</span> <span class=o>=</span> <span class=n>x</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>if</span> <span class=p>(</span><span class=n>level</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 就是它！如果 key 比 SkipList 里每个 node 的都大, 则 next 最终为 nullptr.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>return</span> <span class=n>next</span><span class=p>;</span>  
+</span></span><span class=line><span class=cl>      <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 确定目标范围, 但是粒度太粗, 下沉一层继续找
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>level</span><span class=o>--</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h5 id=6228-辅助数据结构-iterator class=headerLink><a href=#6228-%e8%be%85%e5%8a%a9%e6%95%b0%e6%8d%ae%e7%bb%93%e6%9e%84-iterator class=header-mark></a>6.2.2.8 辅助数据结构 Iterator</h5><p>上面讲了好些方法, 怎么没有根据 key 查找 value 的方法呢? 别急, 因为实现这个功能依赖一个新的数据结构 <code>Iterator</code>.</p><p>它包含两个数据成员:</p><ul><li><code>list_</code>, 这是一个 <code>SkipList*</code>, 指向自己要迭代的 SkipList 实例.</li><li><code>node_</code>, 指向目前迭代到的位置, 即 SkipList 上的某个节点.</li></ul><p>要构造一个迭代器, 非常简单, 只需传入一个要迭代的 SkipList 实例, 剩下的交给迭代器:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kr>inline</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Iterator</span><span class=o>::</span><span class=n>Iterator</span><span class=p>(</span><span class=k>const</span> <span class=n>SkipList</span><span class=o>*</span> <span class=n>list</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>list_</span> <span class=o>=</span> <span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>node_</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>下面就是我们之前提到的根据某个 key 查找对应 value 的方法了:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 定位 key &gt;= target 的第一个 node
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kr>inline</span> <span class=kt>void</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Iterator</span><span class=o>::</span><span class=n>Seek</span><span class=p>(</span><span class=k>const</span> <span class=n>Key</span><span class=o>&amp;</span> <span class=n>target</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 我们只是要查找, 后续不做插入, 所以第二个用于存储 target 前驱节点的数组为 nullptr
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>node_</span> <span class=o>=</span> <span class=n>list_</span><span class=o>-&gt;</span><span class=n>FindGreaterOrEqual</span><span class=p>(</span><span class=n>target</span><span class=p>,</span> <span class=k>nullptr</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>实现也非常简单. 查找到的节点保存到迭代器的 <code>node_</code> 成员中.</p><p>说到迭代器不可避免要谈到向后/向前移动:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 将迭代器移动到下个位置. 
+</span></span></span><span class=line><span class=cl><span class=c1>// 要求：当前迭代器有效.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kr>inline</span> <span class=kt>void</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Iterator</span><span class=o>::</span><span class=n>Next</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>assert</span><span class=p>(</span><span class=n>Valid</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 因为 level 0 存的是全部 nodes, 所以迭代整
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 个 skiplist 时只访问 level 0 即可. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>node_</span> <span class=o>=</span> <span class=n>node_</span><span class=o>-&gt;</span><span class=n>Next</span><span class=p>(</span><span class=mi>0</span><span class=p>);</span> 
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 将迭代器倒退一个位置. 
+</span></span></span><span class=line><span class=cl><span class=c1>// 要求：当前迭代器有效.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>template</span><span class=o>&lt;</span><span class=k>typename</span> <span class=n>Key</span><span class=p>,</span> <span class=k>class</span> <span class=nc>Comparator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kr>inline</span> <span class=kt>void</span> <span class=n>SkipList</span><span class=o>&lt;</span><span class=n>Key</span><span class=p>,</span><span class=n>Comparator</span><span class=o>&gt;::</span><span class=n>Iterator</span><span class=o>::</span><span class=n>Prev</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 注意, Node 结构是没有 pre 指针的, 但因为 SkipList nodes 本来
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 就是按序从左到右排列, 所以直接采用二分查找来定位最后一个 key 小于
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 迭代器当前指向的 node 的 key 节点即可. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>assert</span><span class=p>(</span><span class=n>Valid</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>  <span class=n>node_</span> <span class=o>=</span> <span class=n>list_</span><span class=o>-&gt;</span><span class=n>FindLessThan</span><span class=p>(</span><span class=n>node_</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>node_</span> <span class=o>==</span> <span class=n>list_</span><span class=o>-&gt;</span><span class=n>head_</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>node_</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=7-番外-c-的内存排序 class=headerLink><a href=#7-%e7%95%aa%e5%a4%96-c-%e7%9a%84%e5%86%85%e5%ad%98%e6%8e%92%e5%ba%8f class=header-mark></a>7 番外: C++ 的内存排序</h2><p>本节内容主要参考 <a href=https://en.cppreference.com/w/cpp/atomic/memory_order target=_blank rel="noopener noreferrer">cppreference</a>. Leveldb 内部多处用到同步设施, 这一块内容比较多, 后续会单独开辟一片文章介绍 leveldb 的原子类型实现.</p><p><code>std::memory_order</code> 指定了如何围绕原子操作对内存访问（包括常规的、非原子的内存访问）进行排序。当无任何顺序限制的时候, 在多核系统中, 当多个线程同时读写多个变量时, 一个线程观测到的某个值的变化顺序可能与负责写的线程的写顺序不同. 实际上, 甚至多个读线程之间各自观测到的变化顺序也互不相同. 此类情况哪怕在单核系统上也会发生, 因为只要内存模型允许, 编译器会在编译程序时进行指令重排序.</p><p>库中的全部原子操作的默认行为提供了顺序一致的排序(具体见后文). 这可能会造成性能损失, 但是可以给库中的原子操作提供额外的 <code>std::memory_order</code> 参数来指定具体的顺序限制, 除了保障原子性, 编译器和处理器必须执行这类限制确保顺序性.</p><ul><li>memory_order_relaxed<ul><li>Relaxed 操作: 仅保证该操作的原子性, 不会针对其它读写操作施加同步或者顺序限制(此即 Relaxed ordering)</li></ul></li><li>memory_order_consume<ul><li>带有此限制的 load 操作针对受影响内存执行一个 consume 行为: 执行 load 操作的当前线程中后续针对该变量的读写操作不会被重排序到 load 操作之<strong>前</strong>, 从而确保后续读写用的都是最新加载的数据. 其它线程中, 如果先发生过针对同一个原子变量的写操作, 那么在它们 release 该原子变量之前针对该原子变量依赖的其它变量的写操作, 在当前线程 load 该原子变量时也都是可见的. 在大多数平台上, 这仅仅会影响编译器优化(此即 Release-Consume ordering).</li></ul></li><li>memory_order_acquire<ul><li>带有此限制的 load 操作针对受影响内存执行一个 acquire 行为: 执行 load 操作的当前线程中后续依赖该变量的读写操作不会被重排序到该 load 操作之<strong>前</strong>, 从而确保后续读写用的都是最新加载的数据. 其它线程中, 如果先发生过针对同一个原子变量的写操作, 那么在它们 release 该原子变量之前针对其它变量的写操作(<strong>无论该原子变量是否依赖这些变量, 这比 consume 语义更强烈</strong>), 在当前线程 load 该原子变量时都是可见的(此即 Release-Acquire ordering).</li></ul></li><li>memory_order_release<ul><li>带有此限制的 store 操作执行一个 release 行为: 执行 store 操作的当前线程中其它针对该变量的读写操作都不会被重排序到当前 store 操作之<strong>后</strong>, 从而确保之前的读写用的都是本次修改之前的值. 在此 store 之前的针对其它变量的全部写操作对 acquire 该原子变量的其它线程也都是可见的(此即 Release-Acquire ordering), 同时针对该原子变量所依赖的变量的写操作针对 consume 该原子变量的其它线程也都是可见的(此即 Release-Consume ordering).</li></ul></li><li>memory_order_acq_rel<ul><li>带有此限制的 read-modify-write 操作既是一个 acquire 操作也是一个 release 操作. 执行 read-modify-write 操作的当前线程针对同一个变量的其它读写操作不能被重排序到该 store 操作之前或之后. 其它线程中针对该原子变量的写操作在 release 之后针对当前线程的 modify 是可见的, 同理当前线程的 modify 在 release 之后对其它 acquire 该原子变量的其它线程也是可见的.</li></ul></li><li>memory_order_seq_cst<ul><li>带有此限制的 load 操作执行一个 acquire 行为, 带有此限制的 store 操作执行一个 release 行为, 带有此限制的 read-modify-write 操作既执行一个 acquire 行为也执行一个 release 行为, 此外, 该限制确保了一个单一全序, 也就是说, 全部线程观测道德全部修改行为都是一个顺序(此即 Sequentially-consistent ordering). 该限制语义最强.</li></ul></li></ul><p>&ndash;End&ndash;</p></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>更新于 2020-10-01</span></div><div class=post-info-license></div></div><div class=post-info-line><div class=post-info-md><span><a class=link-to-mardown href=/leveldb-annotations-3-memtable/index.md target=_blank rel="noopener noreferrer">阅读原始文档</a></span></div><div class=post-info-share><span><a href=# title="分享到 Twitter" data-sharer=twitter data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现" data-via=haricheung data-hashtags=leveldb,LSM-Tree,db,kv><i class="fab fa-twitter fa-fw"></i></a><a href=# title="分享到 Facebook" data-sharer=facebook data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-hashtag=leveldb><i class="fab fa-facebook-square fa-fw"></i></a><a href=# title="分享到 WhatsApp" data-sharer=whatsapp data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href=# title="分享到 Line" data-sharer=line data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现"><i data-svg-src=/lib/simple-icons/icons/line.min.svg></i></a><a href=# title="分享到 微博" data-sharer=weibo data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现"><i class="fab fa-weibo fa-fw"></i></a><a href=# title="分享到 Myspace" data-sharer=myspace data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现" data-description><i data-svg-src=/lib/simple-icons/icons/myspace.min.svg></i></a><a href=# title="分享到 Blogger" data-sharer=blogger data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现" data-description><i class="fab fa-blogger fa-fw"></i></a><a href=# title="分享到 Evernote" data-sharer=evernote data-url=https://chienlungcheung.github.io/leveldb-annotations-3-memtable/ data-title="Leveldb 源码详解系列之三: MemTable 设计与实现"><i class="fab fa-evernote fa-fw"></i></a></span></div></div></div><div class=post-info-more><section class=post-tags><i class="fas fa-tags fa-fw"></i>&nbsp;<a href=/tags/leveldb/>leveldb</a>,&nbsp;<a href=/tags/lsm-tree/>LSM-Tree</a>,&nbsp;<a href=/tags/db/>db</a>,&nbsp;<a href=/tags/kv/>kv</a></section><section><span><a href=javascript:void(0); onclick=window.history.back()>返回</a></span>&nbsp;|&nbsp;<span><a href=/>主页</a></span></section></div><div class=post-nav><a href=/leveldb-annotations-2-log-read-write/ class=prev rel=prev title="Leveldb 源码详解系列之二: log 读写"><i class="fas fa-angle-left fa-fw"></i>Leveldb 源码详解系列之二: log 读写</a>
+<a href=/gorilla-%E4%B8%80%E4%B8%AA%E5%BF%AB%E9%80%9F-%E5%8F%AF%E6%89%A9%E5%B1%95%E7%9A%84-%E5%86%85%E5%AD%98%E5%BC%8F%E6%97%B6%E5%BA%8F%E6%95%B0%E6%8D%AE%E5%BA%93/ class=next rel=next title="Gorilla: 一个快速, 可扩展的, 内存式时序数据库">Gorilla: 一个快速, 可扩展的, 内存式时序数据库<i class="fas fa-angle-right fa-fw"></i></a></div></div><div id=comments><div id=disqus_thread class=comment></div><noscript>Please enable JavaScript to view the comments powered by <a href=https://disqus.com/?ref_noscript>Disqus</a>.</noscript></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>由 <a href=https://gohugo.io/ target=_blank rel="noopener noreferrer" title="Hugo 0.120.1">Hugo</a> 强力驱动&nbsp;|&nbsp;主题 - <a href=https://github.com/HEIGE-PCloud/DoIt target=_blank rel="noopener noreferrer" title="DoIt 0.3.0"><i class="far fa-edit fa-fw"></i> DoIt</a></div><div class=footer-line><i class="far fa-copyright fa-fw"></i><span itemprop=copyrightYear>2019 - 2023</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank rel="noopener noreferrer">Hari</a></span>&nbsp;|&nbsp;<span class=license><a rel="license external nofollow noopener noreffer" href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></span></div><div class=footer-line></div><div class=footer-line></div></div></footer></div><div id=fixed-buttons><a href=#back-to-top id=back-to-top-button class=fixed-button title=回到顶部><i class="fas fa-arrow-up fa-fw"></i>
+</a><a href=# id=view-comments class=fixed-button title=查看评论><i class="fas fa-comment fa-fw"></i></a></div><div class=assets><link rel=stylesheet href=/lib/katex/katex.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/katex/copy-tex.min.css><noscript><link rel=stylesheet href=/lib/katex/copy-tex.min.css></noscript><script type=text/javascript>window.config={code:{copyTitle:"复制到剪贴板",maxShownLines:10},comment:{},math:{delimiters:[{display:!0,left:"$$",right:"$$"},{display:!0,left:"\\[",right:"\\]"},{display:!1,left:"$",right:"$"},{display:!1,left:"\\(",right:"\\)"}],strict:!1},search:{distance:100,findAllMatches:!1,fuseIndexURL:"/index.json",highlightTag:"em",ignoreFieldNorm:!1,ignoreLocation:!1,isCaseSensitive:!1,location:0,maxResultLength:10,minMatchCharLength:2,noResultsFound:"没有找到结果",snippetLength:50,threshold:.3,type:"fuse",useExtendedSearch:!1},sharerjs:!0,table:{sort:!0}}</script><script type=text/javascript src=https://Chienlung.disqus.com/embed.js defer></script><script type=text/javascript src=/lib/tablesort/tablesort.min.js></script><script type=text/javascript src=/lib/clipboard/clipboard.min.js></script><script type=text/javascript src=/lib/sharer/sharer.min.js></script><script type=text/javascript src=/lib/katex/katex.min.js defer></script><script type=text/javascript src=/lib/katex/auto-render.min.js defer></script><script type=text/javascript src=/lib/katex/copy-tex.min.js defer></script><script type=text/javascript src=/lib/katex/mhchem.min.js defer></script><script type=text/javascript src=/js/katex.min.js defer></script><script type=text/javascript src=/js/theme.min.js defer></script></div></body></html>

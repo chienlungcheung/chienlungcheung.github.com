@@ -1,0 +1,347 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Nacos 的一致性存储解析--Distro 篇 - 二手知识</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3CREWXCLR7"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date),gtag("config","G-3CREWXCLR7")</script><meta name=Description content><meta property="og:title" content="Nacos 的一致性存储解析--Distro 篇"><meta property="og:description" content="作为一个服务发现和配置管理基础设施, 一致性协议可以在集群内保证各类元数据的一致性. Nacos 提供了两个等级的一致性, CP 用于配置管理, AP 用于服务发现."><meta property="og:type" content="article"><meta property="og:url" content="https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/"><meta property="og:image" content="https://chienlungcheung.github.io/logo.png"><meta property="article:section" content="posts"><meta property="article:published_time" content="2022-08-19T21:03:34+00:00"><meta property="article:modified_time" content="2022-08-19T21:03:34+00:00"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://chienlungcheung.github.io/logo.png"><meta name=twitter:title content="Nacos 的一致性存储解析--Distro 篇"><meta name=twitter:description content="作为一个服务发现和配置管理基础设施, 一致性协议可以在集群内保证各类元数据的一致性. Nacos 提供了两个等级的一致性, CP 用于配置管理, AP 用于服务发现."><meta name=twitter:site content="@haricheung"><meta name=application-name content="DoIt"><meta name=apple-mobile-web-app-title content="DoIt"><meta name=theme-color content="#f8f8f8"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=canonical href=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/><link rel=prev href=https://chienlungcheung.github.io/leveldb-annotations-8-versions/><link rel=next href=https://chienlungcheung.github.io/socialization/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/css/color.css><link rel=stylesheet href=/css/style.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/fontawesome-free/all.min.css><noscript><link rel=stylesheet href=/lib/fontawesome-free/all.min.css></noscript><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/animate/animate.min.css><noscript><link rel=stylesheet href=/lib/animate/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Nacos 的一致性存储解析--Distro 篇","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/chienlungcheung.github.io\/consistent-protocol-of-nacos-part-1\/"},"genre":"posts","keywords":"consistent, raft, distro, nacos","wordcount":4717,"url":"https:\/\/chienlungcheung.github.io\/consistent-protocol-of-nacos-part-1\/","datePublished":"2022-08-19T21:03:34+00:00","dateModified":"2022-08-19T21:03:34+00:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"Hari"},"description":""}</script><script src=//instant.page/5.1.1 defer type=module integrity=sha384-MWfCL6g1OTGsbSwfuMHc8+8J2u71/LA8dzlIN3ycajckxuZZmF+DNjdm7O6H3PSq></script></head><body header-desktop=fixed header-mobile=auto><script type=text/javascript>function setTheme(e){document.body.setAttribute("theme",e),document.documentElement.style.setProperty("color-scheme",e==="light"?"light":"dark"),window.theme=e}function saveTheme(e){window.localStorage&&localStorage.setItem("theme",e)}function getMeta(e){const t=document.getElementsByTagName("meta");for(let n=0;n<t.length;n++)if(t[n].getAttribute("name")===e)return t[n];return""}if(window.localStorage&&localStorage.getItem("theme")){let e=localStorage.getItem("theme");e==="light"||e==="dark"||e==="black"?setTheme(e):setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}else"auto"==="light"||"auto"==="dark"||"auto"==="black"?(setTheme("auto"),saveTheme("auto")):(saveTheme("auto"),setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));let metaColors={light:"#f8f8f8",dark:"#252627",black:"#000000"};getMeta("theme-color").content=metaColors[document.body.getAttribute("theme")]</script><div id=back-to-top></div><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><span class="menu-item search" id=search-desktop>
+<input type=text placeholder=搜索文章标题或内容... id=search-input-desktop>
+<a href=# class="search-button search-toggle" id=search-toggle-desktop title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-desktop title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-desktop><i class="fas fa-spinner fa-fw fa-spin"></i>
+</span></span><a href=# class="menu-item theme-select" title=切换主题><i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-desktop title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><div class=search-wrapper><div class="search mobile" id=search-mobile><input type=text placeholder=搜索文章标题或内容... id=search-input-mobile>
+<a href=# class="search-button search-toggle" id=search-toggle-mobile title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-mobile title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-mobile><i class="fas fa-spinner fa-fw fa-spin"></i></span></div><a href=# class=search-cancel id=search-cancel-mobile>取消</a></div><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=# class="menu-item theme-select" title=切换主题>
+<i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-mobile title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>目录</h2><div class=toc-content id=toc-content-auto><nav id=TableOfContents><ul><li><a href=#1-开始之前>1 开始之前</a></li><li><a href=#2-代码布局>2 代码布局</a></li><li><a href=#3-一致性协议接口设计>3 一致性协议接口设计</a><ul><li><a href=#31-ap-级一致性协议-distro>3.1 AP 级一致性协议 distro</a></li><li><a href=#32-cp-级一致性协议>3.2 CP 级一致性协议</a></li></ul></li><li><a href=#4-distro-协议详解>4 Distro 协议详解</a><ul><li><a href=#41-distro-存储设计>4.1 Distro 存储设计</a></li><li><a href=#42-distro-一致性设计>4.2 Distro 一致性设计</a><ul><li><a href=#421-distro-节点之间直接交互变更数据实现一致性>4.2.1 Distro 节点之间直接交互变更数据实现一致性</a></li><li><a href=#422-distro-节点之间通过校验和实现数据一致>4.2.2 Distro 节点之间通过校验和实现数据一致</a></li><li><a href=#423-nacos-如何将服务变更告知客户端>4.2.3 Nacos 如何将服务变更告知客户端</a></li></ul></li><li><a href=#43-distro-集群节点上下线设计>4.3 Distro 集群节点上下线设计</a></li><li><a href=#44-distro-用于服务发现-客户端是如何与-nacos-进行交互的>4.4 Distro 用于服务发现, 客户端是如何与 nacos 进行交互的</a></li></ul></li><li><a href=#5-总结>5 总结</a></li></ul></nav></div></div><script>document.getElementsByTagName("main")[0].setAttribute("autoTOC","true")</script><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Nacos 的一致性存储解析--Distro 篇</h1><div class=post-meta><div class=post-meta-line><span class=post-author><i class="author fas fa-user-circle fa-fw"></i><a href=/ title=Author rel=author class=author>Hari</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime=2022-08-19>2022-08-19</time>&nbsp;<i class="far fa-edit fa-fw"></i>&nbsp;<time datetime=2022-08-19>2022-08-19</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 4717 字&nbsp;
+<i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 10 分钟&nbsp;</div></div><div class="details toc" id=toc-static kept><div class="details-summary toc-title"><span>目录</span>
+<span><i class="details-icon fas fa-angle-right"></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#1-开始之前>1 开始之前</a></li><li><a href=#2-代码布局>2 代码布局</a></li><li><a href=#3-一致性协议接口设计>3 一致性协议接口设计</a><ul><li><a href=#31-ap-级一致性协议-distro>3.1 AP 级一致性协议 distro</a></li><li><a href=#32-cp-级一致性协议>3.2 CP 级一致性协议</a></li></ul></li><li><a href=#4-distro-协议详解>4 Distro 协议详解</a><ul><li><a href=#41-distro-存储设计>4.1 Distro 存储设计</a></li><li><a href=#42-distro-一致性设计>4.2 Distro 一致性设计</a><ul><li><a href=#421-distro-节点之间直接交互变更数据实现一致性>4.2.1 Distro 节点之间直接交互变更数据实现一致性</a></li><li><a href=#422-distro-节点之间通过校验和实现数据一致>4.2.2 Distro 节点之间通过校验和实现数据一致</a></li><li><a href=#423-nacos-如何将服务变更告知客户端>4.2.3 Nacos 如何将服务变更告知客户端</a></li></ul></li><li><a href=#43-distro-集群节点上下线设计>4.3 Distro 集群节点上下线设计</a></li><li><a href=#44-distro-用于服务发现-客户端是如何与-nacos-进行交互的>4.4 Distro 用于服务发现, 客户端是如何与 nacos 进行交互的</a></li></ul></li><li><a href=#5-总结>5 总结</a></li></ul></nav></div></div><div class=content id=content><p>作为一个服务发现和配置管理基础设施, 一致性协议可以在集群内保证各类元数据的一致性. Nacos 提供了两个等级的一致性, CP 用于配置管理, AP 用于服务发现. 该系列分析基于源码 1.1.3 版本. 从 1.1.4 开始用 JRaft 替换了原生的 private-raft, 但我只对后者感兴趣所以延续使用 1.1.3 版本代码进行分析.</p><p><strong>文章里涉及代码不多, 主要解释原理, 如果看注释可以<a href=https://github.com/chienlungcheung/nacos-with-annotation target=_blank rel="noopener noreferrer">点这里</a>.</strong></p><h2 id=1-开始之前 class=headerLink><a href=#1-%e5%bc%80%e5%a7%8b%e4%b9%8b%e5%89%8d class=header-mark></a>1 开始之前</h2><p>在详细描述协议之前, 我们可以试想下, 如果我们自己设计一套一致性存储, 应该怎么来设计?</p><ol><li>首先就是存储, 要支持以下几个操作</li></ol><ul><li>增-put</li><li>删-remove</li><li>改(覆盖)-put</li><li>查-get</li></ul><ol start=2><li>其次是一致性</li></ol><p>要在涉及变更时通知其它存储节点, 这个特性是修饰. 而通知根据一致性等级分为两种:</p><ul><li>同步通知, 强一致性, 变更操作和通知逻辑耦合在一起;</li><li>异步通知, 最终一致性, 变更时发起后台通知, 确保最终一致.</li></ul><p>类似地, 如何接收其它存储节点的通知也分为两种:</p><ul><li>被动式, 开一个接口等着其它节点推送变更通知过来;</li><li>主动式, 定期轮询其它节点的接口查询变更.</li></ul><ol start=3><li>最后一个问题, 一致性集群本身节点上下线如何处理</li></ol><ul><li>主动式: 基于配置, 每个节点定期扫配置, 发现有节点上下线则更新本地维护列表.</li><li>被动式: 啥也不管, 开放一个专门接口, 如果有节点上线自动 ping 一下收到就更新列表; 针对维护的列表, 自己定时 ping 一下对端同样接口, 根据是否响应判断存活.</li></ul><p>以上几个问题贯穿接下来的系列文章.</p><p>好, 我们来看看 Nacos 是怎么做的.</p><h2 id=2-代码布局 class=headerLink><a href=#2-%e4%bb%a3%e7%a0%81%e5%b8%83%e5%b1%80 class=header-mark></a>2 代码布局</h2><p>我们先看看确保一致性的代码位于何处. 如下图所示</p><p><figure><a class=lightgallery href=../images/consistent-protocol-of-nacos/code-architecture.png title=代码架构 data-thumbnail=../images/consistent-protocol-of-nacos/code-architecture.png><img loading=lazy src=../images/consistent-protocol-of-nacos/code-architecture.png srcset="../images/consistent-protocol-of-nacos/code-architecture.png, ../images/consistent-protocol-of-nacos/code-architecture.png 1.5x, ../images/consistent-protocol-of-nacos/code-architecture.png 2x" sizes=auto alt=../images/consistent-protocol-of-nacos/code-architecture.png></a></figure></p><p>Nacos 一致性协议代码整体位于 <code>com.alibaba.nacos.naming.consistency</code> 这个包下面. 其中 <code>ephemeral</code> 包下的 <code>distro</code> 协议是 AP 级别的一致性, 用于服务发现; <code>persistent</code> 包下的 <code>raft</code> 协议是 CP 级别的一致性, 用于配置管理.</p><h2 id=3-一致性协议接口设计 class=headerLink><a href=#3-%e4%b8%80%e8%87%b4%e6%80%a7%e5%8d%8f%e8%ae%ae%e6%8e%a5%e5%8f%a3%e8%ae%be%e8%ae%a1 class=header-mark></a>3 一致性协议接口设计</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 与实现无关的一致性服务接口，将一致性协议实现与业务逻辑解耦，
+</span></span></span><span class=line><span class=cl><span class=cm> * 用户也可以自己定义一套一致性协议实现, 只要提供这里要求的接口即可.
+</span></span></span><span class=line><span class=cl><span class=cm> */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>interface</span> <span class=nc>ConsistencyService</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 将一对 &lt;key, value&gt; 写入 Nacos 集群
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>void</span><span class=w> </span><span class=nf>put</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>Record</span><span class=w> </span><span class=n>value</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>NacosException</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 根据 key 从 Nacos 集群移除相关数据
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>void</span><span class=w> </span><span class=nf>remove</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>NacosException</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 根据 {@code key} 从 Nacos 集群查询相关数据
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>Datum</span><span class=w> </span><span class=nf>get</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>NacosException</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 为与 key 对应的数据新增一个监听器，以监听 Nacos 集群中相关数据的变化
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>void</span><span class=w> </span><span class=nf>listen</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>RecordListener</span><span class=w> </span><span class=n>listener</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>NacosException</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 从与 key 对应的数据的监听器列表中移除指定的监听器
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>void</span><span class=w> </span><span class=nf>unlisten</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>RecordListener</span><span class=w> </span><span class=n>listener</span><span class=p>)</span><span class=w> </span><span class=kd>throws</span><span class=w> </span><span class=n>NacosException</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>     * 检查该一致性服务是否可用
+</span></span></span><span class=line><span class=cl><span class=cm>     */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>boolean</span><span class=w> </span><span class=nf>isAvailable</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h3 id=31-ap-级一致性协议-distro class=headerLink><a href=#31-ap-%e7%ba%a7%e4%b8%80%e8%87%b4%e6%80%a7%e5%8d%8f%e8%ae%ae-distro class=header-mark></a>3.1 AP 级一致性协议 distro</h3><p>该级别协议用于服务发现, 服务发现典型的要求被发现的服务节点要和 nacos 保持连接, 所以都是 ephemeral 的.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 专用于临时(ephemeral)数据的一致性协议.
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 这个协议服务的数据不要求存在磁盘或数据库里, 因为临时数据会与 server
+</span></span></span><span class=line><span class=cl><span class=cm> * 保持一个 session, 只要 session 还活着, 临时数据就不会丢.
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 该协议要求写操作要总是成功, 即使发生了网络分区, 也就是说这个协议
+</span></span></span><span class=line><span class=cl><span class=cm> * 是 AP 级别的一致性. 当网络恢复的时候, 数据和每个分区被合并为一个集合,
+</span></span></span><span class=line><span class=cl><span class=cm> * 所以整个集群达成最终一致.
+</span></span></span><span class=line><span class=cl><span class=cm> */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>interface</span> <span class=nc>EphemeralConsistencyService</span><span class=w> </span><span class=kd>extends</span><span class=w> </span><span class=n>ConsistencyService</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h3 id=32-cp-级一致性协议 class=headerLink><a href=#32-cp-%e7%ba%a7%e4%b8%80%e8%87%b4%e6%80%a7%e5%8d%8f%e8%ae%ae class=header-mark></a>3.2 CP 级一致性协议</h3><p>该级别协议用于配置管理, 配置需要落盘和重复使用, 而且各个 reader 看到的要一样否则可能导致业务出现重大问题, 所以要确保严格一致.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 实现该接口的都能保证 CP 级别一致性, 这意味着:
+</span></span></span><span class=line><span class=cl><span class=cm> * 一旦写操作的响应为成功, 相关数据就被保证成功写入了集群, 而且,
+</span></span></span><span class=line><span class=cl><span class=cm> * 协议保证数据在各个 server 之间是一致的.
+</span></span></span><span class=line><span class=cl><span class=cm> */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kd>interface</span> <span class=nc>PersistentConsistencyService</span><span class=w> </span><span class=kd>extends</span><span class=w> </span><span class=n>ConsistencyService</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>CP 级协议分析本篇不着墨.</p><p>上面代码中只涉及了通用接口, 确切地说只是跟存储有关的接口, 与一致性相关的通通没有涉及. 这与文章开头我们分析“一致性存储”设计的时候提到的两个属性的优先级一致.</p><h2 id=4-distro-协议详解 class=headerLink><a href=#4-distro-%e5%8d%8f%e8%ae%ae%e8%af%a6%e8%a7%a3 class=header-mark></a>4 Distro 协议详解</h2><p>Distro 协议用于服务发现, 接下来我会从这几个维度进行解析:</p><ul><li>存储设计</li><li>一致性设计</li><li>Distro 集群节点上下线设计</li><li>服务发现交互设计</li></ul><p>那 Distro 到底是啥意思?</p><p>Distro 协议用于服务发现, 当大量服务存在的时候, 相应的也会有大量的服务实例, 此时就要在 nacos 集群做分工, 每个 nacos 节点负责一组服务, 主要工作一为健康检查, 二为定期同步自己维护部分的数据校验和给其它 nacos 节点同时响应其它 nacos 节点拉取自己负责部分数据的工作.</p><p>Distro 协议(其实叫 Partition 协议)会将服务分组, 每个 Nacos 节点负责一组服务对应的实例健康检查.</p><p>上述分组的逻辑为:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kt>boolean</span><span class=w> </span><span class=nf>responsible</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>serviceName</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 获取当前 nacos 节点索引</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>int</span><span class=w> </span><span class=n>index</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>healthyList</span><span class=p>.</span><span class=na>indexOf</span><span class=p>(</span><span class=n>NetUtils</span><span class=p>.</span><span class=na>localServer</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>int</span><span class=w> </span><span class=n>lastIndex</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>healthyList</span><span class=p>.</span><span class=na>lastIndexOf</span><span class=p>(</span><span class=n>NetUtils</span><span class=p>.</span><span class=na>localServer</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>lastIndex</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>0</span><span class=w> </span><span class=o>||</span><span class=w> </span><span class=n>index</span><span class=w> </span><span class=o>&lt;</span><span class=w> </span><span class=n>0</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>return</span><span class=w> </span><span class=kc>true</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 计算 serviceName 的哈希值以及谁应该负责维护它</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kt>int</span><span class=w> </span><span class=n>target</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>distroHash</span><span class=p>(</span><span class=n>serviceName</span><span class=p>)</span><span class=w> </span><span class=o>%</span><span class=w> </span><span class=n>healthyList</span><span class=p>.</span><span class=na>size</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 如果 target 与 index 一样, 则当前 nacos 节点负责维护该 service.</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>return</span><span class=w> </span><span class=n>target</span><span class=w> </span><span class=o>&gt;=</span><span class=w> </span><span class=n>index</span><span class=w> </span><span class=o>&amp;&amp;</span><span class=w> </span><span class=n>target</span><span class=w> </span><span class=o>&lt;=</span><span class=w> </span><span class=n>lastIndex</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>Nacos 的健康检查和心跳检测是一套很完整也略微复杂的子系统, 回头细讲.</p><h3 id=41-distro-存储设计 class=headerLink><a href=#41-distro-%e5%ad%98%e5%82%a8%e8%ae%be%e8%ae%a1 class=header-mark></a>4.1 Distro 存储设计</h3><p>存储相关的增删改查与我们设想一致.</p><ol><li>增</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>  * 写入数据, 以 Distro 协议进行一致性保证. 
+</span></span></span><span class=line><span class=cl><span class=cm>  * 用户要确保 key 全局唯一, 否则会被覆盖.
+</span></span></span><span class=line><span class=cl><span class=cm>  */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>put</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>Record</span><span class=w> </span><span class=n>value</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>onPut</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>value</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 数据有更新, 启动一个数据同步任务, 当前 nacos 节点会</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 将本次变更主动同步给其它 nacos 节点.</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>taskDispatcher</span><span class=p>.</span><span class=na>addTask</span><span class=p>(</span><span class=n>key</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><ol start=2><li>删</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>  * 移除数据, Distro 负责善后.
+</span></span></span><span class=line><span class=cl><span class=cm>  */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>remove</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>onRemove</span><span class=p>(</span><span class=n>key</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>listeners</span><span class=p>.</span><span class=na>remove</span><span class=p>(</span><span class=n>key</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><ol start=3><li>改</li></ol><p>同增.</p><ol start=4><li>查</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm>  * 查询数据, 因为底层存储就是并发 map, 线程安全也能确保一致性.
+</span></span></span><span class=line><span class=cl><span class=cm>  */</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=n>Datum</span><span class=w> </span><span class=nf>get</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=k>return</span><span class=w> </span><span class=n>dataStore</span><span class=p>.</span><span class=na>get</span><span class=p>(</span><span class=n>key</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>作为几个操作核心底层的 <code>dataStore</code> 就是一个并发 map, 是的, 如前所述, Distro 协议数据保存在内存中, 不做持久化.</p><p>下面来看看一致性通知是怎么实现的.</p><h3 id=42-distro-一致性设计 class=headerLink><a href=#42-distro-%e4%b8%80%e8%87%b4%e6%80%a7%e8%ae%be%e8%ae%a1 class=header-mark></a>4.2 Distro 一致性设计</h3><p>这部分要思考三个问题:</p><ul><li>一个 Nacos 节点数据发生变更时如何通知其它节点实现一致性?</li><li>一个 Nacos 节点如何感知其它节点的变更?</li><li>Nacos 节点数据变更后如何告知客户端?</li></ul><p>前两个问题其实是一个问题, 也就是通知的<strong>发</strong>与<strong>收</strong>.</p><h4 id=421-distro-节点之间直接交互变更数据实现一致性 class=headerLink><a href=#421-distro-%e8%8a%82%e7%82%b9%e4%b9%8b%e9%97%b4%e7%9b%b4%e6%8e%a5%e4%ba%a4%e4%ba%92%e5%8f%98%e6%9b%b4%e6%95%b0%e6%8d%ae%e5%ae%9e%e7%8e%b0%e4%b8%80%e8%87%b4%e6%80%a7 class=header-mark></a>4.2.1 Distro 节点之间直接交互变更数据实现一致性</h4><p>我们直接看看变更方法 <code>put</code> 里发生的事情:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>put</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>Record</span><span class=w> </span><span class=n>value</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>onPut</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>value</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 数据有更新, 启动一个数据同步任务, 当前 nacos 节点会</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=c1>// 将本次变更主动同步给其它 nacos 节点.</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=n>taskDispatcher</span><span class=p>.</span><span class=na>addTask</span><span class=p>(</span><span class=n>key</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>这段代码逻辑很简单, 直接回答了上面提到的第一个问题: <strong>主动发通知, 而且是异步网络通知</strong>. (具体发送见 <code>TaskDispatcher::addTask()</code>.)</p><p>回答了第一个问题, 第二个就呼之欲出了. 在节点主动发通知时, 目的 endpoint 为 <code>/distro/datum</code>, 我们在代码中搜索响应这个 endpoint 的代码, 其位于 <code>com.alibaba.nacos.naming.controllers.DistroController::onSyncDatum()</code>.</p><p>所以第二个问题的答案就是: <strong>Nacos 通过 <code>DistroController</code> 对外发布的 <code>/distro/datum</code> 接收其它节点发来的变更通知</strong>. 接收到数据后会调用下述代码更新本地数据以实现与发送端数据的一致性:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onPut</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>Record</span><span class=w> </span><span class=n>value</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>KeyBuilder</span><span class=p>.</span><span class=na>matchEphemeralInstanceListKey</span><span class=p>(</span><span class=n>key</span><span class=p>))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>Datum</span><span class=o>&lt;</span><span class=n>Instances</span><span class=o>&gt;</span><span class=w> </span><span class=n>datum</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>Datum</span><span class=o>&lt;&gt;</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>value</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=p>(</span><span class=n>Instances</span><span class=p>)</span><span class=w> </span><span class=n>value</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>key</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>key</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=c1>// 推动时钟前进</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>timestamp</span><span class=p>.</span><span class=na>incrementAndGet</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=c1>// 放入当前 nacos 节点存储</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>dataStore</span><span class=p>.</span><span class=na>put</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>datum</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=c1>// 如果没有监听器对该 key 感兴趣则不做通知</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=o>!</span><span class=n>listeners</span><span class=p>.</span><span class=na>containsKey</span><span class=p>(</span><span class=n>key</span><span class=p>))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=k>return</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=c1>// 发通知, key 对应数据有变更</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=n>notifier</span><span class=p>.</span><span class=na>addTask</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>ApplyAction</span><span class=p>.</span><span class=na>CHANGE</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p><code>onPut</code> 方法将变更写入本地存储, 注意, 由于数据就是其它 nacos 节点发过来的所以不用再发通知了.</p><p>总结: Distro 协议在响应用户写数据请求时调用 <code>put</code> 方法将数据写存储同时主动发送异步通知给其它节点; Distro 协议监听 <code>/distro/datum</code> 接口请求接收其它 nacos 节点的变更通知, 并将变更写入本地存储. 从而实现了数据的一致性.</p><h4 id=422-distro-节点之间通过校验和实现数据一致 class=headerLink><a href=#422-distro-%e8%8a%82%e7%82%b9%e4%b9%8b%e9%97%b4%e9%80%9a%e8%bf%87%e6%a0%a1%e9%aa%8c%e5%92%8c%e5%ae%9e%e7%8e%b0%e6%95%b0%e6%8d%ae%e4%b8%80%e8%87%b4 class=header-mark></a>4.2.2 Distro 节点之间通过校验和实现数据一致</h4><p>Distro 协议的 <code>DataSyncer</code> 会定期同步本地 nacos 节点负责的数据校验和给其它 nacos 节点, 如果对端检测到不一致会来拉取数据; 如果外部调用 Distro 的 <code>put</code> 等操作导致本地数据变更时, 本地 nacos 节点会在 <code>TaskDispatcher</code> 追加一个同步任务将变更数据同步到其它 nacos 节点(注意此时不分数据是否本地 nacos 节点负责).</p><ol><li>发送校验和请求</li></ol><p><code>DataSyncer</code> 会在后台周期性调度 <code>TimedSync</code> 任务, 该任务负责计算当前 nacos 节点负责的数据对应的校验和并发送给其它 nacos 节点:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kd>class</span> <span class=nc>TimedSync</span><span class=w> </span><span class=kd>implements</span><span class=w> </span><span class=n>Runnable</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nd>@Override</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>run</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=n>Map</span><span class=o>&lt;</span><span class=n>String</span><span class=p>,</span><span class=w> </span><span class=n>String</span><span class=o>&gt;</span><span class=w> </span><span class=n>keyChecksums</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>HashMap</span><span class=o>&lt;&gt;</span><span class=p>(</span><span class=n>64</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 为当前 nacos 节点负责的数据计算校验和</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>for</span><span class=w> </span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=w> </span><span class=p>:</span><span class=w> </span><span class=n>dataStore</span><span class=p>.</span><span class=na>keys</span><span class=p>())</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=o>!</span><span class=n>distroMapper</span><span class=p>.</span><span class=na>responsible</span><span class=p>(</span><span class=n>KeyBuilder</span><span class=p>.</span><span class=na>getServiceName</span><span class=p>(</span><span class=n>key</span><span class=p>)))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=k>continue</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>keyChecksums</span><span class=p>.</span><span class=na>put</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>dataStore</span><span class=p>.</span><span class=na>get</span><span class=p>(</span><span class=n>key</span><span class=p>).</span><span class=na>value</span><span class=p>.</span><span class=na>getChecksum</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 将上面计算出来的校验和同步给其它 nacos 节点的 /distro/checksum,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=c1>// 其它节点发现校验和冲突的时候会主动来拉取数据.</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=k>for</span><span class=w> </span><span class=p>(</span><span class=n>Server</span><span class=w> </span><span class=n>member</span><span class=w> </span><span class=p>:</span><span class=w> </span><span class=n>getServers</span><span class=p>())</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>NetUtils</span><span class=p>.</span><span class=na>localServer</span><span class=p>().</span><span class=na>equals</span><span class=p>(</span><span class=n>member</span><span class=p>.</span><span class=na>getKey</span><span class=p>()))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=k>continue</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=n>NamingProxy</span><span class=p>.</span><span class=na>syncCheckSums</span><span class=p>(</span><span class=n>keyChecksums</span><span class=p>,</span><span class=w> </span><span class=n>member</span><span class=p>.</span><span class=na>getKey</span><span class=p>());</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><ol start=2><li>接收校验和请求</li></ol><p>接收请求的接口为 <code>/distro/checksum</code>, 校验和请求处理流程(具体代码见 <code>DistroConsistencyServiceImpl::onReceiveChecksums</code>):</p><ul><li>通过接口接收校验和请求, 请求包含数据的 key 以及数据的校验和(无具体数据的 value).</li><li>与本地数据比对, 如果本地不存在对应 key 或者校验和与请求中不同, 则再去请求校验和来源的数据 value 更新本地数据.</li><li>与本地数据比对, 如果本地包含不在请求中的 key, 则删除相关数据.</li></ul><ol start=3><li>数据不一致, 从校验和发送方拉取数据</li></ol><p>校验和接收端发现数据不一致的时候, 该删除的删除, 针对该更新的, 就要去校验和发送方去拉取. 其中, 拉取数据的接口为 <code>/distro/datum</code>, 不过此处用的是 GET 请求.</p><h4 id=423-nacos-如何将服务变更告知客户端 class=headerLink><a href=#423-nacos-%e5%a6%82%e4%bd%95%e5%b0%86%e6%9c%8d%e5%8a%a1%e5%8f%98%e6%9b%b4%e5%91%8a%e7%9f%a5%e5%ae%a2%e6%88%b7%e7%ab%af class=header-mark></a>4.2.3 Nacos 如何将服务变更告知客户端</h4><p>上面讲了数据变更时 nacos 集群节点间如何互相告知, 那客户端是怎么知道的呢?</p><p>我们以前面讲到 <code>put</code> 操作时提到的 <code>onPut</code> 为例:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-java data-lang=java><span class=line><span class=cl><span class=kd>public</span><span class=w> </span><span class=kt>void</span><span class=w> </span><span class=nf>onPut</span><span class=p>(</span><span class=n>String</span><span class=w> </span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>Record</span><span class=w> </span><span class=n>value</span><span class=p>)</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=n>KeyBuilder</span><span class=p>.</span><span class=na>matchEphemeralInstanceListKey</span><span class=p>(</span><span class=n>key</span><span class=p>))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>Datum</span><span class=o>&lt;</span><span class=n>Instances</span><span class=o>&gt;</span><span class=w> </span><span class=n>datum</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=k>new</span><span class=w> </span><span class=n>Datum</span><span class=o>&lt;&gt;</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>value</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=p>(</span><span class=n>Instances</span><span class=p>)</span><span class=w> </span><span class=n>value</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>key</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>key</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=c1>// 推动时钟前进</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>datum</span><span class=p>.</span><span class=na>timestamp</span><span class=p>.</span><span class=na>incrementAndGet</span><span class=p>();</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=c1>// 放入当前 nacos 节点存储</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=n>dataStore</span><span class=p>.</span><span class=na>put</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>datum</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=c1>// 如果没有监听器对该 key 感兴趣则不做通知</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>if</span><span class=w> </span><span class=p>(</span><span class=o>!</span><span class=n>listeners</span><span class=p>.</span><span class=na>containsKey</span><span class=p>(</span><span class=n>key</span><span class=p>))</span><span class=w> </span><span class=p>{</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=k>return</span><span class=p>;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>}</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=c1>// 发通知, key 对应数据有变更</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=n>notifier</span><span class=p>.</span><span class=na>addTask</span><span class=p>(</span><span class=n>key</span><span class=p>,</span><span class=w> </span><span class=n>ApplyAction</span><span class=p>.</span><span class=na>CHANGE</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><p>只关注最后一行代码, <code>DistroConsistencyServiceImpl</code> 在初始化时会在后台启动一个 <code>Notifier</code> 任务, 它负责在 nacos 数据变更时触发相关操作告知对相关数据感兴趣的客户端. 最终通过 <code>Service::onChange</code> 方法触发 <code>PushService</code> 的通知方法. 至于 <code>PushService</code> 是如何感知到客户端的, 这在后面服务发现相关章节进行分析.</p><h3 id=43-distro-集群节点上下线设计 class=headerLink><a href=#43-distro-%e9%9b%86%e7%be%a4%e8%8a%82%e7%82%b9%e4%b8%8a%e4%b8%8b%e7%ba%bf%e8%ae%be%e8%ae%a1 class=header-mark></a>4.3 Distro 集群节点上下线设计</h3><p>Nacos 集群节点上下线处理(包括硬的和软的), 含 distro 和 raft 两套集群.</p><p>其中主角是 <code>ServerListManager</code>, 它负责两件事情:</p><ul><li>一是定期检测集群配置文件或环境变量感知 nacos 集群节点变更, 如果有变化则加载并调用监听器进行通知;</li><li>二是维护 distro 集群各节点之间的心跳, 注意这个心跳是 nacos 节点之间的不是客户端和 nacos 之间的, 如有节点出问题或者重新上线都能检测到.</li></ul><p><code>ServerListManager</code> 有两个定时任务(第二个任务只为 Distro 协议服务, Raft 不需要.):</p><ul><li>一个用于定时检测配置文件或环境变量感知集群节点"硬"变化;</li><li>一个用于定期发送状态报告给整个集群的 nacos 节点用于检测全量节点到底多少是活跃的, 如果有节点虽然还在配置名单上但突然挂了或者突然活了都会被检测到, 感知集群"软"变化.</li></ul><p>Raft 协议各节点之间有定期心跳, 天然能感知配置文件里的全量节点有多少是活跃的; Distro 由于协议本身并没有设计和实现节点间心跳, 所以它对全量节点不感冒, 只对健康节点感兴趣, 是否健康靠的是 <code>ServerListManager</code> 定期触发状态报告这类心跳来检测的. 两个小配角 <code>DistroMapper</code> 和 <code>RaftPeerSet</code> 都实现了 <code>ServerChangeListener</code> 监听器接口, 注册到 <code>ServerListManager</code>, 一旦集群节点变更就会受到通知.</p><h3 id=44-distro-用于服务发现-客户端是如何与-nacos-进行交互的 class=headerLink><a href=#44-distro-%e7%94%a8%e4%ba%8e%e6%9c%8d%e5%8a%a1%e5%8f%91%e7%8e%b0-%e5%ae%a2%e6%88%b7%e7%ab%af%e6%98%af%e5%a6%82%e4%bd%95%e4%b8%8e-nacos-%e8%bf%9b%e8%a1%8c%e4%ba%a4%e4%ba%92%e7%9a%84 class=header-mark></a>4.4 Distro 用于服务发现, 客户端是如何与 nacos 进行交互的</h3><p>在服务发现中, 客户端可以扮演两类角色:</p><ul><li>一是作为服务实例向 nacos 注册或者解除注册自己.</li><li>二是作为服务发现客户端订阅自己感兴趣的服务.</li></ul><p>在 nacos client 包里有一个 <code>NacosService</code> 类, 该类会被用户集成到自己代码中作为客户端使用.</p><p>客户端 <code>NacosService</code> 启动时会初始化一个 <code>BeatReactor</code>, 如果该客户端会作为服务实例向 nacos 注册或解除注册服务发现, 则会启动心跳任务定期向 nacos 的 <code>/instance/beat</code> 接口发送心跳请求. Nacos 在 <code>InstanceController</code> 接收并处理该请求, 刷新该客户端对应的最后一次心跳时间戳, nacos 有后台任务检测该时间戳判断客户端是否挂了.</p><p>客户端 <code>NacosService</code> 在注册或者解除注册时, 会触发 nacos 数据变化, 该变化会导致接收这两类请求的 nacos 节点向其它 nacos 节点同步变更后的数据(也就是前面讲过的 <code>put</code> 触发的同步流程), 同时通过 <code>PushService</code> 通知订阅相关服务的订阅者.</p><p>客户端 <code>NacosService</code> 如果作为服务发现客户端而不是某个服务的实例存在, 那么其在调用 <code>queryList</code> 方法向 nacos 的 <code>/instance/list</code> 接口获取对应服务的实例列表时, 会通过 <code>HostReactor</code> 启动 <code>UpdateTask</code>, 该任务定期请求前述 API 接口刷新本地的实例列表. <code>queryList</code> 同时会将客户端的 ip 和端口(即 <code>PushReceiver</code>)发送给 nacos, 后者在该客户端订阅服务实例列表发生变更时会通过 <code>PushService</code> 主动推送 udp 数据包过来.</p><p>上面说 <code>UpdateTask</code> 时提到了"定期"一词, 客户端为何需要定期获取列表呢? 因为 <code>PushService</code> 维护着庞大的客户端列表, 它怎么知道哪个客户端活着呢? 靠的就是这个客户端这个"定期"获取列表的副租用实现的.</p><p>以上即是客户端分别作为服务实例或服务发现客户端时与 nacos 交互的核心流程.</p><h2 id=5-总结 class=headerLink><a href=#5-%e6%80%bb%e7%bb%93 class=header-mark></a>5 总结</h2><p>Distro 协议作为 nacos 自行实现的一套 AP 级一致性协议, 在 nacos 中负责核心的服务发现功能, 该功能是 nacos 两大核心功能之一.</p><p>我们从设计一致性存储的三个问题开始, 一边猜测一边分析 nacos 源码得到了答案. 如果我们要自己实现一个完整的一致性存储服务, 相关设计非常值得参考.</p><p>&ndash;end&ndash;</p></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>更新于 2022-08-19</span></div><div class=post-info-license></div></div><div class=post-info-line><div class=post-info-md><span><a class=link-to-mardown href=/consistent-protocol-of-nacos-part-1/index.md target=_blank rel="noopener noreferrer">阅读原始文档</a></span></div><div class=post-info-share><span><a href=# title="分享到 Twitter" data-sharer=twitter data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇" data-via=haricheung data-hashtags=consistent,raft,distro,nacos><i class="fab fa-twitter fa-fw"></i></a><a href=# title="分享到 Facebook" data-sharer=facebook data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-hashtag=consistent><i class="fab fa-facebook-square fa-fw"></i></a><a href=# title="分享到 WhatsApp" data-sharer=whatsapp data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href=# title="分享到 Line" data-sharer=line data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇"><i data-svg-src=/lib/simple-icons/icons/line.min.svg></i></a><a href=# title="分享到 微博" data-sharer=weibo data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇"><i class="fab fa-weibo fa-fw"></i></a><a href=# title="分享到 Myspace" data-sharer=myspace data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇" data-description><i data-svg-src=/lib/simple-icons/icons/myspace.min.svg></i></a><a href=# title="分享到 Blogger" data-sharer=blogger data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇" data-description><i class="fab fa-blogger fa-fw"></i></a><a href=# title="分享到 Evernote" data-sharer=evernote data-url=https://chienlungcheung.github.io/consistent-protocol-of-nacos-part-1/ data-title="Nacos 的一致性存储解析--Distro 篇"><i class="fab fa-evernote fa-fw"></i></a></span></div></div></div><div class=post-info-more><section class=post-tags><i class="fas fa-tags fa-fw"></i>&nbsp;<a href=/tags/consistent/>consistent</a>,&nbsp;<a href=/tags/raft/>raft</a>,&nbsp;<a href=/tags/distro/>distro</a>,&nbsp;<a href=/tags/nacos/>nacos</a></section><section><span><a href=javascript:void(0); onclick=window.history.back()>返回</a></span>&nbsp;|&nbsp;<span><a href=/>主页</a></span></section></div><div class=post-nav><a href=/leveldb-annotations-8-versions/ class=prev rel=prev title="Leveldb 源码详解系列之八: 版本(Version)"><i class="fas fa-angle-left fa-fw"></i>Leveldb 源码详解系列之八: 版本(Version)</a>
+<a href=/socialization/ class=next rel=next title=社会化：当我们在讨论原生家庭时，我们在讨论什么>社会化：当我们在讨论原生家庭时，我们在讨论什么<i class="fas fa-angle-right fa-fw"></i></a></div></div><div id=comments><div id=disqus_thread class=comment></div><noscript>Please enable JavaScript to view the comments powered by <a href=https://disqus.com/?ref_noscript>Disqus</a>.</noscript></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>由 <a href=https://gohugo.io/ target=_blank rel="noopener noreferrer" title="Hugo 0.120.1">Hugo</a> 强力驱动&nbsp;|&nbsp;主题 - <a href=https://github.com/HEIGE-PCloud/DoIt target=_blank rel="noopener noreferrer" title="DoIt 0.3.0"><i class="far fa-edit fa-fw"></i> DoIt</a></div><div class=footer-line><i class="far fa-copyright fa-fw"></i><span itemprop=copyrightYear>2019 - 2023</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank rel="noopener noreferrer">Hari</a></span>&nbsp;|&nbsp;<span class=license><a rel="license external nofollow noopener noreffer" href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></span></div><div class=footer-line></div><div class=footer-line></div></div></footer></div><div id=fixed-buttons><a href=#back-to-top id=back-to-top-button class=fixed-button title=回到顶部><i class="fas fa-arrow-up fa-fw"></i>
+</a><a href=# id=view-comments class=fixed-button title=查看评论><i class="fas fa-comment fa-fw"></i></a></div><div class=assets><link rel=stylesheet href=/lib/katex/katex.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/katex/copy-tex.min.css><noscript><link rel=stylesheet href=/lib/katex/copy-tex.min.css></noscript><script type=text/javascript>window.config={code:{copyTitle:"复制到剪贴板",maxShownLines:10},comment:{},math:{delimiters:[{display:!0,left:"$$",right:"$$"},{display:!0,left:"\\[",right:"\\]"},{display:!1,left:"$",right:"$"},{display:!1,left:"\\(",right:"\\)"}],strict:!1},search:{distance:100,findAllMatches:!1,fuseIndexURL:"/index.json",highlightTag:"em",ignoreFieldNorm:!1,ignoreLocation:!1,isCaseSensitive:!1,location:0,maxResultLength:10,minMatchCharLength:2,noResultsFound:"没有找到结果",snippetLength:50,threshold:.3,type:"fuse",useExtendedSearch:!1},sharerjs:!0,table:{sort:!0}}</script><script type=text/javascript src=https://Chienlung.disqus.com/embed.js defer></script><script type=text/javascript src=/lib/tablesort/tablesort.min.js></script><script type=text/javascript src=/lib/clipboard/clipboard.min.js></script><script type=text/javascript src=/lib/sharer/sharer.min.js></script><script type=text/javascript src=/lib/katex/katex.min.js defer></script><script type=text/javascript src=/lib/katex/auto-render.min.js defer></script><script type=text/javascript src=/lib/katex/copy-tex.min.js defer></script><script type=text/javascript src=/lib/katex/mhchem.min.js defer></script><script type=text/javascript src=/js/katex.min.js defer></script><script type=text/javascript src=/js/theme.min.js defer></script></div></body></html>

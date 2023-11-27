@@ -1,0 +1,891 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Leveldb 源码详解系列之七: 压实(Compaction) - 二手知识</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3CREWXCLR7"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date),gtag("config","G-3CREWXCLR7")</script><meta name=Description content><meta property="og:title" content="Leveldb 源码详解系列之七: 压实(Compaction)"><meta property="og:description" content="Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merge, 压实就是 merge 具体实现. 该算法在 LSM-Tree 论文阅读笔记 里有介绍, 如果不了解建议先读下这篇小文. 1. 压实介绍当 level-L"><meta property="og:type" content="article"><meta property="og:url" content="https://chienlungcheung.github.io/leveldb-annotations-7-compaction/"><meta property="og:image" content="https://chienlungcheung.github.io/logo.png"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-10-27T22:27:17+08:00"><meta property="article:modified_time" content="2021-10-27T22:27:17+08:00"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://chienlungcheung.github.io/logo.png"><meta name=twitter:title content="Leveldb 源码详解系列之七: 压实(Compaction)"><meta name=twitter:description content="Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merge, 压实就是 merge 具体实现. 该算法在 LSM-Tree 论文阅读笔记 里有介绍, 如果不了解建议先读下这篇小文. 1. 压实介绍当 level-L"><meta name=twitter:site content="@haricheung"><meta name=application-name content="DoIt"><meta name=apple-mobile-web-app-title content="DoIt"><meta name=theme-color content="#f8f8f8"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=canonical href=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/><link rel=prev href=https://chienlungcheung.github.io/leveldb-annotations-6-table-cache/><link rel=next href=https://chienlungcheung.github.io/lsmtree-paper/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/css/color.css><link rel=stylesheet href=/css/style.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/fontawesome-free/all.min.css><noscript><link rel=stylesheet href=/lib/fontawesome-free/all.min.css></noscript><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/animate/animate.min.css><noscript><link rel=stylesheet href=/lib/animate/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Leveldb 源码详解系列之七: 压实(Compaction)","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-7-compaction\/"},"genre":"posts","keywords":"leveldb, LSM-Tree, db, kv","wordcount":7963,"url":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-7-compaction\/","datePublished":"2021-10-27T22:27:17+08:00","dateModified":"2021-10-27T22:27:17+08:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"Hari"},"description":""}</script><script src=//instant.page/5.1.1 defer type=module integrity=sha384-MWfCL6g1OTGsbSwfuMHc8+8J2u71/LA8dzlIN3ycajckxuZZmF+DNjdm7O6H3PSq></script></head><body header-desktop=fixed header-mobile=auto><script type=text/javascript>function setTheme(e){document.body.setAttribute("theme",e),document.documentElement.style.setProperty("color-scheme",e==="light"?"light":"dark"),window.theme=e}function saveTheme(e){window.localStorage&&localStorage.setItem("theme",e)}function getMeta(e){const t=document.getElementsByTagName("meta");for(let n=0;n<t.length;n++)if(t[n].getAttribute("name")===e)return t[n];return""}if(window.localStorage&&localStorage.getItem("theme")){let e=localStorage.getItem("theme");e==="light"||e==="dark"||e==="black"?setTheme(e):setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}else"auto"==="light"||"auto"==="dark"||"auto"==="black"?(setTheme("auto"),saveTheme("auto")):(saveTheme("auto"),setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));let metaColors={light:"#f8f8f8",dark:"#252627",black:"#000000"};getMeta("theme-color").content=metaColors[document.body.getAttribute("theme")]</script><div id=back-to-top></div><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><span class="menu-item search" id=search-desktop>
+<input type=text placeholder=搜索文章标题或内容... id=search-input-desktop>
+<a href=# class="search-button search-toggle" id=search-toggle-desktop title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-desktop title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-desktop><i class="fas fa-spinner fa-fw fa-spin"></i>
+</span></span><a href=# class="menu-item theme-select" title=切换主题><i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-desktop title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><div class=search-wrapper><div class="search mobile" id=search-mobile><input type=text placeholder=搜索文章标题或内容... id=search-input-mobile>
+<a href=# class="search-button search-toggle" id=search-toggle-mobile title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-mobile title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-mobile><i class="fas fa-spinner fa-fw fa-spin"></i></span></div><a href=# class=search-cancel id=search-cancel-mobile>取消</a></div><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=# class="menu-item theme-select" title=切换主题>
+<i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-mobile title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>目录</h2><div class=toc-content id=toc-content-auto><nav id=TableOfContents><ul><li><a href=#1-压实介绍>1. 压实介绍</a></li><li><a href=#2-压实目的>2. 压实目的</a></li><li><a href=#3-leveldb-的数据重复>3. leveldb 的数据重复</a></li><li><a href=#4-压实实现>4. 压实实现</a><ul><li><a href=#41-压实触发时机>4.1. 压实触发时机</a></li><li><a href=#42-后台压实线程池实现>4.2. 后台压实线程池实现</a></li><li><a href=#43-压实过程>4.3. 压实过程</a><ul><li><a href=#431-memtable-压实>4.3.1. memtable 压实</a><ul><li><a href=#4311-基于-memtable-生成的-sstable-应该放到哪个-level>4.3.1.1. 基于 memtable 生成的 sstable 应该放到哪个 level</a></li></ul></li><li><a href=#432-sstables-压实>4.3.2. sstables 压实</a><ul><li><a href=#4321-compaction-构造>4.3.2.1. Compaction 构造</a></li><li><a href=#4322-基于-compaction-的压实>4.3.2.2. 基于 <code>Compaction</code> 的压实</a></li></ul></li></ul></li></ul></li><li><a href=#5-总结>5. 总结</a></li></ul></nav></div></div><script>document.getElementsByTagName("main")[0].setAttribute("autoTOC","true")</script><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Leveldb 源码详解系列之七: 压实(Compaction)</h1><div class=post-meta><div class=post-meta-line><span class=post-author><i class="author fas fa-user-circle fa-fw"></i><a href=/ title=Author rel=author class=author>Hari</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime=2021-10-27>2021-10-27</time>&nbsp;<i class="far fa-edit fa-fw"></i>&nbsp;<time datetime=2021-10-27>2021-10-27</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 7963 字&nbsp;
+<i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 16 分钟&nbsp;</div></div><div class="details toc" id=toc-static kept><div class="details-summary toc-title"><span>目录</span>
+<span><i class="details-icon fas fa-angle-right"></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#1-压实介绍>1. 压实介绍</a></li><li><a href=#2-压实目的>2. 压实目的</a></li><li><a href=#3-leveldb-的数据重复>3. leveldb 的数据重复</a></li><li><a href=#4-压实实现>4. 压实实现</a><ul><li><a href=#41-压实触发时机>4.1. 压实触发时机</a></li><li><a href=#42-后台压实线程池实现>4.2. 后台压实线程池实现</a></li><li><a href=#43-压实过程>4.3. 压实过程</a><ul><li><a href=#431-memtable-压实>4.3.1. memtable 压实</a><ul><li><a href=#4311-基于-memtable-生成的-sstable-应该放到哪个-level>4.3.1.1. 基于 memtable 生成的 sstable 应该放到哪个 level</a></li></ul></li><li><a href=#432-sstables-压实>4.3.2. sstables 压实</a><ul><li><a href=#4321-compaction-构造>4.3.2.1. Compaction 构造</a></li><li><a href=#4322-基于-compaction-的压实>4.3.2.2. 基于 <code>Compaction</code> 的压实</a></li></ul></li></ul></li></ul></li><li><a href=#5-总结>5. 总结</a></li></ul></nav></div></div><div class=content id=content><p>Leveldb 是一个 LSM-Tree 类型的数据库, LSM 最后一个字母就是 merge, 压实就是 merge 具体实现. 该算法在 <a href=/lsmtree-paper/ rel>LSM-Tree 论文阅读笔记</a> 里有介绍, 如果不了解建议先读下这篇小文.</p><h2 id=1-压实介绍 class=headerLink><a href=#1-%e5%8e%8b%e5%ae%9e%e4%bb%8b%e7%bb%8d class=header-mark></a>1. 压实介绍</h2><p>当 level-L 大小超过了上限, 具体来说就是 level-0 文件数超过 4 个, level-L(L>=1) 文件总大小超过 $10^L$ MB, 就会触后台线程的压实操作.</p><p>压实过程会从 level-L(L>=1) 挑一个文件, 然后将 level-(L+1) 中与该文件键区间重叠的文件都找出来. 注意, 即使一个 level-L 文件仅仅与 level-(L+1) 某个文件重叠了一部分, level-(L+1) 的这个文件也会整个作为压实过程的输入, 即压实的输入最小单位是文件.</p><p>另外, 因为 level-0 比较特殊(该层的文件之间可能相互重叠, 而其它层不会), 我们会把 level-0 到 level-1 的压实过程做特殊处理: 我们每次会从 level-0 选取相互重叠的全部文件, 而不是像其它 level 一样只选取一个文件, 然后将其合并为一个文件然后再和 level-1 与其重叠的文件进行合并.</p><p>一次压实会合并多个文件的内容从而生成一系列新的 level-(L+1) 文件, 生成一个新文件的条件有两个: 当前文件达到了 2MB 大小或者当前文件的键区间与超过 10 个 level-(L+2) 文件发生了重叠. 第二个条件的目的在于避免后续对 level-(L+1) 文件进行压实时需要从 level-(L+2) 读取过多的数据.</p><p>针对某一个 level 的压实会循环该 level 覆盖的整个键空间. 具体来讲, 针对 level-L, 我们会记住 level-L 上次压实的最后一个 key. 针对 level-L 的下次压实将会挑选从这个 key 之后开始的第一个文件进行. (如果不存在这样的文件, 那么就会遍历回键空间起始 key).</p><p>压实会丢弃某个 key 对应的被覆盖过的 values(只保留时间线上最新的那个 value), 也会在没有更高的 level 包含该 key 的时候丢弃针对这个 key 的删除标记(level 越高数据越老, 所以如果某个 key 被在下层标记为删除, 在合并全部上层针对该 key 的操作之前该标记不能移除否则会被查询过程感知到老数据).</p><h2 id=2-压实目的 class=headerLink><a href=#2-%e5%8e%8b%e5%ae%9e%e7%9b%ae%e7%9a%84 class=header-mark></a>2. 压实目的</h2><p><figure><a class=lightgallery href=../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png title=leveldb-level-architecture data-thumbnail=../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png><img loading=lazy src=../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png srcset="../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png, ../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png 1.5x, ../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png 2x" sizes=auto alt=../images/leveldb-annotations-7-compaction/leveldb-level-architecture.png></a></figure></p><p>前面提到了 leveldb 的数据库就是一堆在逻辑上分层的文件, 这个分层架构是从底向上开始构建的, 而压实促进了数据从 level-0 向 level-6 (leveldb 默认有 7 个 level) 的流动.</p><p>压实主要有两个目的:</p><ol><li>消除无效数据节省存储空间. Leveldb 不是 in-place 式修改的数据库, 随着修改变多, 同样的 key 可能会对应不同的数据项, 后追加的数据项会在效果上覆盖先追加的. 这就意味着先追加的数据项浪费了存储空间.</li><li>合并重叠的键空间, 减少文件数, 提升查询性能, 最好的结果就是 levels 之间没有任何重叠. 如果 level 之间存在键空间重叠, 查询某个键可能就要搜索多个层. 最简单的例子, 比如 level-1 和 level-2 的键空间都是 <code>[0~100)</code>, 但前者的键都是奇数, 后者的键都是偶数, 如果要查询的键为 10, 则会先扫描 level-1(因为键空间重叠但又肯定找不到)然后再去 level-2. 极端情况下可能要从 level-0 一路搜到 level-6 才能查到目标键, 这太消耗性能了. 最直观的解法就是尽量消除不同 level 的键空间重叠情况.</li></ol><p>压实行为大体分为三类:</p><ol><li>memtable 转换为 sstable, 从内存到磁盘, 落地到 level-0. 从这个意义上讲, memtable 是 leveldb 数据源头.</li><li>sstable 文件从 level-i 直接搬到 level-(i+1), 因为没有重叠所以不做任何合并.</li><li>level-i 与 level-(i+1) 之间重叠的文件合并, 生成新的 level-(i+1) 文件. 这种情况是我们重点关注的.</li></ol><h2 id=3-leveldb-的数据重复 class=headerLink><a href=#3-leveldb-%e7%9a%84%e6%95%b0%e6%8d%ae%e9%87%8d%e5%a4%8d class=header-mark></a>3. leveldb 的数据重复</h2><p>leveldb 存在多个层面的数据重复:</p><ul><li>同一个 level 内, 后追加的比先追加的数据更新(newer).</li><li>不同 level 之间, 低 level 的比高 level 的更新(newer).</li></ul><p>下面我们以同一个 level 内的数据重复举个例子.</p><p>如下图所示:</p><pre><code>┌───────────┬───────────┬───────────┐
+│key1:value3│key1:value2│key1:value1│
+└───────────┴───────────┴───────────┘
+</code></pre><p>这个例子中还有价值的只有 <code>key1:value3</code>, 其它空间可以通过压实释放掉.</p><pre><code>不熟悉 leveldb 键构成可能会对上面数据项的存储先后位置有疑问. 在 leveldb 中, 同样的 key, 由于追加有先后所以序列号不同, 后加的序列号更大. 
+
+同样 key, 序列号越大存储位置越靠前, 这样一次查找即可定位到, 不用再在同样的 key 段进行遍历了.
+</code></pre><p>上面这个例子还只是同一个文件, 不同文件也可能存在 key 重复(如 level-0 的文件之间存在重叠), 不同 level 之间也可能存在 key 重复. 这些情况都可以通过 leveldb 的压实来处理.</p><h2 id=4-压实实现 class=headerLink><a href=#4-%e5%8e%8b%e5%ae%9e%e5%ae%9e%e7%8e%b0 class=header-mark></a>4. 压实实现</h2><p>下面具体说明一下压实具体实现.</p><h3 id=41-压实触发时机 class=headerLink><a href=#41-%e5%8e%8b%e5%ae%9e%e8%a7%a6%e5%8f%91%e6%97%b6%e6%9c%ba class=header-mark></a>4.1. 压实触发时机</h3><p>不得不说, 压实可能是 leveldb 里面最零散的一个功能, 不管是读操作还是写操作, 还是啥也不干, 都可能触发压实. 具体触发压实的时机如下:</p><ul><li>数据库刚打开的时候, 如果打开成功, 则会触发一次压实. (见 <code>DBImpl::Open()</code>)</li><li>如果调用 Get 查询感知到疑似需要进行压实, 则此处进一步检查确定是否触发压实, 触发条件是 <code>allowed_seeks</code> 降到了 0, 也就是因为键空间重叠导致叫下层的文件被访问次数超出阈值. (见 <code>DBImpl::Get()</code>)</li><li>使用 <code>DBIter</code> 迭代数据库的时候, 每隔一段就会检查下当前在迭代的 user key 是否包含在多个文件里, 如果是那就会触发压实. (见 <code>DBImpl::RecordReadSample()</code>)</li><li>在执行写操作的时候, 可能会把 log 文件写满, 这时就需要生成新的 log 文件并将前一个 log 文件对应的 memtable 做压实, 不过纯针对 memtable 的压实其实比较简单, 不是本文着重介绍的. (见 <code>DBImpl::Write()</code>)</li><li>另外就是压实任务本身可能会再调度一次压实, 原因是前一次压实可能在某一层产生过多文件. (见 <code>DBImpl::BackgroundCall()</code>)</li></ul><p>以上都是自动触发的, 无须用户做任何操作. 除此之外, leveldb 也提供了手工触发压实的功能. leveldb 提供了接口<code>DBImpl::CompactRange(const Slice* begin, const Slice* end)</code>, 该接口提供给应用层使用, 如有需要, 用户可以直接发起压实.</p><p>leveldb 有个后台线程池, 在上述任何一个条件满足的条件下 <code>DBImpl::MaybeScheduleCompaction()</code> 会被调用, 它会生成一个压实任务并投递到这个线程.</p><p><code>DBImpl::MaybeScheduleCompaction()</code> 负责投递一个异步压实任务到后台线程, 它是通过调用 <code>env_->Schedule(&amp;DBImpl::BGWork, this)</code> 来实现的. 其中 <code>BGWork</code> 即为在后台要执行的函数, 它会间接调用 <code>BackgroundCompaction</code>, 这个函数实现了压实工作逻辑, 藏得比较深, 请大家记住它.</p><p>下面简单介绍下 leveldb 执行后台任务的线程池的实现.</p><h3 id=42-后台压实线程池实现 class=headerLink><a href=#42-%e5%90%8e%e5%8f%b0%e5%8e%8b%e5%ae%9e%e7%ba%bf%e7%a8%8b%e6%b1%a0%e5%ae%9e%e7%8e%b0 class=header-mark></a>4.2. 后台压实线程池实现</h3><p><code>leveldb::PosixEnv</code> 类实现了后台线程池.</p><p>毫无疑问, 后台线程池具体工作逻辑依据 <em>生产者-消费者</em> 模式, 不得不说的三件套分别为:</p><ul><li>互斥锁 - <code>background_work_mutex_</code></li><li>条件变量 - <code>background_work_cv_</code></li><li>任务队列 - <code>background_work_queue_</code></li></ul><p>提交任务同时也是启动后台线程的方法为 <code>PosixEnv::Schedule(background_work_function, background_work_arg)</code>, 第一个参数为要在后台执行的函数, 第二个参数为函数在后台执行时需要的参数. 要注意的是, leveldb 后台线程池只有一个线程, 有需要执行的任务调用下面详解的方法投递到任务队列即可.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=n>PosixEnv</span><span class=o>::</span><span class=n>Schedule</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=p>(</span><span class=o>*</span><span class=n>background_work_function</span><span class=p>)(</span><span class=kt>void</span><span class=o>*</span> <span class=n>background_work_arg</span><span class=p>),</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span><span class=o>*</span> <span class=n>background_work_arg</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 后面涉及几个状态需要锁保护
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>background_work_mutex_</span><span class=p>.</span><span class=n>Lock</span><span class=p>();</span> 
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果之前从未启动过后台线程, 则生成一个并让其独立运行
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>started_background_thread_</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>started_background_thread_</span> <span class=o>=</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=kr>thread</span> <span class=n>background_thread</span><span class=p>(</span><span class=n>PosixEnv</span><span class=o>::</span><span class=n>BackgroundThreadEntryPoint</span><span class=p>,</span> <span class=k>this</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 调用 detach 后, 线程执行部分与线程对象 background_thread 分离, 独立去运行, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 线程对象不再拥有对执行部分的所有权. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 线程执行完毕会自动释放全部分配的资源. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 所以一会 background_thread 出作用域被销毁也不影响
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 线程在后台运行.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>background_thread</span><span class=p>.</span><span class=n>detach</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果队列为空, 后台线程之前可能在等待, 激活之
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>background_work_queue_</span><span class=p>.</span><span class=n>empty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>background_work_cv_</span><span class=p>.</span><span class=n>Signal</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将本次调度的任务加到任务队列里(通过 emplace 直接构造避免了中间临时变量生成和拷贝). 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>background_work_queue_</span><span class=p>.</span><span class=n>emplace</span><span class=p>(</span><span class=n>background_work_function</span><span class=p>,</span> <span class=n>background_work_arg</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>background_work_mutex_</span><span class=p>.</span><span class=n>Unlock</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h3 id=43-压实过程 class=headerLink><a href=#43-%e5%8e%8b%e5%ae%9e%e8%bf%87%e7%a8%8b class=header-mark></a>4.3. 压实过程</h3><p>整个压实实现过程, 大体如下:</p><ol><li>先压实已满的 memtable</li></ol><ul><li>这个发生时机一般是用户 Put 数据的时候, 因为 Put 就是往 memtable 写数据. memtable 满了就不变了, 所以叫 immutable memtable, 简写为 imm.</li></ul><ol start=2><li>再压实 sstables, 先构造 <code>Compaction</code> 确定压实范围再进行实质压实.</li></ol><ul><li>2.1. 针对 sstables, 要分手动触发和自动触发来构造 <code>Compaction</code><ul><li>2.1.1. 如果是手动触发, 传入待压实的 level, 最小 key, 最大 key, 通过 <code>versions_->CompactRange(m->level, m->begin, m->end)</code> 来构造 <code>Compaction</code>.</li><li>2.1.2. 否则就是自动触发, 调用 <code>versions_->PickCompaction()</code> 来根据统计信息确定待压实 level 和文件列表, 并构造 <code>Compaction</code>.</li></ul></li><li>2.2. 基于构造的 <code>Compaction</code> 执行 sstables 压实</li></ul><p>下面代码是对上面流程的程序化(删减非强相关的异常处理等逻辑以突出重点):</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 该方法仅在 DBImpl::BackgroundCall 调用
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>void</span> <span class=n>DBImpl</span><span class=o>::</span><span class=n>BackgroundCompaction</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 压实过程需要全程持有锁, 这也暗示压实不能耗费太多时间.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>mutex_</span><span class=p>.</span><span class=n>AssertHeld</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 1. 先压实已满的 memtable, 满了就不变了, 所以
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 叫 immutable memtable, 简写为 imm
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>imm_</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>CompactMemTable</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 2.1. 针对 sstables, 下面要分手动触发和自动触发来构造 Compaction
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Compaction</span><span class=o>*</span> <span class=n>c</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// leveldb 提供了 `DBImpl::CompactRange()` 接口供应用层手工触发压实.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>bool</span> <span class=n>is_manual</span> <span class=o>=</span> <span class=p>(</span><span class=n>manual_compaction_</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 2.1.1. 如果手动触发了一个压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>is_manual</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ManualCompaction</span><span class=o>*</span> <span class=n>m</span> <span class=o>=</span> <span class=n>manual_compaction_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 确定压实范围, 即 level 层待压实文件列表, level+1 与之重叠文件列表.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>c</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>CompactRange</span><span class=p>(</span><span class=n>m</span><span class=o>-&gt;</span><span class=n>level</span><span class=p>,</span> <span class=n>m</span><span class=o>-&gt;</span><span class=n>begin</span><span class=p>,</span> <span class=n>m</span><span class=o>-&gt;</span><span class=n>end</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>m</span><span class=o>-&gt;</span><span class=n>done</span> <span class=o>=</span> <span class=p>(</span><span class=n>c</span> <span class=o>==</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2.1.2. 否则根据统计信息确定待压实 level
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>c</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>PickCompaction</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 2.2. 执行 sstables 压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Status</span> <span class=n>status</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>c</span> <span class=o>==</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2.2.1. 无需压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=p>}</span> <span class=k>else</span> <span class=nf>if</span> <span class=p>(</span><span class=o>!</span><span class=n>is_manual</span> <span class=o>&amp;&amp;</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>IsTrivialMove</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2.2.2. 通过移动文件实现的压实, 直接把文件从 level 移动到 level+1
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>FileMetaData</span><span class=o>*</span> <span class=n>f</span> <span class=o>=</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>input</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 将该文件从 level 层删除
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>c</span><span class=o>-&gt;</span><span class=n>edit</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>DeleteFile</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>level</span><span class=p>(),</span> <span class=n>f</span><span class=o>-&gt;</span><span class=n>number</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 将该文件增加到 level+1
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>c</span><span class=o>-&gt;</span><span class=n>edit</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>AddFile</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>level</span><span class=p>()</span> <span class=o>+</span> <span class=mi>1</span><span class=p>,</span> <span class=n>f</span><span class=o>-&gt;</span><span class=n>number</span><span class=p>,</span> <span class=n>f</span><span class=o>-&gt;</span><span class=n>file_size</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                       <span class=n>f</span><span class=o>-&gt;</span><span class=n>smallest</span><span class=p>,</span> <span class=n>f</span><span class=o>-&gt;</span><span class=n>largest</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 应用本次移动操作更新 level 文件架构
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>status</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>LogAndApply</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>edit</span><span class=p>(),</span> <span class=o>&amp;</span><span class=n>mutex_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2.2.3. 实打实的压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>CompactionState</span><span class=o>*</span> <span class=n>compact</span> <span class=o>=</span> <span class=k>new</span> <span class=n>CompactionState</span><span class=p>(</span><span class=n>c</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 做压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>status</span> <span class=o>=</span> <span class=n>DoCompactionWork</span><span class=p>(</span><span class=n>compact</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 清理压实现场
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>CleanupCompaction</span><span class=p>(</span><span class=n>compact</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>delete</span> <span class=n>c</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>下面逐个讲解下上面的核心流程.</p><h4 id=431-memtable-压实 class=headerLink><a href=#431-memtable-%e5%8e%8b%e5%ae%9e class=header-mark></a>4.3.1. memtable 压实</h4><p>memtable 压实本质就是将内存中的 memtable 转换为 sstable 文件并写入到磁盘中. 当且仅当该方法执行成功后, leveldb 会切换到一组新的 log-file/memtable 组合. 在这个过程中, 会计算触发压实的条件, 具体在 <code>versions_->LogAndApply()</code> 中.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=n>DBImpl</span><span class=o>::</span><span class=n>CompactMemTable</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 调用该方法之前必须获取相应的锁.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>mutex_</span><span class=p>.</span><span class=n>AssertHeld</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将内存中的 memtable 内容保存为 sstable 文件.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 每次落盘新文件会更改 level 架构, 需要更新到 VersionEdit 中.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>VersionEdit</span> <span class=n>edit</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 获取当前 dbimpl 对应的最新 version
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Version</span><span class=o>*</span> <span class=n>base</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>current</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 imm_ 引用的 memtable 以 table 文件形式保存到
+</span></span></span><span class=line><span class=cl><span class=c1></span>	<span class=c1>// 磁盘并将其对应的元信息(level、filemeta 等)保存到 edit 中
+</span></span></span><span class=line><span class=cl><span class=c1></span>	<span class=c1>// (edit 维护着 level 架构每一层文件信息, 新文件落盘要记录下来)
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Status</span> <span class=n>s</span> <span class=o>=</span> <span class=n>WriteLevel0Table</span><span class=p>(</span><span class=n>imm_</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>edit</span><span class=p>,</span> <span class=n>base</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 用生成的 Table 替换不可变的 memtable
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>s</span><span class=p>.</span><span class=n>ok</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>edit</span><span class=p>.</span><span class=n>SetPrevLogNumber</span><span class=p>(</span><span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// memtable 已经转换为 Table 写入磁盘了, 之前的 logs 都不需要了.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>edit</span><span class=p>.</span><span class=n>SetLogNumber</span><span class=p>(</span><span class=n>logfile_number_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 更新 level 架构信息
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>s</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>LogAndApply</span><span class=p>(</span><span class=o>&amp;</span><span class=n>edit</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>mutex_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上面代码只保留了核心逻辑, 最核心的就两条:</p><ol><li>将 memetable 转换为 sstable 文件落盘并为其选则一个合适的 level, 这是 <code>WriteLevel0Table</code> 负责的, 这种转换前面文章讲过了, 后面会重点说下应该把新生成的 sstable 文件放到哪个 level 的决策逻辑.</li><li>将本次落盘导致的 level 架构信息改变更新一下, 这是 <code>versions_->LogAndApply</code> 负责的, 这里与压实相关的是它会调用确定下个待压实 level 的方法, 下面会进行描述.</li></ol><h5 id=4311-基于-memtable-生成的-sstable-应该放到哪个-level class=headerLink><a href=#4311-%e5%9f%ba%e4%ba%8e-memtable-%e7%94%9f%e6%88%90%e7%9a%84-sstable-%e5%ba%94%e8%af%a5%e6%94%be%e5%88%b0%e5%93%aa%e4%b8%aa-level class=header-mark></a>4.3.1.1. 基于 memtable 生成的 sstable 应该放到哪个 level</h5><p>这个逻辑是由 <code>Version::PickLevelForMemTableOutput()</code> 负责的, 该方法会在 <code>WriteLevel0Table</code> 中调用.</p><p>下面是 <code>WriteLevel0Table</code> 的核心逻辑, 主要是两块(为了突出重点删掉了其它不相干代码):</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>// 将 mem 对应的 memtable 以 table 文件形式保存到磁盘,
+</span></span></span><span class=line><span class=cl><span class=c1>// 并将本次变更对应的元信息(level、filemeta 等)保存到 edit 中
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>Status</span> <span class=n>DBImpl</span><span class=o>::</span><span class=n>WriteLevel0Table</span><span class=p>(</span><span class=n>MemTable</span><span class=o>*</span> <span class=n>mem</span><span class=p>,</span> <span class=n>VersionEdit</span><span class=o>*</span> <span class=n>edit</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                <span class=n>Version</span><span class=o>*</span> <span class=n>base</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 必须持有锁
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>mutex_</span><span class=p>.</span><span class=n>AssertHeld</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 1. 先把 imm 转换为 sstable 并进行落盘.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 将 memtable 序列化为一个 sstable 文件并写入磁盘;
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 文件大小会被保存到 meta 中, 同时将 sstable 对应的 Table 实例放入
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// table_cache_ 中.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>BuildTable</span><span class=p>(</span><span class=n>dbname_</span><span class=p>,</span> <span class=n>env_</span><span class=p>,</span> <span class=n>options_</span><span class=p>,</span> <span class=n>table_cache_</span><span class=p>,</span> <span class=n>iter</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>meta</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 2. sstable 落盘完成, 这是物理部分; 下面要更新逻辑部分, 即 level 架构信息.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 为上面新生成的 sstable 文件找一个落脚的 level.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 注意, leveldb 文件存储和 level 架构信息存储是分开的, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 文件落盘就是直接写, 相关架构信息如具体属于哪个 level, 包含的键区间,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 另外记录到其它地方.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=n>level</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// meta 相关成员信息在 BuildTable 时填充过了
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>const</span> <span class=n>Slice</span> <span class=n>min_user_key</span> <span class=o>=</span> <span class=n>meta</span><span class=p>.</span><span class=n>smallest</span><span class=p>.</span><span class=n>user_key</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=k>const</span> <span class=n>Slice</span> <span class=n>max_user_key</span> <span class=o>=</span> <span class=n>meta</span><span class=p>.</span><span class=n>largest</span><span class=p>.</span><span class=n>user_key</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  
+</span></span><span class=line><span class=cl>  <span class=n>level</span> <span class=o>=</span> <span class=n>base</span><span class=o>-&gt;</span><span class=n>PickLevelForMemTableOutput</span><span class=p>(</span><span class=n>min_user_key</span><span class=p>,</span> <span class=n>max_user_key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 3. 压实完成, 将相关元信息记录到 edit, 方便后面更新 level 架构.
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 [min_user_key, max_user_key] 对应的 Table 文件
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 元信息及其 level 记录到 edit 中
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>edit</span><span class=o>-&gt;</span><span class=n>AddFile</span><span class=p>(</span><span class=n>level</span><span class=p>,</span> <span class=n>meta</span><span class=p>.</span><span class=n>number</span><span class=p>,</span> <span class=n>meta</span><span class=p>.</span><span class=n>file_size</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                  <span class=n>meta</span><span class=p>.</span><span class=n>smallest</span><span class=p>,</span> <span class=n>meta</span><span class=p>.</span><span class=n>largest</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>s</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p><code>PickLevelForMemTableOutput</code> 方法负责为一个 memtable 在当前 level 架构找一个落脚的 level. 如果该 memtable 与 level-0 文件有重叠, 则放到 level-0; 否则, 它的判断条件就从 level-1 开始寻找, 主要是借用了压实磁盘 level 某个文件时生成新文件的判断条件之二, 即是否"level-L 和 level-(L+2) 重叠文件超过 10 个":</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=n>Version</span><span class=o>::</span><span class=n>PickLevelForMemTableOutput</span><span class=p>(</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>smallest_user_key</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>largest_user_key</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>level</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 检查 level-0 是否有文件与 [smallest_user_key, largest_user_key] 有重叠, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 如果存在重叠, 返回 level-0; 否则进一步检查其它 levels, 最后不管选中谁, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 这个目标 level 和 sstable 文件肯定没有重叠.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>OverlapInLevel</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>smallest_user_key</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest_user_key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 接下来就是尽量把 sstable 文件要落脚的目的地 level 尽量上推, 只要满足两个条件:
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 1. sstable 文件和 next level 没有重叠.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 2. sstable 和 next of next level 重叠字节数不超过阈值.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 注意, 此时 level 取值为 0.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 分别构建 smallest_user_key 和 largest_user_key 对应的 internal_key. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 针对 internal_key, user_key 部分越大越大, 序列号越小越大, 类型越小越大. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>InternalKey</span> <span class=nf>start</span><span class=p>(</span><span class=n>smallest_user_key</span><span class=p>,</span> <span class=n>kMaxSequenceNumber</span><span class=p>,</span> <span class=n>kValueTypeForSeek</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>InternalKey</span> <span class=nf>limit</span><span class=p>(</span><span class=n>largest_user_key</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=k>static_cast</span><span class=o>&lt;</span><span class=n>ValueType</span><span class=o>&gt;</span><span class=p>(</span><span class=mi>0</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>FileMetaData</span><span class=o>*&gt;</span> <span class=n>overlaps</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 压实过程: 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    当 level-L 大小超过了上限, 我们就在后台线程中将其压实. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    压实过程会从 level-L 挑一个文件, 然后将 level-(L+1) 中与该文件键区间重叠的文件都找出来. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 一次压实会合并多个被挑选文件的内容从而生成一系列新的 level-(L+1) 文件, 生成一个新文件的条件满足下述之一: 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    - 当前文件大小达到了 2MB
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//    - 当前文件的键区间与超过 10 个 level-(L+2) 文件发生了重叠. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 第二个条件的目的在于避免后续对 level-(L+1) 文件进行压实时需要从 level-(L+2) 读取过多的数据. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>while</span> <span class=p>(</span><span class=n>level</span> <span class=o>&lt;</span> <span class=n>config</span><span class=o>::</span><span class=n>kMaxMemCompactLevel</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 检查 level-(L+1) 中是否存在与 [smallest_user_key, largest_user_key] 重叠的文件
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>OverlapInLevel</span><span class=p>(</span><span class=n>level</span> <span class=o>+</span> <span class=mi>1</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>smallest_user_key</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest_user_key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 如果 level-(L+1) 中存在与 [smallest_user_key, largest_user_key] 重叠的文件则跳出循环, 返回该 level
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 如果 level-(L+1) 中不存在与 [smallest_user_key, largest_user_key] 重叠的文件, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 则检查 level-(L+2) 是否存在过多(过多即是看重叠文件个数是否超出阈值)与
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// [smallest_user_key, largest_user_key] 重叠的文件.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 如果重叠的文件数超过阈值, 则表示 level-L 需要进行压实了.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>level</span> <span class=o>+</span> <span class=mi>2</span> <span class=o>&lt;</span> <span class=n>config</span><span class=o>::</span><span class=n>kNumLevels</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// Check that file does not overlap too many grandparent bytes.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// 获取 level-(L+2) 中与 [smallest_user_key, largest_user_key] 有重叠的全部文件, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// 并保存到 overlaps. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=n>level</span> <span class=o>+</span> <span class=mi>2</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>limit</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>overlaps</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 计算 level-(L+2) 中与 [smallest_user_key, largest_user_key] 有重叠的全部文件的总大小
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>const</span> <span class=kt>int64_t</span> <span class=n>sum</span> <span class=o>=</span> <span class=n>TotalFileSize</span><span class=p>(</span><span class=n>overlaps</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 如果大小超过了阈值, 表示 level-(L+2) 存在过多与 [smallest_user_key, largest_user_key] 重叠的文件, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// 则跳出循环返回 level-L. (如果返回 L+1, 则下次压实 L+1 的这个文件时会从 L+2 读取过多文件.)
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>if</span> <span class=p>(</span><span class=n>sum</span> <span class=o>&gt;</span> <span class=n>MaxGrandParentOverlapBytes</span><span class=p>(</span><span class=n>vset_</span><span class=o>-&gt;</span><span class=n>options_</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=n>level</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>level</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=432-sstables-压实 class=headerLink><a href=#432-sstables-%e5%8e%8b%e5%ae%9e class=header-mark></a>4.3.2. sstables 压实</h4><h5 id=4321-compaction-构造 class=headerLink><a href=#4321-compaction-%e6%9e%84%e9%80%a0 class=header-mark></a>4.3.2.1. Compaction 构造</h5><p><code>Compaction</code> 包含了一次压实所需要的全部信息.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>class</span> <span class=nc>Compaction</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 本次要压实的 level
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>int</span> <span class=n>level_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// level_ 和 level_+1 重叠的文件列表; 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// inputs_[0] 对应 level, inputs_[1] 对应 level+1.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>FileMetaData</span><span class=o>*&gt;</span> <span class=n>inputs_</span><span class=p>[</span><span class=mi>2</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 用于保存与祖父重合的文件列表
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// (parent == level_ + 1, grandparent == level_ + 2)
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 这个主要是一个限制, 限制 level 和 level+1 合并后每个文件
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 的大小以避免后续压实负担太重.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>FileMetaData</span><span class=o>*&gt;</span> <span class=n>grandparents_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>接下来, 我们重点关注下, 各个成员如何被赋值的.</p><p><code>PickCompaction()</code> 负责构造 <code>Compaction</code>, 也即为一个新的压实过程确定 level 和输入文件列表.</p><p><code>PickCompaction</code> 确认待压实 level 主要基于两条策略(优先级先 1 后 2)：</p><ol><li>基于存储统计(VersionSet::Finalize()）发现某个 level 存储超上限严重, 拿来做压实.</li><li>基于查询统计(Version::Get(), Version::UpdateStats()) 发现有文件超过查询次数上限.</li></ol><p>明确待压实 level 后, 挑选其待压实文件, 然后从将其父 level(即 level+1)将与其重叠文件加入到待压实文件集中.</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
+</span><span class=lnt>  2
+</span><span class=lnt>  3
+</span><span class=lnt>  4
+</span><span class=lnt>  5
+</span><span class=lnt>  6
+</span><span class=lnt>  7
+</span><span class=lnt>  8
+</span><span class=lnt>  9
+</span><span class=lnt> 10
+</span><span class=lnt> 11
+</span><span class=lnt> 12
+</span><span class=lnt> 13
+</span><span class=lnt> 14
+</span><span class=lnt> 15
+</span><span class=lnt> 16
+</span><span class=lnt> 17
+</span><span class=lnt> 18
+</span><span class=lnt> 19
+</span><span class=lnt> 20
+</span><span class=lnt> 21
+</span><span class=lnt> 22
+</span><span class=lnt> 23
+</span><span class=lnt> 24
+</span><span class=lnt> 25
+</span><span class=lnt> 26
+</span><span class=lnt> 27
+</span><span class=lnt> 28
+</span><span class=lnt> 29
+</span><span class=lnt> 30
+</span><span class=lnt> 31
+</span><span class=lnt> 32
+</span><span class=lnt> 33
+</span><span class=lnt> 34
+</span><span class=lnt> 35
+</span><span class=lnt> 36
+</span><span class=lnt> 37
+</span><span class=lnt> 38
+</span><span class=lnt> 39
+</span><span class=lnt> 40
+</span><span class=lnt> 41
+</span><span class=lnt> 42
+</span><span class=lnt> 43
+</span><span class=lnt> 44
+</span><span class=lnt> 45
+</span><span class=lnt> 46
+</span><span class=lnt> 47
+</span><span class=lnt> 48
+</span><span class=lnt> 49
+</span><span class=lnt> 50
+</span><span class=lnt> 51
+</span><span class=lnt> 52
+</span><span class=lnt> 53
+</span><span class=lnt> 54
+</span><span class=lnt> 55
+</span><span class=lnt> 56
+</span><span class=lnt> 57
+</span><span class=lnt> 58
+</span><span class=lnt> 59
+</span><span class=lnt> 60
+</span><span class=lnt> 61
+</span><span class=lnt> 62
+</span><span class=lnt> 63
+</span><span class=lnt> 64
+</span><span class=lnt> 65
+</span><span class=lnt> 66
+</span><span class=lnt> 67
+</span><span class=lnt> 68
+</span><span class=lnt> 69
+</span><span class=lnt> 70
+</span><span class=lnt> 71
+</span><span class=lnt> 72
+</span><span class=lnt> 73
+</span><span class=lnt> 74
+</span><span class=lnt> 75
+</span><span class=lnt> 76
+</span><span class=lnt> 77
+</span><span class=lnt> 78
+</span><span class=lnt> 79
+</span><span class=lnt> 80
+</span><span class=lnt> 81
+</span><span class=lnt> 82
+</span><span class=lnt> 83
+</span><span class=lnt> 84
+</span><span class=lnt> 85
+</span><span class=lnt> 86
+</span><span class=lnt> 87
+</span><span class=lnt> 88
+</span><span class=lnt> 89
+</span><span class=lnt> 90
+</span><span class=lnt> 91
+</span><span class=lnt> 92
+</span><span class=lnt> 93
+</span><span class=lnt> 94
+</span><span class=lnt> 95
+</span><span class=lnt> 96
+</span><span class=lnt> 97
+</span><span class=lnt> 98
+</span><span class=lnt> 99
+</span><span class=lnt>100
+</span><span class=lnt>101
+</span><span class=lnt>102
+</span><span class=lnt>103
+</span><span class=lnt>104
+</span><span class=lnt>105
+</span><span class=lnt>106
+</span><span class=lnt>107
+</span><span class=lnt>108
+</span><span class=lnt>109
+</span><span class=lnt>110
+</span><span class=lnt>111
+</span><span class=lnt>112
+</span><span class=lnt>113
+</span><span class=lnt>114
+</span><span class=lnt>115
+</span><span class=lnt>116
+</span><span class=lnt>117
+</span><span class=lnt>118
+</span><span class=lnt>119
+</span><span class=lnt>120
+</span><span class=lnt>121
+</span><span class=lnt>122
+</span><span class=lnt>123
+</span><span class=lnt>124
+</span><span class=lnt>125
+</span><span class=lnt>126
+</span><span class=lnt>127
+</span><span class=lnt>128
+</span><span class=lnt>129
+</span><span class=lnt>130
+</span><span class=lnt>131
+</span><span class=lnt>132
+</span><span class=lnt>133
+</span><span class=lnt>134
+</span><span class=lnt>135
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>Compaction</span><span class=o>*</span> <span class=n>VersionSet</span><span class=o>::</span><span class=n>PickCompaction</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>Compaction</span><span class=o>*</span> <span class=n>c</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>level</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 基于存储比值计算的压实分数,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 小于 1 意味着未到上限, 压实不是很需要.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 由 VersionSet::Finalize() 计算.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>const</span> <span class=kt>bool</span> <span class=n>size_compaction</span> <span class=o>=</span> <span class=p>(</span><span class=n>current_</span><span class=o>-&gt;</span><span class=n>compaction_score_</span> <span class=o>&gt;=</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 基于查询统计而得出的下个待压实的文件
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>const</span> <span class=kt>bool</span> <span class=n>seek_compaction</span> <span class=o>=</span> <span class=p>(</span><span class=n>current_</span><span class=o>-&gt;</span><span class=n>file_to_compact_</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 我们倾向于因为某层数据太多而触发的压实,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 而非因为查询次数超过上限(即 FileMetaData-&gt;allowed_seeks)触发的压实.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 实现办法就是先检查大小后检查查询次数.
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 先看有无 level 存储比值已经超过上限
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>size_compaction</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 基于存储比值而得出的下个待压实的 level.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 由 Finalize() 计算.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>level</span> <span class=o>=</span> <span class=n>current_</span><span class=o>-&gt;</span><span class=n>compaction_level_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>c</span> <span class=o>=</span> <span class=k>new</span> <span class=n>Compaction</span><span class=p>(</span><span class=n>options_</span><span class=p>,</span> <span class=n>level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 找到待压实 level 第一个可能包含 compact_pointer_[level] 的文件.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// compact_pointer_ 记录了每个 level 各自对应的下次压实的起始 key.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>for</span> <span class=p>(</span><span class=n>size_t</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>current_</span><span class=o>-&gt;</span><span class=n>files_</span><span class=p>[</span><span class=n>level</span><span class=p>].</span><span class=n>size</span><span class=p>();</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>FileMetaData</span><span class=o>*</span> <span class=n>f</span> <span class=o>=</span> <span class=n>current_</span><span class=o>-&gt;</span><span class=n>files_</span><span class=p>[</span><span class=n>level</span><span class=p>][</span><span class=n>i</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>      <span class=k>if</span> <span class=p>(</span><span class=n>compact_pointer_</span><span class=p>[</span><span class=n>level</span><span class=p>].</span><span class=n>empty</span><span class=p>()</span> <span class=o>||</span>
+</span></span><span class=line><span class=cl>          <span class=n>icmp_</span><span class=p>.</span><span class=n>Compare</span><span class=p>(</span><span class=n>f</span><span class=o>-&gt;</span><span class=n>largest</span><span class=p>.</span><span class=n>Encode</span><span class=p>(),</span> <span class=n>compact_pointer_</span><span class=p>[</span><span class=n>level</span><span class=p>])</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 把这个文件追加到 level 对应的待压实文件集合中.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// 每次压实非 level-0 仅提取一个文件.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>].</span><span class=n>push_back</span><span class=p>(</span><span class=n>f</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果 level 对应的待压实文件集合为空(说明 compact_pointer_[level]
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 位于 level 最后一个文件之后), 则回绕到开头, 将其第一个
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 文件加入到待压实集合.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>].</span><span class=n>empty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// level-0 轮流到最后了, 再绕回到开头重新开始.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>].</span><span class=n>push_back</span><span class=p>(</span><span class=n>current_</span><span class=o>-&gt;</span><span class=n>files_</span><span class=p>[</span><span class=n>level</span><span class=p>][</span><span class=mi>0</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=nf>if</span> <span class=p>(</span><span class=n>seek_compaction</span><span class=p>)</span> <span class=p>{</span> 
+</span></span><span class=line><span class=cl>    <span class=c1>// 再看是否有文件因为查询次数过多.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// (Version::Get() 时候*疑似包含但实际不包含*目标 key 的最底层
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// level 的第一个文件会被记录到统计信息中, 然后会被 Version::UpdateStats() 处理)
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 而可以触发压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>level</span> <span class=o>=</span> <span class=n>current_</span><span class=o>-&gt;</span><span class=n>file_to_compact_level_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>c</span> <span class=o>=</span> <span class=k>new</span> <span class=n>Compaction</span><span class=p>(</span><span class=n>options_</span><span class=p>,</span> <span class=n>level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>].</span><span class=n>push_back</span><span class=p>(</span><span class=n>current_</span><span class=o>-&gt;</span><span class=n>file_to_compact_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// level-0 文件可能彼此重叠, 所以要把全部重叠文件都加入到待压实文件集合中
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>level</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>InternalKey</span> <span class=n>smallest</span><span class=p>,</span> <span class=n>largest</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>GetRange</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>],</span> <span class=o>&amp;</span><span class=n>smallest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>current_</span><span class=o>-&gt;</span><span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>smallest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 level+1 中与 level 对应待压实集合重叠的文件拿出来做压实, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 也就是设置 c-&gt;inputs_[1]. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>SetupOtherInputs</span><span class=p>(</span><span class=n>c</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>c</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 设置 inputs[1] 即 level+1 对应的重叠文件列表,
+</span></span></span><span class=line><span class=cl><span class=c1>// 同时根据实际情况决定是否扩大 level 层的待压实文件列表,
+</span></span></span><span class=line><span class=cl><span class=c1>// 即 inputs[0].
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>void</span> <span class=n>VersionSet</span><span class=o>::</span><span class=n>SetupOtherInputs</span><span class=p>(</span><span class=n>Compaction</span><span class=o>*</span> <span class=n>c</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>const</span> <span class=kt>int</span> <span class=n>level</span> <span class=o>=</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>level</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=n>InternalKey</span> <span class=n>smallest</span><span class=p>,</span> <span class=n>largest</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将待压实文件的最小最大 key 找到， 放到 &amp;smallest, &amp;largest
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>GetRange</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>],</span> <span class=o>&amp;</span><span class=n>smallest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将待压实文件与自己高一层的重叠文件找到， 放到 inputs_[1] 中
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>current_</span><span class=o>-&gt;</span><span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=n>level</span><span class=o>+</span><span class=mi>1</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>smallest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>largest</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 确定 level 和 level+1 待压实的全部 key 的范围
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>InternalKey</span> <span class=n>all_start</span><span class=p>,</span> <span class=n>all_limit</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>GetRange2</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>],</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>],</span> <span class=o>&amp;</span><span class=n>all_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_limit</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 为了尽可能多的压实数据, 确认我们是否可以在不改变 level+1 层文件个数
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 的前提下增加 level 层的文件个数. 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 之所以这么限制, 是因为 level 文件个数增加可能导致 level+1 有新的重叠文件, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 我们要避免最后把 level 和 level+1 文件都纳入到本次压实.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>].</span><span class=n>empty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>FileMetaData</span><span class=o>*&gt;</span> <span class=n>expanded0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 寻找&#34;漏网之鱼&#34;, 将 level 层落入待压实范围的全部文件捞出来, 放到 &amp;expanded0 以与 inputs[0] 区别
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>current_</span><span class=o>-&gt;</span><span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=n>level</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_limit</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>expanded0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=kt>int64_t</span> <span class=n>inputs0_size</span> <span class=o>=</span> <span class=n>TotalFileSize</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=kt>int64_t</span> <span class=n>inputs1_size</span> <span class=o>=</span> <span class=n>TotalFileSize</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=kt>int64_t</span> <span class=n>expanded0_size</span> <span class=o>=</span> <span class=n>TotalFileSize</span><span class=p>(</span><span class=n>expanded0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果 expanded0.size() &gt; c-&gt;inputs_[0].size() 说明真有漏网之鱼,
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 否则这两个值应该相等.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>expanded0</span><span class=p>.</span><span class=n>size</span><span class=p>()</span> <span class=o>&gt;</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>].</span><span class=n>size</span><span class=p>()</span> <span class=o>&amp;&amp;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果 level+1 层文件总大小加上 level 层落在压实范围内全部文件大小
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 小于一次压实字节数的硬上限(25 个文件大小), 则将漏网之鱼包含进来.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>inputs1_size</span> <span class=o>+</span> <span class=n>expanded0_size</span> <span class=o>&lt;</span>
+</span></span><span class=line><span class=cl>            <span class=n>ExpandedCompactionByteSizeLimit</span><span class=p>(</span><span class=n>options_</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>InternalKey</span> <span class=n>new_start</span><span class=p>,</span> <span class=n>new_limit</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 获取扩展后的 level 层的起止键(文件集扩张可能导致起止键变更),
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 放到 &amp;new_start, &amp;new_limit
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>GetRange</span><span class=p>(</span><span class=n>expanded0</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>new_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>new_limit</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=n>std</span><span class=o>::</span><span class=n>vector</span><span class=o>&lt;</span><span class=n>FileMetaData</span><span class=o>*&gt;</span> <span class=n>expanded1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 重新获取 level+1 与扩展后的 level 层待压实文件的重叠文件列表， 放到 &amp;expanded1
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>current_</span><span class=o>-&gt;</span><span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=n>level</span><span class=o>+</span><span class=mi>1</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>new_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>new_limit</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                     <span class=o>&amp;</span><span class=n>expanded1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 如果 &amp;expanded1 大小等于 level 层待压实文件集扩大前获取的 level+1 文件集大小,
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 这正是我们期待的(只扩张 level 待压实文件集而不改变 level+1 的).
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 否则, 压实文件集(inputs) 不做任何变更.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>expanded1</span><span class=p>.</span><span class=n>size</span><span class=p>()</span> <span class=o>==</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>].</span><span class=n>size</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>smallest</span> <span class=o>=</span> <span class=n>new_start</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>largest</span> <span class=o>=</span> <span class=n>new_limit</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span> <span class=o>=</span> <span class=n>expanded0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>]</span> <span class=o>=</span> <span class=n>expanded1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>GetRange2</span><span class=p>(</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>0</span><span class=p>],</span> <span class=n>c</span><span class=o>-&gt;</span><span class=n>inputs_</span><span class=p>[</span><span class=mi>1</span><span class=p>],</span> <span class=o>&amp;</span><span class=n>all_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_limit</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 计算祖父(即 level+2)与本次压实重叠的文件列表, 放到 &amp;c-&gt;grandparents_
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>level</span> <span class=o>+</span> <span class=mi>2</span> <span class=o>&lt;</span> <span class=n>config</span><span class=o>::</span><span class=n>kNumLevels</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>current_</span><span class=o>-&gt;</span><span class=n>GetOverlappingInputs</span><span class=p>(</span><span class=n>level</span> <span class=o>+</span> <span class=mi>2</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_start</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>all_limit</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                   <span class=o>&amp;</span><span class=n>c</span><span class=o>-&gt;</span><span class=n>grandparents_</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 更新 level 层下一次压实的起点.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 我们不等着 VersionEdit 被应用(写入 manifest)就直接在这里更新, 为的是如果本次压实
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 失败, 我们下次就会换个键范围进行尝试.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>compact_pointer_</span><span class=p>[</span><span class=n>level</span><span class=p>]</span> <span class=o>=</span> <span class=n>largest</span><span class=p>.</span><span class=n>Encode</span><span class=p>().</span><span class=n>ToString</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 更新 VersionEdit 中关于下次压实的信息
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>c</span><span class=o>-&gt;</span><span class=n>edit_</span><span class=p>.</span><span class=n>SetCompactPointer</span><span class=p>(</span><span class=n>level</span><span class=p>,</span> <span class=n>largest</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>有了 <code>Compaction</code> 就可以进行压实了.</p><h5 id=4322-基于-compaction-的压实 class=headerLink><a href=#4322-%e5%9f%ba%e4%ba%8e-compaction-%e7%9a%84%e5%8e%8b%e5%ae%9e class=header-mark></a>4.3.2.2. 基于 <code>Compaction</code> 的压实</h5><p>具体压实就做一件事情:</p><p>遍历待压实文件, 如果某个 key (位于 level-L 或者 level-(L+1))的类型属性取值为"删除", 则确认其在 level-(L+2) 或之上是否存在, 若不存在则丢弃之, 否则写入合并后的文件, 压实完成更新 level 架构(即将压实后文件放到 level+1 层).</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span><span class=lnt>64
+</span><span class=lnt>65
+</span><span class=lnt>66
+</span><span class=lnt>67
+</span><span class=lnt>68
+</span><span class=lnt>69
+</span><span class=lnt>70
+</span><span class=lnt>71
+</span><span class=lnt>72
+</span><span class=lnt>73
+</span><span class=lnt>74
+</span><span class=lnt>75
+</span><span class=lnt>76
+</span><span class=lnt>77
+</span><span class=lnt>78
+</span><span class=lnt>79
+</span><span class=lnt>80
+</span><span class=lnt>81
+</span><span class=lnt>82
+</span><span class=lnt>83
+</span><span class=lnt>84
+</span><span class=lnt>85
+</span><span class=lnt>86
+</span><span class=lnt>87
+</span><span class=lnt>88
+</span><span class=lnt>89
+</span><span class=lnt>90
+</span><span class=lnt>91
+</span><span class=lnt>92
+</span><span class=lnt>93
+</span><span class=lnt>94
+</span><span class=lnt>95
+</span><span class=lnt>96
+</span><span class=lnt>97
+</span><span class=lnt>98
+</span><span class=lnt>99
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>Status</span> <span class=n>DBImpl</span><span class=o>::</span><span class=n>DoCompactionWork</span><span class=p>(</span><span class=n>CompactionState</span><span class=o>*</span> <span class=n>compact</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>const</span> <span class=kt>uint64_t</span> <span class=n>start_micros</span> <span class=o>=</span> <span class=n>env_</span><span class=o>-&gt;</span><span class=n>NowMicros</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 真正做压实工作的之前要释放锁
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>mutex_</span><span class=p>.</span><span class=n>Unlock</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 针对待压实的全部文件创建一个大迭代器
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>Iterator</span><span class=o>*</span> <span class=n>input</span> <span class=o>=</span> <span class=n>versions_</span><span class=o>-&gt;</span><span class=n>MakeInputIterator</span><span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>compaction</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 下面三个临时变量用来处理多个文件(如果压实涉及了 level-0)
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// 或多个 level 存在同样 key 的问题, 我们只关注最新的那个.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>current_user_key</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=kt>bool</span> <span class=n>has_current_user_key</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 如果 user key 出现多次, 下面这个用于记录上次出现时对应的
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// internal key 的序列号.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>SequenceNumber</span> <span class=n>last_sequence_for_key</span> <span class=o>=</span> <span class=n>kMaxSequenceNumber</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 遍历全部待压实 keys
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>for</span> <span class=p>(;</span> <span class=n>input</span><span class=o>-&gt;</span><span class=n>Valid</span><span class=p>()</span> <span class=o>&amp;&amp;</span> <span class=o>!</span><span class=n>shutting_down_</span><span class=p>.</span><span class=n>Acquire_Load</span><span class=p>();</span> <span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 优先处理已经写满待压实的 memtable
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>has_imm_</span><span class=p>.</span><span class=n>NoBarrier_Load</span><span class=p>()</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>mutex_</span><span class=p>.</span><span class=n>Lock</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>      <span class=k>if</span> <span class=p>(</span><span class=n>imm_</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// immutable memtable 落盘
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>CompactMemTable</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=n>mutex_</span><span class=p>.</span><span class=n>Unlock</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 即将被处理的 key
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>Slice</span> <span class=n>key</span> <span class=o>=</span> <span class=n>input</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 当发现截止到 key, level 和 level+2 重叠数据量已经达到上限, 则
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 开始进行压实; key 也是压实的最右区间.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>//　一进来循环看到这个判断代码可能比较懵, 肯定看不太懂, 其实下面这个判断一般
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 要经过若干循环才能成立, 先看后面代码再回来看这个判断.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>compaction</span><span class=o>-&gt;</span><span class=n>ShouldStopBefore</span><span class=p>(</span><span class=n>key</span><span class=p>)</span> <span class=o>&amp;&amp;</span>
+</span></span><span class=line><span class=cl>        <span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 将压实生成的文件落盘
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>status</span> <span class=o>=</span> <span class=n>FinishCompactionOutputFile</span><span class=p>(</span><span class=n>compact</span><span class=p>,</span> <span class=n>input</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>drop</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 反序列化为 internal key
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>ParseInternalKey</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>ikey</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果这个 key 之前迭代未出现过, 记下来
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>has_current_user_key</span> <span class=o>||</span>
+</span></span><span class=line><span class=cl>        <span class=n>user_comparator</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>Compare</span><span class=p>(</span><span class=n>ikey</span><span class=p>.</span><span class=n>user_key</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                    <span class=n>Slice</span><span class=p>(</span><span class=n>current_user_key</span><span class=p>))</span> <span class=o>!=</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>current_user_key</span><span class=p>.</span><span class=n>assign</span><span class=p>(</span><span class=n>ikey</span><span class=p>.</span><span class=n>user_key</span><span class=p>.</span><span class=n>data</span><span class=p>(),</span> <span class=n>ikey</span><span class=p>.</span><span class=n>user_key</span><span class=p>.</span><span class=n>size</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>      <span class=n>has_current_user_key</span> <span class=o>=</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 标记这个 user key 截止目前轮次迭代对应的序列号;
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=c1>// 因为是首次出现所以这里直接置为序列号最大可能取值.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>last_sequence_for_key</span> <span class=o>=</span> <span class=n>kMaxSequenceNumber</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 当前 key 是一个墓碑消息, 而且 level-(L+2) 以及更高 level 不存在这个 key, 
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// 则可以放心删掉.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=n>ikey</span><span class=p>.</span><span class=n>type</span> <span class=o>==</span> <span class=n>kTypeDeletion</span> <span class=o>&amp;&amp;</span>
+</span></span><span class=line><span class=cl>        <span class=n>compact</span><span class=o>-&gt;</span><span class=n>compaction</span><span class=o>-&gt;</span><span class=n>IsBaseLevelForKey</span><span class=p>(</span><span class=n>ikey</span><span class=p>.</span><span class=n>user_key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=n>drop</span> <span class=o>=</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>last_sequence_for_key</span> <span class=o>=</span> <span class=n>ikey</span><span class=p>.</span><span class=n>sequence</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果当前数据项不丢弃, 则进行写入合并文件
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>drop</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 如有必要则创建新的 output file
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span> <span class=o>==</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>status</span> <span class=o>=</span> <span class=n>OpenCompactionOutputFile</span><span class=p>(</span><span class=n>compact</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=k>if</span> <span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span><span class=o>-&gt;</span><span class=n>NumEntries</span><span class=p>()</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 如果一个都没写过, input 迭代器又是从小到大遍历,
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// 所以当前 user key 肯定是最小的
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>compact</span><span class=o>-&gt;</span><span class=n>current_output</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>smallest</span><span class=p>.</span><span class=n>DecodeFrom</span><span class=p>(</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 否则当前 user key 目前就是最大的
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>compact</span><span class=o>-&gt;</span><span class=n>current_output</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>largest</span><span class=p>.</span><span class=n>DecodeFrom</span><span class=p>(</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 将该 user key 对应的数据项写入 sstable.
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span><span class=o>-&gt;</span><span class=n>Add</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>input</span><span class=o>-&gt;</span><span class=n>value</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 如果 sstable 文件足够大, 则落盘并关闭
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span><span class=o>-&gt;</span><span class=n>FileSize</span><span class=p>()</span> <span class=o>&gt;=</span>
+</span></span><span class=line><span class=cl>          <span class=n>compact</span><span class=o>-&gt;</span><span class=n>compaction</span><span class=o>-&gt;</span><span class=n>MaxOutputFileSize</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>status</span> <span class=o>=</span> <span class=n>FinishCompactionOutputFile</span><span class=p>(</span><span class=n>compact</span><span class=p>,</span> <span class=n>input</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 处理下个 key
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>input</span><span class=o>-&gt;</span><span class=n>Next</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>compact</span><span class=o>-&gt;</span><span class=n>builder</span> <span class=o>!=</span> <span class=k>nullptr</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>status</span> <span class=o>=</span> <span class=n>FinishCompactionOutputFile</span><span class=p>(</span><span class=n>compact</span><span class=p>,</span> <span class=n>input</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>delete</span> <span class=n>input</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>input</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>status</span><span class=p>.</span><span class=n>ok</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 将合并生成的新文件放到 level+1
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>status</span> <span class=o>=</span> <span class=n>InstallCompactionResults</span><span class=p>(</span><span class=n>compact</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>status</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=5-总结 class=headerLink><a href=#5-%e6%80%bb%e7%bb%93 class=header-mark></a>5. 总结</h2><p>leveldb 作为一个典型的 LSM-Tree 实现, 压实是不可或缺的. 本文围绕压实目的、时机、实现等几个维度比较详细地介绍了 leveldb 的压实实现.</p><p>如果只能用一句话描述 leveldb 的压实, 我们可以描述为“leveldb 基于查询统计或存储统计决定压实的文件及其所属 level, 然后确认 level+1 与其重叠的文件, 将这两层文件进行合并放到 level+1; 合并过程要避免文件过大, 避免是靠检测合并的文件大小与 level+2 的重叠字节数来实现的.”</p><p>&ndash;End&ndash;</p></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>更新于 2021-10-27</span></div><div class=post-info-license></div></div><div class=post-info-line><div class=post-info-md><span><a class=link-to-mardown href=/leveldb-annotations-7-compaction/index.md target=_blank rel="noopener noreferrer">阅读原始文档</a></span></div><div class=post-info-share><span><a href=# title="分享到 Twitter" data-sharer=twitter data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)" data-via=haricheung data-hashtags=leveldb,LSM-Tree,db,kv><i class="fab fa-twitter fa-fw"></i></a><a href=# title="分享到 Facebook" data-sharer=facebook data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-hashtag=leveldb><i class="fab fa-facebook-square fa-fw"></i></a><a href=# title="分享到 WhatsApp" data-sharer=whatsapp data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href=# title="分享到 Line" data-sharer=line data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)"><i data-svg-src=/lib/simple-icons/icons/line.min.svg></i></a><a href=# title="分享到 微博" data-sharer=weibo data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)"><i class="fab fa-weibo fa-fw"></i></a><a href=# title="分享到 Myspace" data-sharer=myspace data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)" data-description><i data-svg-src=/lib/simple-icons/icons/myspace.min.svg></i></a><a href=# title="分享到 Blogger" data-sharer=blogger data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)" data-description><i class="fab fa-blogger fa-fw"></i></a><a href=# title="分享到 Evernote" data-sharer=evernote data-url=https://chienlungcheung.github.io/leveldb-annotations-7-compaction/ data-title="Leveldb 源码详解系列之七: 压实(Compaction)"><i class="fab fa-evernote fa-fw"></i></a></span></div></div></div><div class=post-info-more><section class=post-tags><i class="fas fa-tags fa-fw"></i>&nbsp;<a href=/tags/leveldb/>leveldb</a>,&nbsp;<a href=/tags/lsm-tree/>LSM-Tree</a>,&nbsp;<a href=/tags/db/>db</a>,&nbsp;<a href=/tags/kv/>kv</a></section><section><span><a href=javascript:void(0); onclick=window.history.back()>返回</a></span>&nbsp;|&nbsp;<span><a href=/>主页</a></span></section></div><div class=post-nav><a href=/leveldb-annotations-6-table-cache/ class=prev rel=prev title="Leveldb 源码详解系列之六: 文件缓存设计与实现"><i class="fas fa-angle-left fa-fw"></i>Leveldb 源码详解系列之六: 文件缓存设计与实现</a>
+<a href=/lsmtree-paper/ class=next rel=next title="LSM-Tree 论文阅读笔记">LSM-Tree 论文阅读笔记<i class="fas fa-angle-right fa-fw"></i></a></div></div><div id=comments><div id=disqus_thread class=comment></div><noscript>Please enable JavaScript to view the comments powered by <a href=https://disqus.com/?ref_noscript>Disqus</a>.</noscript></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>由 <a href=https://gohugo.io/ target=_blank rel="noopener noreferrer" title="Hugo 0.120.1">Hugo</a> 强力驱动&nbsp;|&nbsp;主题 - <a href=https://github.com/HEIGE-PCloud/DoIt target=_blank rel="noopener noreferrer" title="DoIt 0.3.0"><i class="far fa-edit fa-fw"></i> DoIt</a></div><div class=footer-line><i class="far fa-copyright fa-fw"></i><span itemprop=copyrightYear>2019 - 2023</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank rel="noopener noreferrer">Hari</a></span>&nbsp;|&nbsp;<span class=license><a rel="license external nofollow noopener noreffer" href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></span></div><div class=footer-line></div><div class=footer-line></div></div></footer></div><div id=fixed-buttons><a href=#back-to-top id=back-to-top-button class=fixed-button title=回到顶部><i class="fas fa-arrow-up fa-fw"></i>
+</a><a href=# id=view-comments class=fixed-button title=查看评论><i class="fas fa-comment fa-fw"></i></a></div><div class=assets><link rel=stylesheet href=/lib/katex/katex.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/katex/copy-tex.min.css><noscript><link rel=stylesheet href=/lib/katex/copy-tex.min.css></noscript><script type=text/javascript>window.config={code:{copyTitle:"复制到剪贴板",maxShownLines:10},comment:{},math:{delimiters:[{display:!0,left:"$$",right:"$$"},{display:!0,left:"\\[",right:"\\]"},{display:!1,left:"$",right:"$"},{display:!1,left:"\\(",right:"\\)"}],strict:!1},search:{distance:100,findAllMatches:!1,fuseIndexURL:"/index.json",highlightTag:"em",ignoreFieldNorm:!1,ignoreLocation:!1,isCaseSensitive:!1,location:0,maxResultLength:10,minMatchCharLength:2,noResultsFound:"没有找到结果",snippetLength:50,threshold:.3,type:"fuse",useExtendedSearch:!1},sharerjs:!0,table:{sort:!0}}</script><script type=text/javascript src=https://Chienlung.disqus.com/embed.js defer></script><script type=text/javascript src=/lib/tablesort/tablesort.min.js></script><script type=text/javascript src=/lib/clipboard/clipboard.min.js></script><script type=text/javascript src=/lib/sharer/sharer.min.js></script><script type=text/javascript src=/lib/katex/katex.min.js defer></script><script type=text/javascript src=/lib/katex/auto-render.min.js defer></script><script type=text/javascript src=/lib/katex/copy-tex.min.js defer></script><script type=text/javascript src=/lib/katex/mhchem.min.js defer></script><script type=text/javascript src=/js/katex.min.js defer></script><script type=text/javascript src=/js/theme.min.js defer></script></div></body></html>

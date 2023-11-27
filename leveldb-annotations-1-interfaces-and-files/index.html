@@ -1,0 +1,351 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content="noodp"><title>Leveldb 源码详解系列之一: 接口与文件 - 二手知识</title>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3CREWXCLR7"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag("js",new Date),gtag("config","G-3CREWXCLR7")</script><meta name=Description content><meta property="og:title" content="Leveldb 源码详解系列之一: 接口与文件"><meta property="og:description" content="
+    从哪里着手分析 leveldb 实现在了解了其基本使用以后, 如果想理解 leveldb 基本原理, 则有两个抓手. 第一个是  include 目录下的头文件, 尤其是 db.h , 第二个就是它的文件类型及其格式.
+下面我们就从接口和文件两个方向来切入 leveldb 的设计与实现."><meta property="og:type" content="article"><meta property="og:url" content="https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/"><meta property="og:image" content="https://chienlungcheung.github.io/logo.png"><meta property="article:section" content="posts"><meta property="article:published_time" content="2020-09-11T23:13:08+08:00"><meta property="article:modified_time" content="2020-09-11T23:13:08+08:00"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://chienlungcheung.github.io/logo.png"><meta name=twitter:title content="Leveldb 源码详解系列之一: 接口与文件"><meta name=twitter:description content="
+    从哪里着手分析 leveldb 实现在了解了其基本使用以后, 如果想理解 leveldb 基本原理, 则有两个抓手. 第一个是  include 目录下的头文件, 尤其是 db.h , 第二个就是它的文件类型及其格式.
+下面我们就从接口和文件两个方向来切入 leveldb 的设计与实现."><meta name=twitter:site content="@haricheung"><meta name=application-name content="DoIt"><meta name=apple-mobile-web-app-title content="DoIt"><meta name=theme-color content="#f8f8f8"><meta name=msapplication-TileColor content="#da532c"><link rel="shortcut icon" type=image/x-icon href=/favicon.ico><link rel=icon type=image/png sizes=32x32 href=/favicon-32x32.png><link rel=icon type=image/png sizes=16x16 href=/favicon-16x16.png><link rel=apple-touch-icon sizes=180x180 href=/apple-touch-icon.png><link rel=mask-icon href=/safari-pinned-tab.svg color=#5bbad5><link rel=canonical href=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/><link rel=prev href=https://chienlungcheung.github.io/leveldb-annotations-0-usage-and-examples/><link rel=next href=https://chienlungcheung.github.io/%E4%BD%BF%E7%94%A8-ebpf-%E8%B0%83%E8%AF%95%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E7%9A%84-go-%E7%A8%8B%E5%BA%8F/><link rel=stylesheet href=/lib/normalize/normalize.min.css><link rel=stylesheet href=/css/color.css><link rel=stylesheet href=/css/style.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/fontawesome-free/all.min.css><noscript><link rel=stylesheet href=/lib/fontawesome-free/all.min.css></noscript><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/animate/animate.min.css><noscript><link rel=stylesheet href=/lib/animate/animate.min.css></noscript><script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","headline":"Leveldb 源码详解系列之一: 接口与文件","inLanguage":"zh-CN","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-1-interfaces-and-files\/"},"genre":"posts","keywords":"leveldb, LSM-Tree, db, kv","wordcount":9740,"url":"https:\/\/chienlungcheung.github.io\/leveldb-annotations-1-interfaces-and-files\/","datePublished":"2020-09-11T23:13:08+08:00","dateModified":"2020-09-11T23:13:08+08:00","publisher":{"@type":"Organization","name":""},"author":{"@type":"Person","name":"Hari"},"description":""}</script><script src=//instant.page/5.1.1 defer type=module integrity=sha384-MWfCL6g1OTGsbSwfuMHc8+8J2u71/LA8dzlIN3ycajckxuZZmF+DNjdm7O6H3PSq></script></head><body header-desktop=fixed header-mobile=auto><script type=text/javascript>function setTheme(e){document.body.setAttribute("theme",e),document.documentElement.style.setProperty("color-scheme",e==="light"?"light":"dark"),window.theme=e}function saveTheme(e){window.localStorage&&localStorage.setItem("theme",e)}function getMeta(e){const t=document.getElementsByTagName("meta");for(let n=0;n<t.length;n++)if(t[n].getAttribute("name")===e)return t[n];return""}if(window.localStorage&&localStorage.getItem("theme")){let e=localStorage.getItem("theme");e==="light"||e==="dark"||e==="black"?setTheme(e):setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}else"auto"==="light"||"auto"==="dark"||"auto"==="black"?(setTheme("auto"),saveTheme("auto")):(saveTheme("auto"),setTheme(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));let metaColors={light:"#f8f8f8",dark:"#252627",black:"#000000"};getMeta("theme-color").content=metaColors[document.body.getAttribute("theme")]</script><div id=back-to-top></div><div id=mask></div><div class=wrapper><header class=desktop id=header-desktop><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu><div class=menu-inner><a class=menu-item href=/posts/>文章 </a><a class=menu-item href=/tags/>标签 </a><a class=menu-item href=/categories/>分类 </a><span class="menu-item delimiter"></span><span class="menu-item search" id=search-desktop>
+<input type=text placeholder=搜索文章标题或内容... id=search-input-desktop>
+<a href=# class="search-button search-toggle" id=search-toggle-desktop title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-desktop title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-desktop><i class="fas fa-spinner fa-fw fa-spin"></i>
+</span></span><a href=# class="menu-item theme-select" title=切换主题><i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-desktop title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></div></header><header class=mobile id=header-mobile><div class=header-container><div class=header-wrapper><div class=header-title><a href=/ title=二手知识>二手知识</a></div><div class=menu-toggle id=menu-toggle-mobile><span></span><span></span><span></span></div></div><div class=menu id=menu-mobile><div class=search-wrapper><div class="search mobile" id=search-mobile><input type=text placeholder=搜索文章标题或内容... id=search-input-mobile>
+<a href=# class="search-button search-toggle" id=search-toggle-mobile title=搜索><i class="fas fa-search fa-fw"></i>
+</a><a href=# class="search-button search-clear" id=search-clear-mobile title=清空><i class="fas fa-times-circle fa-fw"></i>
+</a><span class="search-button search-loading" id=search-loading-mobile><i class="fas fa-spinner fa-fw fa-spin"></i></span></div><a href=# class=search-cancel id=search-cancel-mobile>取消</a></div><a class=menu-item href=/posts/ title>文章</a><a class=menu-item href=/tags/ title>标签</a><a class=menu-item href=/categories/ title>分类</a><a href=# class="menu-item theme-select" title=切换主题>
+<i class="fas fa-adjust fa-fw"></i>
+<select class=color-theme-select id=theme-select-mobile title=切换主题><option value=light>浅色</option><option value=dark>深色</option><option value=black>黑色</option><option value=auto>跟随系统</option></select></a></div></div></header><div class="search-dropdown desktop"><div id=search-dropdown-desktop></div></div><div class="search-dropdown mobile"><div id=search-dropdown-mobile></div></div><main class=main><div class=container><div class=toc id=toc-auto><h2 class=toc-title>目录</h2><div class=toc-content id=toc-content-auto><nav id=TableOfContents><ul><li><a href=#从哪里着手分析-leveldb-实现>从哪里着手分析 leveldb 实现</a></li><li><a href=#leveldb-常用的接口>leveldb 常用的接口</a><ul><li><a href=#open>Open</a></li><li><a href=#put>Put</a></li><li><a href=#delete>Delete</a></li><li><a href=#write>Write</a></li><li><a href=#get>Get</a></li><li><a href=#newiterator>NewIterator</a></li><li><a href=#getsnapshot>GetSnapshot</a></li><li><a href=#releasesnapshot>ReleaseSnapshot</a></li><li><a href=#getproperty>GetProperty</a></li><li><a href=#getappoximatesizes>GetAppoximateSizes</a></li><li><a href=#compactrange>CompactRange</a></li></ul></li><li><a href=#leveldb-的文件类型>leveldb 的文件类型</a><ul><li><a href=#log-文件>log 文件</a><ul><li><a href=#log-文件格式>log 文件格式</a></li><li><a href=#log-文件格式的好处>log 文件格式的好处</a></li><li><a href=#log-文件的缺点并不是>log 文件的缺点(并不是)</a></li><li><a href=#log-文件主要接口>log 文件主要接口</a><ul><li><a href=#写-log>写 log</a></li><li><a href=#读-log>读 log</a></li></ul></li><li><a href=#与-log-文件配套的-memtable>与 log 文件配套的 memtable</a><ul><li><a href=#结构>结构</a></li><li><a href=#用途>用途</a></li></ul></li></ul></li><li><a href=#sorted-string-table-文件>sorted string table 文件</a><ul><li><a href=#sorted-string-table-文件格式>sorted string table 文件格式</a></li><li><a href=#filter-meta-block>&ldquo;filter&rdquo; Meta Block</a></li><li><a href=#stats-meta-block>&ldquo;stats&rdquo; Meta Block</a></li><li><a href=#sorted-string-table-文件主要接口>sorted string table 文件主要接口</a><ul><li><a href=#sorted-string-table-文件读接口>sorted string table 文件读接口</a></li><li><a href=#sorted-string-table-文件写接口>sorted string table 文件写接口</a></li></ul></li></ul></li><li><a href=#manifest-文件>MANIFEST 文件</a><ul><li><a href=#与-manifest-相关的数据结构之-versionset>与 MANIFEST 相关的数据结构之 VersionSet</a></li><li><a href=#与-manifest-相关的-version-结构>与 MANIFEST 相关的 Version 结构</a></li><li><a href=#与-manifest-相关的-versionedit>与 MANIFEST 相关的 VersionEdit</a></li></ul></li><li><a href=#current-文件>CURRENT 文件</a></li><li><a href=#文件位置与命名>文件位置与命名</a></li></ul></li></ul></nav></div></div><script>document.getElementsByTagName("main")[0].setAttribute("autoTOC","true")</script><article class="page single"><h1 class="single-title animate__animated animate__flipInX">Leveldb 源码详解系列之一: 接口与文件</h1><div class=post-meta><div class=post-meta-line><span class=post-author><i class="author fas fa-user-circle fa-fw"></i><a href=/ title=Author rel=author class=author>Hari</a></span></div><div class=post-meta-line><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime=2020-09-11>2020-09-11</time>&nbsp;<i class="far fa-edit fa-fw"></i>&nbsp;<time datetime=2020-09-11>2020-09-11</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 9740 字&nbsp;
+<i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 20 分钟&nbsp;</div></div><div class="details toc" id=toc-static kept><div class="details-summary toc-title"><span>目录</span>
+<span><i class="details-icon fas fa-angle-right"></i></span></div><div class="details-content toc-content" id=toc-content-static><nav id=TableOfContents><ul><li><a href=#从哪里着手分析-leveldb-实现>从哪里着手分析 leveldb 实现</a></li><li><a href=#leveldb-常用的接口>leveldb 常用的接口</a><ul><li><a href=#open>Open</a></li><li><a href=#put>Put</a></li><li><a href=#delete>Delete</a></li><li><a href=#write>Write</a></li><li><a href=#get>Get</a></li><li><a href=#newiterator>NewIterator</a></li><li><a href=#getsnapshot>GetSnapshot</a></li><li><a href=#releasesnapshot>ReleaseSnapshot</a></li><li><a href=#getproperty>GetProperty</a></li><li><a href=#getappoximatesizes>GetAppoximateSizes</a></li><li><a href=#compactrange>CompactRange</a></li></ul></li><li><a href=#leveldb-的文件类型>leveldb 的文件类型</a><ul><li><a href=#log-文件>log 文件</a><ul><li><a href=#log-文件格式>log 文件格式</a></li><li><a href=#log-文件格式的好处>log 文件格式的好处</a></li><li><a href=#log-文件的缺点并不是>log 文件的缺点(并不是)</a></li><li><a href=#log-文件主要接口>log 文件主要接口</a><ul><li><a href=#写-log>写 log</a></li><li><a href=#读-log>读 log</a></li></ul></li><li><a href=#与-log-文件配套的-memtable>与 log 文件配套的 memtable</a><ul><li><a href=#结构>结构</a></li><li><a href=#用途>用途</a></li></ul></li></ul></li><li><a href=#sorted-string-table-文件>sorted string table 文件</a><ul><li><a href=#sorted-string-table-文件格式>sorted string table 文件格式</a></li><li><a href=#filter-meta-block>&ldquo;filter&rdquo; Meta Block</a></li><li><a href=#stats-meta-block>&ldquo;stats&rdquo; Meta Block</a></li><li><a href=#sorted-string-table-文件主要接口>sorted string table 文件主要接口</a><ul><li><a href=#sorted-string-table-文件读接口>sorted string table 文件读接口</a></li><li><a href=#sorted-string-table-文件写接口>sorted string table 文件写接口</a></li></ul></li></ul></li><li><a href=#manifest-文件>MANIFEST 文件</a><ul><li><a href=#与-manifest-相关的数据结构之-versionset>与 MANIFEST 相关的数据结构之 VersionSet</a></li><li><a href=#与-manifest-相关的-version-结构>与 MANIFEST 相关的 Version 结构</a></li><li><a href=#与-manifest-相关的-versionedit>与 MANIFEST 相关的 VersionEdit</a></li></ul></li><li><a href=#current-文件>CURRENT 文件</a></li><li><a href=#文件位置与命名>文件位置与命名</a></li></ul></li></ul></nav></div></div><div class=content id=content><h2 id=从哪里着手分析-leveldb-实现 class=headerLink><a href=#%e4%bb%8e%e5%93%aa%e9%87%8c%e7%9d%80%e6%89%8b%e5%88%86%e6%9e%90-leveldb-%e5%ae%9e%e7%8e%b0 class=header-mark></a>从哪里着手分析 leveldb 实现</h2><p>在了解了其基本使用以后, 如果想理解 leveldb 基本原理, 则有两个抓手. 第一个是 <code>include</code> 目录下的头文件, 尤其是 <code>db.h</code> , 第二个就是它的文件类型及其格式.</p><p>下面我们就从接口和文件两个方向来切入 leveldb 的设计与实现.</p><h2 id=leveldb-常用的接口 class=headerLink><a href=#leveldb-%e5%b8%b8%e7%94%a8%e7%9a%84%e6%8e%a5%e5%8f%a3 class=header-mark></a>leveldb 常用的接口</h2><h3 id=open class=headerLink><a href=#open class=header-mark></a>Open</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 打开一个名为 name 的数据库. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 打开成功, 会把一个指向基于堆内存的数据库指针存储到 *dbptr, 同时返回 OK; 如果打开失败, 
+</span></span></span><span class=line><span class=cl><span class=cm> * 存储 nullptr 到 *dbptr 同时返回一个错误状态. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 调用者不再使用这个数据库时需要负责释放 *dbptr 指向的内存. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 控制数据库行为和性能的参数配置
+</span></span></span><span class=line><span class=cl><span class=cm> * @param name 数据库名称
+</span></span></span><span class=line><span class=cl><span class=cm> * @param dbptr 存储指向堆内存中数据库的指针
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>Status</span> <span class=nf>Open</span><span class=p>(</span><span class=k>const</span> <span class=n>Options</span><span class=o>&amp;</span> <span class=n>options</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                    <span class=k>const</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>&amp;</span> <span class=n>name</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                    <span class=n>DB</span><span class=o>**</span> <span class=n>dbptr</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法在数据库启动时调用, 主要工作由 <code>leveldb::DBImpl::Recover</code> 方法完成, 后者主要做如下事情:</p><ol><li>调用其 VersionSet 成员的 <code>leveldb::VersionSet::Recover</code> 方法. 该方法从磁盘读取 CURRENT 文件, 进而读取 MANIFEST 文件内容, 然后在内存重建 level 架构:</li></ol><ul><li>读取 CURRENT 文件(不存在则新建)找到最新的 MANIFEST 文件(不存在则新建)的名称</li><li>读取该 MANIFEST 文件内容与当前 Version 保存的 level 架构合并保存到一个新建的 Version 中, 然后将这个新的 version 作为当前的 version, 即最新的 level 架构信息.</li><li>清理过期的文件</li><li>这一步我们可以打开全部 sstables, 但最好等会再打开</li><li>将 log 文件块转换为一个新的 level-0 sstable</li><li>将接下来的要写的数据写入一个新的 log 文件</li></ul><ol start=2><li>遍历数据库目录下全部文件. 筛选出 sorted string table 文件, 验证 VersionSet 包含的 level 架构图有效性; 同时将全部 log 文件筛选换出来后续反序列化成 memtable. 恢复 log 文件时会按照从旧到新逐个 log 文件恢复, 这样新的修改会覆盖旧的, 如果对应 memtable 太大了, 将其转为 sorted string table 文件写入磁盘, 同时将其对应的 table 对象放到 table_cache_ 缓存. 若发生 memtable 落盘表示 level 架构新增文件则将 save_manifest 标记为 true, 表示需要写变更日志到 manifest 文件. 恢复 log 文件主要由方法 <code>leveldb::DBImpl::RecoverLogFile</code> 负责完成.</li></ol><h3 id=put class=headerLink><a href=#put class=header-mark></a>Put</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 将 &lt;key, value&gt; 对写入数据库, 成功返回 OK, 失败返回错误状态. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 本次写操作相关的配置参数, 如果有需要可以将该参数中的 sync 置为 true, 不容易丢数据但更慢. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param key Slice 类型的 key
+</span></span></span><span class=line><span class=cl><span class=cm> * @param value Slice 类型的 value
+</span></span></span><span class=line><span class=cl><span class=cm> * @return 返回类型为 Status
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=n>Status</span> <span class=nf>Put</span><span class=p>(</span><span class=k>const</span> <span class=n>WriteOptions</span><span class=o>&amp;</span> <span class=n>options</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                    <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                    <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>value</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法主要依赖 <code>leveldb::DBImpl::Write</code> 实现.</p><h3 id=delete class=headerLink><a href=#delete class=header-mark></a>Delete</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 从数据删除指定键为 key 的键值对. 如果 key 不存在不算错. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 本次写操作相关的配置参数, 如果有需要可以将该参数中的 sync 置为 true, 不容易丢数据但更慢. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param key 要删除数据项对应的 key
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=n>Status</span> <span class=nf>Delete</span><span class=p>(</span><span class=k>const</span> <span class=n>WriteOptions</span><span class=o>&amp;</span> <span class=n>options</span><span class=p>,</span> <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法主要依赖 <code>leveldb::DBImpl::Write</code> 实现.</p><h3 id=write class=headerLink><a href=#write class=header-mark></a>Write</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 对数据库进行批量更新写操作.
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 该方法线程安全, 内部自带同步. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 本次写操作相关的配置参数, 如果有需要可以将该参数中的 sync 置为 true, 不容易丢数据但更慢. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param updates 要进行的批量更新操作
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=n>Status</span> <span class=nf>Write</span><span class=p>(</span><span class=k>const</span> <span class=n>WriteOptions</span><span class=o>&amp;</span> <span class=n>options</span><span class=p>,</span> <span class=n>WriteBatch</span><span class=o>*</span> <span class=n>updates</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法是 <code>leveldb::DBImpl::Write</code> 原型.</p><p>针对调用 db 进行的写操作, 都会生成一个对应的 <code>struct leveldb::DBImpl::Writer</code>, 其封装了写入数据和写入进度. 新构造的 writer 会被放入一个队列. 循环检查, 若当前 writer 工作没完成并且不是队首元素, 则当前有其它 writer 在写, 挂起当前 writer 等待条件成熟. 当前 writer 如果被排在前面的 writer 给合并写入了, 那么它的 done 就被标记为完成了. 否则会被其它在写入的 writer 调用其 signal 将其唤醒执行写入工作.</p><p>当执行写入工作时(被前一个执行写入并完成工作的 writer 唤醒了), 首先确认是否为本次该 writer 写操作分配新的 log 文件, 如果需要则分配. 因为该 writer 成为队首 writer 了, 则它负责将队列前面若干 writers 的 batch 合并为一个(该工作由<code>leveldb::DBImpl::BuildBatchGroup</code> 负责完成), 注意, 被合并的 writers 不出队(待合并写入完成再出队, 具体见后面描述), 所以写 log 期间队首 writer 不变. 具体写入工作由 <code>leveldb::log::Writer::AddRecord</code> 负责, 就是将数据序列化为 record 写入 log 文件. 如果追加 log 文件成功,则将被追加的数据插入到内存中的 memtable 中. 待写入完毕, 该 writer 将参与前述 batch group 写入 log 文件的 writer 都取出来并设置为写入完成, 即将其出队, 将其 done 置为 true, 同时向其发送信号将其唤醒, 被唤醒后它会检查其 done 标识并返回. 最后唤醒队首 writer 执行下一个合并写入.</p><h3 id=get class=headerLink><a href=#get class=header-mark></a>Get</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 查询键为 key 的数据项, 如果存在则将对应的 value 地址存储到第二个参数中. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 如果 key 不存在, 第二个参数不变, 返回值为 IsNotFound Status. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 本次读操作对应的配置参数
+</span></span></span><span class=line><span class=cl><span class=cm> * @param key 要查询的 key, Slice 引用类型
+</span></span></span><span class=line><span class=cl><span class=cm> * @param value 存储与 key 对应的值的指针, string 指针类型
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=n>Status</span> <span class=nf>Get</span><span class=p>(</span><span class=k>const</span> <span class=n>ReadOptions</span><span class=o>&amp;</span> <span class=n>options</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                    <span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>key</span><span class=p>,</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>*</span> <span class=n>value</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><ol><li>先查询当前在用的 memtable(具体工作由 <code>leveldb::MemTable::Get</code> 负责, 本质就是 SkipList 查询, 速度很快)</li><li>如果没有则查询正在转换为 sorted string table 的 memtable 中寻找</li><li>如果没有则我们在磁盘上采用从底向上 level-by-level 的寻找目标 key.</li></ol><p>针对上述第 3 步, 具体由 db VersionSet 的当前 Version 负责, 因为该结构保存了 db 当前最新的 level 架构信息, 即每个 level 及其对应的文件列表和每个文件的键范围. 对应方法为 <code>leveldb::Version::Get</code>, 具体为:</p><ul><li>从低 level 向高 level 寻找. 由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.</li><li>由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key;</li><li>针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.</li></ul><p>另外需要注意的的是, 参数 <code>options</code> 可以配置一个快照, 快照对应了数据库历史上的一个操作序列号, 查询时仅查询不大于该序列号的操作范围. 针对同样的 key, 如果历史上有多次更新操作, 而用户想查找特定更新, 这就是实现途径. 如果没有配置快照选项, 默认采用当前最大序列号进行查询.</p><h3 id=newiterator class=headerLink><a href=#newiterator class=header-mark></a>NewIterator</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-go data-lang=go><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 返回基于堆内存的迭代器, 可以用该迭代器遍历整个数据库的内容. 
+</span></span></span><span class=line><span class=cl><span class=cm> * 该函数返回的迭代器初始是无效的(在使用迭代器之前, 调用者必须在其上调用 Seek 方法). 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 当不再使用时, 调用者应该释放该迭代器对应的内存, 而且迭代器必须在数据库释放之前进行释放. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param options 本次读操作对应的配置参数
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=nx>virtual</span> <span class=nx>Iterator</span><span class=o>*</span> <span class=nf>NewIterator</span><span class=p>(</span><span class=kd>const</span> <span class=nx>ReadOptions</span><span class=o>&amp;</span> <span class=nx>options</span><span class=p>)</span> <span class=p>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法负责将内存 memtable(可能有两个, 一个在写, 一个写完待存盘) 和磁盘 sorted string table 文件全部数据结构串起来构造一个大一统迭代器, 可以遍历整个数据库.</p><p>上述工作其实是由 <code>leveldb::Iterator *leveldb::DBImpl::NewInternalIterator</code> 负责完成的. 该方法实现涉及到 leveldb 特别精巧的迭代器的实现. 这个单独可以写一篇文章来专门介绍. 这里大致说下处理流程:</p><ul><li>1 初始化一个列表</li><li>2 把当前 memtable 迭代器加入列表中</li><li>3 把待写盘 memtable 迭代器追加到列表中</li><li>4 将当前 version 维护的 level 架构中每个 sorted string table 文件对应的迭代器追加到列表中. 针对 level-0 和其它 levels 处理方式不同.<ul><li>由于 level-0 文件之间可能存在重叠, 所以按照文件生成顺序(这极其重要, 其实就是按照 key 从小到大, 只有这样才能确保最后生成的迭代器能够从小到大按序遍历整个数据库) 为每个文件生成一个两级迭代器(<code>TwoLevelIterator</code>, 该结构巧妙地将索引块和数据块结合到了一起)追加到列表中.</li><li>针对 level-1 及其以上 level, 按照从低 level 到高 level(这极其重要, 原因同 level-0), 为每个 level 生成一个两级迭代器, 数据结构依然是 <code>TwoLevelIterator</code>, 不过这里把每个 level 的文件列表抽象成了第一级索引, 然后每个文件对应的 table 对象抽象层二级索引.</li></ul></li><li>最后将前述全部迭代器构成的迭代器列表再级联成一个大一统的迭代器 <code>MergingIterator</code>. 这其实也是一个两级迭代器, 第一级指向迭代器列表, 第二级是某个迭代器指向的内容的迭代器.</li></ul><p>最后返回给调用者的就是 <code>MergingIterator</code> 实例. 可以调用它的相关方法在整个数据库上寻找目标 key.</p><h3 id=getsnapshot class=headerLink><a href=#getsnapshot class=header-mark></a>GetSnapshot</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 返回当前 DB 状态的一个快照. 
+</span></span></span><span class=line><span class=cl><span class=cm> * 使用该快照创建的全部迭代器将会都指向一个当前 DB 的一个稳定快照. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 当不再使用该快照时, 调用者必须调用 ReleaseSnapshot 将其释放. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=k>const</span> <span class=n>Snapshot</span><span class=o>*</span> <span class=nf>GetSnapshot</span><span class=p>()</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>用数据库当前最新的更新操作对应的序列号创建一个快照. 快照最核心的就是那个操作序列号, 因为查询时会把 用户提供的 key(我们叫做 user_key)和操作序列号一起构成一个 internal_key(数据库存储的 key 就是它), 针对 user_key 相等的情况比如针对 hello 这个 user_key Put 多次, 则每次序列号就不一样, 于是根据特定序列号可以查询到特定的那次 Put 写入的 value 值.</p><p>这个新生成的快照会被挂载到一个双向链表上, 用完后可以调用 <code>ReleaseSnapshot</code> 将其释放掉.</p><h3 id=releasesnapshot class=headerLink><a href=#releasesnapshot class=header-mark></a>ReleaseSnapshot</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 释放一个之前获取的快照, 释放后, 调用者不能再使用该快照了. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param snapshot 指向要释放的快照的指针
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=kt>void</span> <span class=nf>ReleaseSnapshot</span><span class=p>(</span><span class=k>const</span> <span class=n>Snapshot</span><span class=o>*</span> <span class=n>snapshot</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>从双向链表上删除指定的快照.</p><h3 id=getproperty class=headerLink><a href=#getproperty class=header-mark></a>GetProperty</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * DB 实现可以通过该方法导出自身状态相关的信息. 如果提供的属性可以被 DB 实现理解, 
+</span></span></span><span class=line><span class=cl><span class=cm> * 那么第二个参数将会存储该属性对应的当前值同时该方法返回 true, 其它情况该方法返回 false. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 合法的属性名称包括: 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * &#34;leveldb.num-files-at-level&lt;N&gt;&#34; - 返回 level &lt;N&gt; 的文件个数, 其中 &lt;N&gt; 是一个数字. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * &#34;leveldb.stats&#34; - 返回多行字符串, 描述该 DB 内部操作相关的统计数据. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * &#34;leveldb.sstables&#34; - 返回多行字符串, 描述构成该 DB 的全部 sstable 相关信息. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * &#34;leveldb.approximate-memory-usage&#34; - 返回被该 DB 使用的内存字节数近似值
+</span></span></span><span class=line><span class=cl><span class=cm> * @param property 要查询的属性名称
+</span></span></span><span class=line><span class=cl><span class=cm> * @param value 保存属性名称对应的属性值
+</span></span></span><span class=line><span class=cl><span class=cm> * @return
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>GetProperty</span><span class=p>(</span><span class=k>const</span> <span class=n>Slice</span><span class=o>&amp;</span> <span class=n>property</span><span class=p>,</span> <span class=n>std</span><span class=o>::</span><span class=n>string</span><span class=o>*</span> <span class=n>value</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>leveldb 实现在内部做了一些统计, 可以通过这个接口进行查询. 不过目前可查询状态不多, 具体如下:</p><ul><li>&ldquo;leveldb.num-files-at-level<n>&rdquo; - 返回 level <n>的文件个数, 其中 <n>是一个 ASCII 格式的数字.</li><li>&ldquo;leveldb.stats&rdquo; - 返回多行字符串, 描述该 DB 内部操作相关的统计数据.</li><li>&ldquo;leveldb.sstables&rdquo; - 返回多行字符串, 描述构成该 DB 的全部 sstable 相关信息.</li><li>&ldquo;leveldb.approximate-memory-usage&rdquo; - 返回被该 DB 使用的内存字节数近似值</li></ul><h3 id=getappoximatesizes class=headerLink><a href=#getappoximatesizes class=header-mark></a>GetAppoximateSizes</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 对于 [0, n-1] 中每个 i, 将位于 [range[i].start .. range[i].limit) 
+</span></span></span><span class=line><span class=cl><span class=cm> * 中全部 keys 所占用文件系统空间近似大小存储到 sizes[i] 中. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 注意, 如果数据被压缩过了, 那么返回的 sizes 存储的就是压缩后数据所占用文件系统空间大小. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 返回结果可能不包含最近刚写入的数据所占用空间. 
+</span></span></span><span class=line><span class=cl><span class=cm> * @param range 指定要查询一组 keys 范围
+</span></span></span><span class=line><span class=cl><span class=cm> * @param n range 和 sizes 两个数组的大小
+</span></span></span><span class=line><span class=cl><span class=cm> * @param sizes 存储查询到的每个 range 对应的文件系统空间近似大小
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=kt>void</span> <span class=nf>GetApproximateSizes</span><span class=p>(</span><span class=k>const</span> <span class=n>Range</span><span class=o>*</span> <span class=n>range</span><span class=p>,</span> <span class=kt>int</span> <span class=n>n</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                  <span class=kt>uint64_t</span><span class=o>*</span> <span class=n>sizes</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>计算 range 包含的键区间在磁盘上占用的空间大小, 每个子区间占用会保存到 sizes 对应位置.</p><p>计算过程也很简单, 就是遍历 range 列表, 针对每个子区间起止 key, 去数据库中确认其大致字节偏移, 然后"止"-&ldquo;始&rdquo; 即为子区间占用空间的大致大小.</p><h3 id=compactrange class=headerLink><a href=#compactrange class=header-mark></a>CompactRange</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cm>/**
+</span></span></span><span class=line><span class=cl><span class=cm> * 将 key 范围 [*begin,*end] 对应的底层存储压紧, 注意范围是左闭右闭. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 尤其是, 压实过程会将已经删除或者复写过的数据会被丢弃, 同时会将数据
+</span></span></span><span class=line><span class=cl><span class=cm> * 重新安放以减少后续数据访问操作的成本. 
+</span></span></span><span class=line><span class=cl><span class=cm> * 这个操作是为那些理解底层实现的用户准备的. 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * 如果 begin==nullptr, 则从第一个键开始; 如果 end==nullptr 则到最后一个键为止. 
+</span></span></span><span class=line><span class=cl><span class=cm> * 所以, 如果像下面这样做则意味着压紧整个数据库: 
+</span></span></span><span class=line><span class=cl><span class=cm> *
+</span></span></span><span class=line><span class=cl><span class=cm> * db-&gt;CompactRange(nullptr, nullptr);
+</span></span></span><span class=line><span class=cl><span class=cm> * @param begin 起始键
+</span></span></span><span class=line><span class=cl><span class=cm> * @param end 截止键
+</span></span></span><span class=line><span class=cl><span class=cm> */</span>
+</span></span><span class=line><span class=cl><span class=k>virtual</span> <span class=kt>void</span> <span class=nf>CompactRange</span><span class=p>(</span><span class=k>const</span> <span class=n>Slice</span><span class=o>*</span> <span class=n>begin</span><span class=p>,</span> <span class=k>const</span> <span class=n>Slice</span><span class=o>*</span> <span class=n>end</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>手动触发与目标键区间重叠的文件压实. 具体为:</p><ul><li>检查每个 level, 确认其包含的键区间释放与目标键区间有交集.</li><li>因为当前在写 memtable 可能与目标键区间有交集, 所以强制触发一次 memtable 压实(即将当前 memtable 文件转为 sorted string table 文件并写入磁盘)并生成新 log 文件和对应的 memtable.</li><li>针对与目标键区间有交集的各个 level 触发一次手动压实</li></ul><p>具体压实过程后续会写一篇文章进行介绍.</p><h2 id=leveldb-的文件类型 class=headerLink><a href=#leveldb-%e7%9a%84%e6%96%87%e4%bb%b6%e7%b1%bb%e5%9e%8b class=header-mark></a>leveldb 的文件类型</h2><p>下面分别介绍 leveldb 最重要的几个文件类型.</p><h3 id=log-文件 class=headerLink><a href=#log-%e6%96%87%e4%bb%b6 class=header-mark></a>log 文件</h3><p>一个 log 文件(*.log)保存着最近一系列更新操作, 它相当于 leveldb 的 WAL(write-ahead log). 每个更新操作都被追加到当前的 log 文件中. 当 log 文件大小达到一个预定义的大小时(默认大约 4MB), 这个 log 文件就会被转换为一个 sorted string table (见下文)然后一个新的 log 文件就会被创建以保存未来的更新操作.</p><p>当前 log 文件内容同时也会被记录到一个内存数据结构中(即 <code>memtable</code> ). 这个结构加上全部 sorted string tables (*.ldb) 才是完整数据, 一起确保每个读操作都能查到当前最新.</p><h4 id=log-文件格式 class=headerLink><a href=#log-%e6%96%87%e4%bb%b6%e6%a0%bc%e5%bc%8f class=header-mark></a>log 文件格式</h4><p>log 文件内容是一系列 blocks, 每个 block 大小为 32KB. 唯一的例外就是, log 文件末尾可能包含一个不完整的 block.</p><p>每个 block 由一系列 records 构成, 具体定义如下(熟悉编译原理的应该对下述写法不陌生):</p><pre><code>// 即 0 或多个 records, 0 或 1 个 trailer.
+// 最大为 32768 字节.
+block := record* trailer?
+record :=
+  // 下面提到的 type 和 data[] 的 crc32c 校验和, 小端字节序
+  checksum: uint32
+  // 下面的 data[] 的长度, 小端字节序
+  length: uint16
+  // 类型, FULL、FIRST、MIDDLE、LAST 取值之一
+  type: uint8
+  // 用户数据
+  data: uint8[length]
+</code></pre><p>如果一个 block 剩余字节不超过 6 个(checksum 字段长度 + length 字段长度 + type 字段长度 = 7), 则不会再构造任何 record, 如前括号解释因为大小不合适. 这些剩余空间会被用于构造一个 trailer, reader 读取该文件时候会忽略之.</p><p>此外, 如果当前 block 恰好剩余 7 个字节(正好可以容纳 record 中的 checksum + length + type), 并且一个新的非 0 长度的 record 要被写入, 那么 writer 必须在此处写入一个 FIRST 类型的 record(但是 length 字段值为 0, data 字段为空. 用户数据 data 部分需要写入下个 block, 而且下个 block 起始还是要写入一个 header 不过其 type 为 middle)来填满该 block 尾部的 7 个字节, 然后在接下来的 blocks 中写入全部用户数据.</p><p>未来可能加入更多的 record 类型. Readers 可以跳过它们不理解的 record 类型, 也可以在跳过时进行报告.</p><pre><code>FULL == 1
+FIRST == 2
+MIDDLE == 3
+LAST == 4
+</code></pre><p>FULL 类型的 record 包含了一个完整的用户 record 的内容.</p><p>FIRST、MIDDLE、LAST 这三个类型用于被分割成多个 fragments(典型的理由是某个 record 跨越了多个 block 边界) 的用户 record. FIRST 表示某个用户 record 的第一个 fragment, LAST 表示某个用户 record 的最后一个 fragment, MIDDLE 表示某个用户 record 的中间 fragments.</p><p>举例: 考虑下面一系列用户 records:
+A: 长度 1000
+B: 长度 97270
+C: 长度 8000
+<strong>A</strong> 会被作为 FULL 类型的 record 存储到第一个 block, 第一个 block 剩余空间为 32768 - 7 - 1000 = 31761;</p><p><strong>B</strong> 会被分割为 3 个 fragments: 第一个 fragment 占据第一个 block 剩余空间, 共存入 31761 - 7 = 31754, 剩余 65516; 第二个 fragment 占据第二个 block 的全部空间, 存入 32768 - 7 = 32761, 剩余 65516 - 32761 = 32755; 第三个 fragment 占据第三个 block 的起始空间共 7 + 32755 = 32762. 所以最后在第三个 block 剩下 32768 - 32762 = 6 个字节, 这几个字节会被填充 0 作为 trailer.</p><p><strong>C</strong> 将会被作为 FULL 类型的 record 存储到第四个 block 中.</p><p>MANIFEST 文件的格式同 log 文件, 只是记录的具体内容不同, 前者记录的针对 level 架构的文件级别变更(新增/删除), 后者记录的是用户数据 key-value 变更.</p><h4 id=log-文件格式的好处 class=headerLink><a href=#log-%e6%96%87%e4%bb%b6%e6%a0%bc%e5%bc%8f%e7%9a%84%e5%a5%bd%e5%a4%84 class=header-mark></a>log 文件格式的好处</h4><p>log 文件格式的好处是(总结一句话就是容易划分边界):</p><ol><li>不必进行任何启发式地 resyncing(可以理解为寻找一个 block 的边界) —— 直接跳到下个 block 边界进行扫描即可, 因为每个 block 大小是固定的(32768 个字节, 除非文件尾部的 block 未写满). 如果数据有损坏, 直接跳到下个 block. 这个文件格式的附带好处是, 当一个 log 文件的部分内容作为一个 record 嵌入到另一个 log 文件时(即当一个逻辑 record 分为多个物理 records, 一部分 records 位于前一个 log 文件, 剩下 records 位于下个 log 文件), 我们不会分不清楚.</li><li>在估计出来的边界处做分割(比如为 mapreduce 应用)变得简单了: 找到下个 block 的边界, 如果起始是 MIDDLE 或者 LAST 类型的 record, 则跳过直到我们找到一个 FULL 或者 FIRST record 为止, 就可以在此处做分割, 一部分投递到一个计算任务, 另一部分(直到分界处)投递到另一个计算任务.</li></ol><h4 id=log-文件的缺点并不是 class=headerLink><a href=#log-%e6%96%87%e4%bb%b6%e7%9a%84%e7%bc%ba%e7%82%b9%e5%b9%b6%e4%b8%8d%e6%98%af class=header-mark></a>log 文件的缺点(并不是)</h4><p>log 文件格式的缺点:</p><ol><li>没有打包小的 records. 通过增加一个新的 record 类型可以解决这个问题, 所以这个问题是当前实现的不足而不是 log 格式的缺陷.</li><li>没有压缩. 同样地, 这个也可以通过增加一个新的 record 类型来解决.</li></ol><h4 id=log-文件主要接口 class=headerLink><a href=#log-%e6%96%87%e4%bb%b6%e4%b8%bb%e8%a6%81%e6%8e%a5%e5%8f%a3 class=header-mark></a>log 文件主要接口</h4><p>下面介绍下 log 文件的读写实现.</p><h5 id=写-log class=headerLink><a href=#%e5%86%99-log class=header-mark></a>写 log</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>leveldb</span><span class=o>::</span><span class=n>Status</span> <span class=n>leveldb</span><span class=o>::</span><span class=n>log</span><span class=o>::</span><span class=n>Writer</span><span class=o>::</span><span class=n>AddRecord</span><span class=p>(</span><span class=k>const</span> <span class=n>leveldb</span><span class=o>::</span><span class=n>Slice</span> <span class=o>&amp;</span><span class=n>slice</span><span class=p>)</span>
+</span></span></code></pre></td></tr></table></div></div><p>该接口做的事情就是把外部传入的 Slice 封装成若干 records 追加到 log 文件中.</p><p>该方法会被 <code>leveldb::Status leveldb::DBImpl::Write(const leveldb::WriteOptions &amp;options, leveldb::WriteBatch *my_batch)</code> 调用以响应用户的写操作. <code>DBImpl</code> 是 <code>DB</code> 的派生类, 其 <code>Put</code> 和 <code>Delete</code> 方法真正工作是由派生类的 <code>Write</code> 负责的.</p><h5 id=读-log class=headerLink><a href=#%e8%af%bb-log class=header-mark></a>读 log</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>bool</span> <span class=n>leveldb</span><span class=o>::</span><span class=n>log</span><span class=o>::</span><span class=n>Reader</span><span class=o>::</span><span class=n>ReadRecord</span><span class=p>(</span><span class=n>leveldb</span><span class=o>::</span><span class=n>Slice</span> <span class=o>*</span><span class=n>record</span><span class=p>,</span> <span class=n>string</span> <span class=o>*</span><span class=n>scratch</span><span class=p>)</span>
+</span></span></code></pre></td></tr></table></div></div><p>该方法负责从 log 文件读取内容并反序列化为 Record. 该方法会在 db 的 <code>Open</code> 方法中调用, 负责将磁盘上的 log 文件转换为内存中 memtable. 其它数据库恢复场景也会用到该方法.</p><h4 id=与-log-文件配套的-memtable class=headerLink><a href=#%e4%b8%8e-log-%e6%96%87%e4%bb%b6%e9%85%8d%e5%a5%97%e7%9a%84-memtable class=header-mark></a>与 log 文件配套的 memtable</h4><p>memtable 可以看作是 log 文件的内存形式, 但是格式不同.</p><h5 id=结构 class=headerLink><a href=#%e7%bb%93%e6%9e%84 class=header-mark></a>结构</h5><p>它的本质就是一个 SkipList.</p><h5 id=用途 class=headerLink><a href=#%e7%94%a8%e9%80%94 class=header-mark></a>用途</h5><p>我们已经知道, 每个 log 文件在内存有一个对应的 memtable, 它和正在压实的 memtable 以及磁盘上的各个 level 包含的文件构成了数据全集. 所以当调用 DB 的 <code>Get</code> 方法查询某个 key 的时候, 具体步骤是这样的(具体实现位于 <code>leveldb::Status leveldb::Version::Get(const leveldb::ReadOptions &amp;options, const leveldb::LookupKey &amp;k, string *value, leveldb::Version::GetStats *stats)</code>, DB 的 <code>Get</code> 方法会调用前述实现.):</p><ol><li>先查询当前在用的 memtable, 查到返回, 未查到下一步</li><li>查询正在转换为 sorted string table 的 memtable 中寻找, 查到返回, 未查到下一步</li><li>在磁盘上采用从底向上 level-by-level 的寻找目标 key.</li></ol><ul><li>由于 level 越低数据越新, 因此, 当我们在一个较低的 level 找到数据的时候, 不用在更高的 levels 找了.</li><li>由于 level-0 文件之间可能存在重叠, 而且针对同一个 key, 后产生的文件数据更新所以先将包含 key 的文件找出来按照文件号从大到小(对应文件从新到老)排序查找 key; 针对 level-1 及其以上 level, 由于每个 level 内文件之间不存在重叠, 于是在每个 level 中直接采用二分查找定位 key.</li></ul><h3 id=sorted-string-table-文件 class=headerLink><a href=#sorted-string-table-%e6%96%87%e4%bb%b6 class=header-mark></a>sorted string table 文件</h3><p>sorted string table(*.ldb) 文件就是 leveldb 的数据库文件了. 每一个 level 都对应一组有序的 sorted string table 文件. 每个 sorted string table 文件保存着按 key 排序的一系列数据项. 每个数据项要么是一个与某个 key 对应的 value, 要么是某个 key 的删除标记. (删除标记其它地方又叫墓碑消息, 用于声明时间线上在此之前的同名 key 对应的记录都失效了, 后台线程负责对这类记录进行压实, 即拷贝到另一个文件时物理删除这类记录.). 注意, leveldb 是一个 append 类型而非 MySQL 那种 in-place 修改的数据库.</p><p>sorted string tables 文件被组织成一系列 levels. 一个 log 文件生成的对应 sorted string table 文件会被放到一个特殊的 <strong>young</strong> level(也被叫做 level-0). 当 young 文件数目超过某个阈值(当前是 4), 全部 young 文件就会和 level-1 与之重叠的全部文件进行合并, 进而生成一系列新的 level-1 文件(每 2MB 数据就会生成一个新的 level-1 文件).</p><p>level-0 的文件之间可能存在键区间重叠, 但是其它每层 level 内部文件之间是不存在重叠情况的. 我们下面来说下 level-1 及其以上的 level 的文件如何合并. 当 level-L (L >= 1)的文件总大小超过了 $10^L$ MB(即 level-1 超过了 10MB, level-2 超过了 100MB, &mldr;), 此时一个 level-L 文件就会和 level-(L+1) 中与自己键区间重叠的全部文件进行合并, 然后为 level-(L+1) 生成一组新的文件. 这些合并操作可以实现将 young level 中新的 updates 一点一点搬到最高的那层 level, 这个迁移过程使用的都是块读写(最小化了昂贵的 seek 操作的时间消耗).</p><h4 id=sorted-string-table-文件格式 class=headerLink><a href=#sorted-string-table-%e6%96%87%e4%bb%b6%e6%a0%bc%e5%bc%8f class=header-mark></a>sorted string table 文件格式</h4><p>leveldb sorted string table (又叫 sstable) 文件主要包含五个部分, 即多个 data blocks, 多个 meta blocks, 一个 metaindex block, 一个 index block 以及一个 footer, 具体格式如下:</p><pre><code>&lt;beginning_of_file&gt;
+[data block 1]
+[data block 2]
+...
+[data block N]
+[meta block 1]
+...
+[meta block K]
+[metaindex block]
+[index block]
+[Footer]        (fixed size; starts at file_size - sizeof(Footer))
+&lt;end_of_file&gt;
+</code></pre><p>不像 kafka 存储结构数据文件和索引文件是各自独立的(在查询时索引文件用了根据具体 key 定位是哪个数据文件), 该文件把索引和数据保存到了一个文件中. 每次从文件查询数据时会先查询索引, 索引是指向数据的指针, 具体叫做 BlockHandle, 包含着下述信息:</p><pre><code>// 对应 block 起始位置在文件中的偏移量
+offset: varint64
+// 对应 block 的大小
+size:   varint64
+</code></pre><p>如果你没用过 protobuf 之类的二进制编解码协议, 可能对 varint64 不太熟悉, 可以参考这里 <a href=https://developers.google.com/protocol-buffers/docs/encoding#varints target=_blank rel="noopener noreferrer">varints</a> 了解一下. 本质就是对数据类型进行(二次)无损编码, 使其更加紧凑, 可以节省带宽或者存储空间.</p><p>下面详细解释下上面提到的文件格式:</p><ol><li><p>文件里存的是一系列 key/value 对, 而且按照 key 排过序了, 同时被划分到了多个 blocks 中. 这些 blocks 从文件起始位置开始一个接一个. 每个 data block 组织形式在 <code>block_builder.cc</code> 定义, 用户可以选择对 data block 进行压缩(注意前面讲 log 文件的时候说不支持对 block 进行压缩是 log 文件目前的缺点).</p></li><li><p>全部 data blocks 之后是一组 meta blocks. 已经支持的 meta block 类型见下面描述, 将来可能会加入更多的类型. 每个 meta block 组织形式在 <code>block_builder.cc</code> 定义, 同样地, 用户可以选择对其进行压缩.</p></li><li><p>全部 meta blocks 后是一个 metaindex block. 每个 meta block 都有一个对应的 entry 保存在该部分, 其中 key 就是某个 meta block 的名字, value 是一个指向该 meta block 的 BlockHandle.</p></li><li><p>紧随 metaindex block 之后是一个 index block. 针对每个 data block 都有一个对应的 entry 包含在该部分, 其中 key 为大于等于对应 data block 最后(也是最大的, 因为排序过了)一个 key 同时小于接下来的 data block 第一个 key 的字符串; value 是指向一个对应 data block 的 BlockHandle.</p></li><li><p>在每个文件的末尾是一个固定长度的 footer, 它非常关键, 它虽然位于文件尾部却是文件的入口. 固定长度的好处就是读取文件时, 用 file size 减去这个固定长度就能定位到 footer 起始偏移, 然后就可以解析了. 它包含了一个指向 metaindex block 的 BlockHandle 和一个指向 index block 的 BlockHandle 以及一个 magic number. 具体格式如下:</p><pre><code>   // 指向 metaindex 的 BlockHandle
+   metaindex_handle: char[p];     
+   // 指向 index 的 BlockHandle
+   index_handle:     char[q];     
+   // 用于维持固定长度的 padding 0,
+   // (其中 40 == 2*BlockHandle::kMaxEncodedLength)
+   padding:          char[40-p-q];
+   // 具体内容为 0xdb4775248b80fb57 (小端字节序)
+   magic:            fixed64;     
+</code></pre></li></ol><p>注意 footer 存的都是 index-of-xx, 找到 index 就可以找到 xx 了.</p><h4 id=filter-meta-block class=headerLink><a href=#filter-meta-block class=header-mark></a>&ldquo;filter&rdquo; Meta Block</h4><p>目前 sstable 只有一种类型的 meta block, 那就是 filter.</p><p>如果打开(创建)数据库的时候指定了一个 <code>FilterPolicy</code>, 那么一个 filter block 就会被存储到每个 sstable 中. metaindex block 包含了一个 entry, 它是从 <code>filter.&lt;Name></code> 到 filter block 的 BlockHandle 的映射. 其中, <code>&lt;Name></code> 是一个由 filter policy 的 <code>Name()</code>方法返回的字符串.</p><p>filter block 保存着一系列 filters, 其中 filter i 包含了方法</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=n>leveldb</span><span class=o>::</span><span class=n>FilterPolicy</span><span class=o>::</span><span class=n>CreateFilter</span><span class=p>(</span><span class=k>const</span> <span class=n>Slice</span> <span class=o>*</span><span class=n>keys</span><span class=p>,</span> <span class=kt>int</span> <span class=n>n</span><span class=p>,</span> <span class=n>string</span> <span class=o>*</span><span class=n>dst</span><span class=p>)</span> <span class=k>const</span>
+</span></span></code></pre></td></tr></table></div></div><p>针对入参 keys 的计算结果(存储在输出型参数 <code>dst</code>). 参数 keys 属于一个 data block, 该 data block 对应的文件偏移量落在下面的范围里:</p><pre><code>[ i*base ... (i+1)*base-1 ]
+</code></pre><p>当前, 上面的 base 是 2KB. 举个例子, 如果 block X 和 block Y 起始地址落在 <code>[ 0KB .. 2KB ]</code> 范围内, 则 X 和 Y 中的全部 keys 将会在调用 <code>FilterPolicy::CreateFilter()</code> 时被转换为一个 filter, 然后这个 filter 会作为第一个(为啥是第一个, 因为 X、Y 起始地址落在第一个地址空间 <code>[ 0KB .. 2KB ]</code> 里) filter 被保存在 filter block 中. (用大白话再说一遍, 每个 FilterPolicy 都有一个唯一的名字, 在 metaindex block 通过这个名字就能找到对应的 filter block 了. 而 filter block 存的就是用这个 FilterPolicy 构造的一系列 filters, 为啥是一系列呢？因为 data blocks 太多了, 所以分了区间, 每几个 data blocks 对应一个 filter, 具体几个根据上面那个带 base 的公式来算. 再说说 filter 是怎么回事. data block 保存的不是键值对构成的 records 嘛, 根据前面说的键区间限制, 把每几个 blocks 的全部键根据某个 FilterPolicy 算一下就得到了一个 filter, 然后把这个 filter 保存到了 filter block 的第 i 个位置. )</p><p>具有 N 个 filter 的 filter block 格式如下:</p><pre><code>[filter 0]
+[filter 1]
+[filter 2]
+...
+[filter N-1]
+// 下面的 [offset of filter X] 布局其实不太准确, 准确地
+// 说, 除了 [offset of filter 0], 其它的都可能多出现一次.
+// 具体原因见 leveldb::FilterBlockBuilder::GenerateFilter() 的疑问.
+[offset of filter 0]                  : 4 bytes
+[offset of filter 1]                  : 4 bytes
+[offset of filter 2]                  : 4 bytes
+...
+[offset of filter N-1]                : 4 bytes
+// 上面 [offset of filter 0] 相对于 filter block 首地址的相对偏移量, 
+// 基于该值可以将 fiter 部分和 filter offset 部分分辨出来.
+[offset of beginning of offset array] : 4 bytes
+// base 以 2 为底的对数, 目前 base 是 2048, 则这里就是 11
+lg(base)                              : 1 byte
+</code></pre><p>其中, 位于 filter block 尾部的 offset 数组可以使得我们快速定位到某个 filter.</p><p>由 <code>leveldb::Slice leveldb::FilterBlockBuilder::Finish()</code> 负责构造上述格式, 然后由 <code>leveldb::FilterBlockReader::FilterBlockReader()</code> 构造方法负责解析上述格式.</p><h4 id=stats-meta-block class=headerLink><a href=#stats-meta-block class=header-mark></a>&ldquo;stats&rdquo; Meta Block</h4><p>下面的 meta block 保存着一组统计信息. key 是统计量的名称, value 是具体的统计值.</p><pre><code>data size
+index size
+key size (uncompressed)
+value size (uncompressed)
+number of entries
+number of data blocks
+</code></pre><p>遗憾的是, 目前这个还没实现, 🤭.</p><h4 id=sorted-string-table-文件主要接口 class=headerLink><a href=#sorted-string-table-%e6%96%87%e4%bb%b6%e4%b8%bb%e8%a6%81%e6%8e%a5%e5%8f%a3 class=header-mark></a>sorted string table 文件主要接口</h4><p>下面说明一下 sorted string table 文件主要的操作接口, 主要是读与写.</p><h5 id=sorted-string-table-文件读接口 class=headerLink><a href=#sorted-string-table-%e6%96%87%e4%bb%b6%e8%af%bb%e6%8e%a5%e5%8f%a3 class=header-mark></a>sorted string table 文件读接口</h5><p>完成该工作的是 <code>class leveldb::Table</code>, 该类是对 sorted string table 文件的抽象, 负责对 sorted string table 文件进行读操作.</p><p>具体底层存储由 helper 类 <code>struct leveldb::Table::Rep</code> 负责.</p><p>打开一个 sstable 文件的入口为 <code>leveldb::Status leveldb::Table::Open</code>, 该方法依次动作为:</p><ul><li>1 读取文件末尾固定长度的 footer (具体长度为两个 BlockHandle 最大长度 + 固定的 8 字节魔数)</li><li>2 解析 footer 从而得到 index block 偏移量和大小以及 meta block 偏移量和大小.</li><li>3 将解析出来的 index block 放到 Table 对象中, 通过输出型参数返回.</li></ul><p>从外部(这里强调外部, 是因为还有一个私有方法 <code>leveldb::Status leveldb::Table::InternalGet</code> 可以访问 Table 对象内容)打开文件后如果要访问其内容, 需要一个迭代器, 该工作通过 <code>leveldb::Iterator *leveldb::Table::NewIterator</code> 完成. 返回的迭代器为一个 <code>leveldb::&lt;unnamed>::TwoLevelIterator</code>, 该迭代器处于匿名的命名空间所以未直接对外暴露, 仅能通过返回的指针访问其从 <code>class leveldb::Iterator</code> 继承的方法. 该迭代器设计精巧, 会单独写文章介绍.</p><h5 id=sorted-string-table-文件写接口 class=headerLink><a href=#sorted-string-table-%e6%96%87%e4%bb%b6%e5%86%99%e6%8e%a5%e5%8f%a3 class=header-mark></a>sorted string table 文件写接口</h5><p>完成该工作的是 <code>class leveldb::TableBuilder</code>, 该类负责构造 sstable 文件构造.</p><p>主要方法有以下两个:</p><ul><li><code>void BlockBuilder::Add(const Slice& key, const Slice& value)</code> 负责向 TableBuilder 对象添加 (key, value), 该工作主要由 <code>class leveldb::BlockBuilder::Add()</code> 方法完成.</li><li><code>void leveldb::TableBuilder::Finish()</code> 负责将整个 Table 序列化为一个 sstable 文件并写入磁盘, 具体写入顺序为:<ul><li>写 data blocks</li><li>写 meta blocks(目前仅有过滤器)</li><li>写 meta-index block</li><li>写 data-index block</li><li>写 footer</li></ul></li></ul><h3 id=manifest-文件 class=headerLink><a href=#manifest-%e6%96%87%e4%bb%b6 class=header-mark></a>MANIFEST 文件</h3><p>MANIFEST 文件可以看作 leveldb 存储元数据的地方. 它列出了每一个 level 及其包含的全部 sorted string table 文件, 每个 sorted string table 文件对应的键区间, 以及其它重要的元数据. 每当重新打开数据库的时候, 就会创建一个新的 MANIFEST 文件(文件名中嵌有一个新生成的数字). MANIFEST 文件被格式化成形同 log 文件的格式, 针对它所服务的数据的变更都会被追加到该文件后面. 比如每当某个 level 发生文件新增或者删除操作时, 就会有一条日志被追加到 MANIFEST 中.</p><p>MANIFEST 文件在实现时又叫 descriptor 文件, 文件格式同 log 文件, 所以写入/读取方法就复用了. 其每条日志就是一个序列化后的 <code>leveldb::VersionEdit</code>. 每次针对 level 架构有文件增删时都要写日志到 manifest 文件.</p><h4 id=与-manifest-相关的数据结构之-versionset class=headerLink><a href=#%e4%b8%8e-manifest-%e7%9b%b8%e5%85%b3%e7%9a%84%e6%95%b0%e6%8d%ae%e7%bb%93%e6%9e%84%e4%b9%8b-versionset class=header-mark></a>与 MANIFEST 相关的数据结构之 VersionSet</h4><p>每个 db 都有一个 <code>class leveldb::VersionSet</code> 实例, 它保存了 db 当前的 level 架构视图(具体存储结构为其 Version 成员). MANIFEST 文件可以看作是它所维护的信息的反映. 它的重要方法有:</p><ul><li><code>VersionSet::Recover</code> 负责在打开数据库时将 MANIFEST 文件反序列化构造 level 架构视图, 这个过程会依赖 VersionEdit 类.</li><li><code>VersionSet::LogAndApply</code> 负责将当前 VersionEdit 和当前 Version 进行合并, 然后序列化为一条日志记录到 MANIFEST 文件. 最后把新的 version 替换当前 version.</li></ul><h4 id=与-manifest-相关的-version-结构 class=headerLink><a href=#%e4%b8%8e-manifest-%e7%9b%b8%e5%85%b3%e7%9a%84-version-%e7%bb%93%e6%9e%84 class=header-mark></a>与 MANIFEST 相关的 Version 结构</h4><p><code>class leveldb::Version</code> 是 leveldb 数据库 level 架构的内存表示, 它存储了每一个 level 及其全部的文件信息(文件名, 键范围等等). 每次调用 db 的 Get 方法在 memtable 找不到目标 key 时就会到各个 level 的文件去搜寻, 这个搜寻过程所依赖的就是数据库 VersionSet(下面介绍) 保存的当前 Version 存储的 level 架构信息进行的, 具体实现见 <code>leveldb::Version::Get</code> 方法.</p><p>当条件满足时, VersionSet 会将当前 Version 和当前 VesionEdit 合并生成一个新的 Version 替换当前 Version.</p><h4 id=与-manifest-相关的-versionedit class=headerLink><a href=#%e4%b8%8e-manifest-%e7%9b%b8%e5%85%b3%e7%9a%84-versionedit class=header-mark></a>与 MANIFEST 相关的 VersionEdit</h4><p>MANIFEST 文件的每一条日志就是一个序列化的 <code>class leveldb::VersionEdit</code>. 它可以看作一个 on-fly 的 Version. 它会记录 db 运行过程中删除的文件列表和新增的文件列表.</p><h3 id=current-文件 class=headerLink><a href=#current-%e6%96%87%e4%bb%b6 class=header-mark></a>CURRENT 文件</h3><p>CURRENT 文件是一个简单的文本文件. 由于每次重新打开数据库都会生成一个 MANIFEST 文件, 所以需要一个地方记录最新的 MANIFEST 文件是哪个, CURRENT 就干这个事情, 它相当于一个指针, 其内容即是当前最新的 MANIFEST 文件的名称.</p><h3 id=文件位置与命名 class=headerLink><a href=#%e6%96%87%e4%bb%b6%e4%bd%8d%e7%bd%ae%e4%b8%8e%e5%91%bd%e5%90%8d class=header-mark></a>文件位置与命名</h3><p>各类型文件位置与命名如下:</p><pre><code>dbname/CURRENT
+dbname/LOCK
+dbname/LOG
+dbname/LOG.old
+dbname/MANIFEST-[0-9]+
+dbname/[0-9]+.(log|sst|ldb)
+</code></pre><p>其中 dbname 为用户指定.</p><p>&ndash;End&ndash;</p></div><div class=post-footer id=post-footer><div class=post-info><div class=post-info-line><div class=post-info-mod><span>更新于 2020-09-11</span></div><div class=post-info-license></div></div><div class=post-info-line><div class=post-info-md><span><a class=link-to-mardown href=/leveldb-annotations-1-interfaces-and-files/index.md target=_blank rel="noopener noreferrer">阅读原始文档</a></span></div><div class=post-info-share><span><a href=# title="分享到 Twitter" data-sharer=twitter data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件" data-via=haricheung data-hashtags=leveldb,LSM-Tree,db,kv><i class="fab fa-twitter fa-fw"></i></a><a href=# title="分享到 Facebook" data-sharer=facebook data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-hashtag=leveldb><i class="fab fa-facebook-square fa-fw"></i></a><a href=# title="分享到 WhatsApp" data-sharer=whatsapp data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href=# title="分享到 Line" data-sharer=line data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件"><i data-svg-src=/lib/simple-icons/icons/line.min.svg></i></a><a href=# title="分享到 微博" data-sharer=weibo data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件"><i class="fab fa-weibo fa-fw"></i></a><a href=# title="分享到 Myspace" data-sharer=myspace data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件" data-description><i data-svg-src=/lib/simple-icons/icons/myspace.min.svg></i></a><a href=# title="分享到 Blogger" data-sharer=blogger data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件" data-description><i class="fab fa-blogger fa-fw"></i></a><a href=# title="分享到 Evernote" data-sharer=evernote data-url=https://chienlungcheung.github.io/leveldb-annotations-1-interfaces-and-files/ data-title="Leveldb 源码详解系列之一: 接口与文件"><i class="fab fa-evernote fa-fw"></i></a></span></div></div></div><div class=post-info-more><section class=post-tags><i class="fas fa-tags fa-fw"></i>&nbsp;<a href=/tags/leveldb/>leveldb</a>,&nbsp;<a href=/tags/lsm-tree/>LSM-Tree</a>,&nbsp;<a href=/tags/db/>db</a>,&nbsp;<a href=/tags/kv/>kv</a></section><section><span><a href=javascript:void(0); onclick=window.history.back()>返回</a></span>&nbsp;|&nbsp;<span><a href=/>主页</a></span></section></div><div class=post-nav><a href=/leveldb-annotations-0-usage-and-examples/ class=prev rel=prev title="Leveldb 源码详解系列之零: 基本介绍与使用举例"><i class="fas fa-angle-left fa-fw"></i>Leveldb 源码详解系列之零: 基本介绍与使用举例</a>
+<a href=/%E4%BD%BF%E7%94%A8-ebpf-%E8%B0%83%E8%AF%95%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E7%9A%84-go-%E7%A8%8B%E5%BA%8F/ class=next rel=next title="使用 eBPF 调试生产环境的 Go 程序">使用 eBPF 调试生产环境的 Go 程序<i class="fas fa-angle-right fa-fw"></i></a></div></div><div id=comments><div id=disqus_thread class=comment></div><noscript>Please enable JavaScript to view the comments powered by <a href=https://disqus.com/?ref_noscript>Disqus</a>.</noscript></div></article></div></main><footer class=footer><div class=footer-container><div class=footer-line>由 <a href=https://gohugo.io/ target=_blank rel="noopener noreferrer" title="Hugo 0.120.1">Hugo</a> 强力驱动&nbsp;|&nbsp;主题 - <a href=https://github.com/HEIGE-PCloud/DoIt target=_blank rel="noopener noreferrer" title="DoIt 0.3.0"><i class="far fa-edit fa-fw"></i> DoIt</a></div><div class=footer-line><i class="far fa-copyright fa-fw"></i><span itemprop=copyrightYear>2019 - 2023</span><span class=author itemprop=copyrightHolder>&nbsp;<a href=/ target=_blank rel="noopener noreferrer">Hari</a></span>&nbsp;|&nbsp;<span class=license><a rel="license external nofollow noopener noreffer" href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></span></div><div class=footer-line></div><div class=footer-line></div></div></footer></div><div id=fixed-buttons><a href=#back-to-top id=back-to-top-button class=fixed-button title=回到顶部><i class="fas fa-arrow-up fa-fw"></i>
+</a><a href=# id=view-comments class=fixed-button title=查看评论><i class="fas fa-comment fa-fw"></i></a></div><div class=assets><link rel=stylesheet href=/lib/katex/katex.min.css><link rel=preload as=style onload='this.onload=null,this.rel="stylesheet"' href=/lib/katex/copy-tex.min.css><noscript><link rel=stylesheet href=/lib/katex/copy-tex.min.css></noscript><script type=text/javascript>window.config={code:{copyTitle:"复制到剪贴板",maxShownLines:10},comment:{},math:{delimiters:[{display:!0,left:"$$",right:"$$"},{display:!0,left:"\\[",right:"\\]"},{display:!1,left:"$",right:"$"},{display:!1,left:"\\(",right:"\\)"}],strict:!1},search:{distance:100,findAllMatches:!1,fuseIndexURL:"/index.json",highlightTag:"em",ignoreFieldNorm:!1,ignoreLocation:!1,isCaseSensitive:!1,location:0,maxResultLength:10,minMatchCharLength:2,noResultsFound:"没有找到结果",snippetLength:50,threshold:.3,type:"fuse",useExtendedSearch:!1},sharerjs:!0,table:{sort:!0}}</script><script type=text/javascript src=https://Chienlung.disqus.com/embed.js defer></script><script type=text/javascript src=/lib/tablesort/tablesort.min.js></script><script type=text/javascript src=/lib/clipboard/clipboard.min.js></script><script type=text/javascript src=/lib/sharer/sharer.min.js></script><script type=text/javascript src=/lib/katex/katex.min.js defer></script><script type=text/javascript src=/lib/katex/auto-render.min.js defer></script><script type=text/javascript src=/lib/katex/copy-tex.min.js defer></script><script type=text/javascript src=/lib/katex/mhchem.min.js defer></script><script type=text/javascript src=/js/katex.min.js defer></script><script type=text/javascript src=/js/theme.min.js defer></script></div></body></html>
